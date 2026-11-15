@@ -197,20 +197,25 @@ debit/credit or signed-entry convention clearly and test it thoroughly.
 Build in small vertical slices. Each slice should compile, run, and have
 appropriate tests before moving on.
 
-### Phase 0 --- Project foundation
+### Phase 0 --- Project foundation ✅ Complete (2026-11-16)
 
--   [ ] Create Flutter project.
--   [ ] Confirm supported Flutter and Dart SDK versions.
--   [ ] Establish folder structure and app entry point.
--   [ ] Add navigation shell with Spending, Plans, and Account tabs.
--   [ ] Add theme, typography, spacing, and reusable UI conventions.
--   [ ] Configure formatter, analyzer, and test workflow.
--   [ ] Add a README with setup and run instructions.
+-   [x] Create Flutter project.
+-   [x] Confirm supported Flutter and Dart SDK versions (Flutter 3.47.9
+    / Dart 3.13.7).
+-   [x] Establish folder structure and app entry point.
+-   [x] Add navigation shell with Spending, Plans, and Account tabs.
+-   [x] Add theme, typography, spacing, and reusable UI conventions.
+-   [x] Configure formatter, analyzer, and test workflow.
+-   [x] Add a README with setup and run instructions.
 
 **Acceptance:** The app launches and the three main tabs are navigable.
 No production feature logic is required yet.
 
-### Phase 1 --- Account management
+### Phase 1 --- Account management 🚧 In progress
+
+Progress: roadmap task 1.1 is done — the `Money` value type, parser and
+formatter in `lib/core/` (integer minor units, rule 9). The checklist
+items below are still open.
 
 -   [ ] Define account types: Savings/Cash, Credit, Loan.
 -   [ ] Define account domain model and persistence.
@@ -462,16 +467,15 @@ correct screen is not sufficient.
 
 ------------------------------------------------------------------------
 
-## 10. First Task
+## 10. Current Status
 
-Start with **Phase 0 --- Project foundation only**.
+Phase 0 is complete. Phase 1 (Account management) is in progress; the
+next roadmap task is 1.2 (account domain model). See
+[docs/ROADMAP.md](docs/ROADMAP.md) for the task breakdown.
 
-First inspect the current repository and Flutter/Dart environment. If
-this is a new repository, propose the minimal setup and navigation-shell
-implementation.
-
-Do not implement accounts, transactions, budgets, authentication, cloud
-sync, or other Phase 1+ functionality until explicitly requested.
+Work one roadmap task at a time and stop after each. Do not implement
+transactions, budgets, authentication, cloud sync, or other Phase 2+
+functionality until explicitly requested.
 
 ------------------------------------------------------------------------
 
