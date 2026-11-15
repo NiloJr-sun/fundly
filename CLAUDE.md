@@ -502,4 +502,47 @@ suggestions as approved decisions.
   2026-11-16              Build slowly in small   Confirmed
                           phases; human           
                           orchestrates AIDD       
+
+  2026-11-16              Phase 0 navigation:     Confirmed
+                          Material 3              
+                          NavigationBar +         
+                          IndexedStack; no        
+                          go_router yet (D5)      
+
+  2026-11-16              Primary device: iOS;    Confirmed
+                          Android best-effort     
+                          (D6). Theme seed: teal  
+
+  2026-11-16              Signed balances in      Confirmed
+                          integer centavos:       
+                          assets usually >= 0,    
+                          Credit/Loan owed        
+                          amounts negative;       
+                          balance = opening +     
+                          sum of effects (D1)     
+
+  2026-11-16              Persistence: drift      Confirmed
+                          (SQLite), local-first.  
+                          Supabase considered     
+                          and deferred (D3)       
+
+  2026-11-16              State management:       Confirmed
+                          flutter_riverpod,       
+                          hand-written, no        
+                          codegen (D4)            
+
+  2026-11-16              All accounts PHP for    Confirmed
+                          now; currency code      
+                          stored but not          
+                          editable; cross-        
+                          currency transfers      
+                          rejected (G6)           
+
+  2026-11-16              Archived accounts:      Confirmed
+                          hidden from pickers     
+                          and summaries, keep     
+                          history, accept no new  
+                          transactions; accounts  
+                          with transactions are   
+                          never hard-deleted (G7) 
   -----------------------------------------------------------------------
