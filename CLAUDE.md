@@ -549,4 +549,19 @@ suggestions as approved decisions.
                           transactions; accounts  
                           with transactions are   
                           never hard-deleted (G7) 
+
+  2026-11-16              IDs: SQLite auto-       Confirmed
+                          increment integers;     
+                          no UUIDs until sync is  
+                          in scope (D7)           
+
+  2026-11-16              Account type is locked  Confirmed
+                          after creation; opening 
+                          balance stays editable  
+                          (balances recalculate)  
+
+  2026-11-16              Account names: trimmed, Confirmed
+                          1-40 characters, unique 
+                          ignoring case (enforced 
+                          in the data layer)      
   -----------------------------------------------------------------------
