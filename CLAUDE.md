@@ -257,13 +257,25 @@ detail screen; "All transactions" reachable from the Spending tab.
 **Acceptance:** A user can record all four transaction types and see
 correct account balances and transaction history.
 
-### Phase 3 --- Spending overview
+### Phase 3 --- Spending overview ✅ Complete (2026-11-16)
 
--   [ ] Show account balance summary.
--   [ ] Show inflow total for a selected period.
--   [ ] Show spending total for a selected period.
--   [ ] Show recent transactions.
--   [ ] Add basic date, account, and category filters.
+Roadmap tasks 3.1–3.5 are done. Totals come from `periodTotals()` and
+`summarizeBalances()` in `features/spending/domain/period_summary.dart`;
+only Spending and Inflow count, so transfers and credit-card payments
+are excluded. No schema change was needed (still v3).
+
+-   [x] Show account balance summary (Available money, Credit owed,
+    Loans owed; D2).
+-   [x] Show inflow total for a selected period.
+-   [x] Show spending total for a selected period.
+-   [x] Show recent transactions.
+-   [x] Add basic date, account, and category filters.
+
+Also delivered: a period selector (this month / last month / custom
+range, defaulting to this month); the 10 latest transactions with "See
+all"; filter chips on the All transactions list (`TransactionFilter` in
+`features/transactions/domain/`), which reset each time the list opens
+and include archived accounts.
 
 **Acceptance:** Dashboard totals agree with the underlying transaction
 records and exclude transfers and credit-card payments from
@@ -482,10 +494,10 @@ correct screen is not sufficient.
 
 ## 10. Current Status
 
-Phases 0, 1 and 2 are complete. Phase 3 (Spending overview) is next,
-starting with roadmap task 3.1. Before starting it, the product owner
-must confirm roadmap decision D2 (the meaning of "Available money"; see
-[docs/ROADMAP.md](docs/ROADMAP.md)).
+Phases 0, 1, 2 and 3 are complete. Phase 4 (Basic Plans) is next,
+starting with roadmap task 4.1 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+Phase 4 changes the schema (category management and monthly plans), so
+its plan needs product-owner approval before implementation.
 
 Every schema change must bump `schemaVersion`, run
 `dart run drift_dev make-migrations`, and ship with a data-integrity
@@ -654,4 +666,13 @@ suggestions as approved decisions.
   2026-11-16              Spending tab totals     Confirmed
                           default to the current  
                           calendar month          
+
+  2026-11-16              Transaction filters     Implemented in task
+                          (date range, account,   3.5
+                          category) reset when    
+                          the list is reopened;   
+                          the account filter      
+                          includes archived       
+                          accounts and matches    
+                          either side             
   -----------------------------------------------------------------------
