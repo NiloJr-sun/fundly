@@ -583,4 +583,37 @@ suggestions as approved decisions.
                           can be unarchived from  
                           an Archived accounts    
                           screen                  
+
+  2026-11-16              Phase 2 categories:     Confirmed
+                          fixed seeded list.      
+                          Spending: Food,         
+                          Transport, Utilities,   
+                          Subscriptions,          
+                          Shopping, Health,       
+                          Other. Inflow           
+                          (optional): Salary,     
+                          Other income. Phase 4   
+                          adds management (G1)    
+
+  2026-11-16              Loan payments are       Confirmed
+                          Transfers from an asset 
+                          account to the Loan     
+                          account; no interest    
+                          (G4)                    
+
+  2026-11-16              A destination Credit    Confirmed
+                          account requires a      
+                          Credit Card Payment;    
+                          Transfers cannot target 
+                          Credit accounts (G5)    
+
+  2026-11-16              A transaction's type    Confirmed
+                          cannot change on edit   
+                          (delete and re-create)  
+                          (G8)                    
+
+  2026-11-16              Transaction date is a   Confirmed
+                          local calendar date (no 
+                          time); created/updated  
+                          timestamps are UTC (G9) 
   -----------------------------------------------------------------------
