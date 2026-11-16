@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
+import '../../../core/money/money.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../data/account_repository.dart';
 import '../domain/account.dart';
@@ -40,6 +41,7 @@ class AccountDetailScreen extends ConsumerWidget {
       body: switch (account) {
         AsyncData(value: final Account found) => _AccountDetails(
           account: found,
+          balance: ref.watch(accountBalancesProvider).value?[found.id],
         ),
         AsyncData() => const CenteredMessage('This account no longer exists.'),
         AsyncError() => const CenteredMessage(
@@ -51,13 +53,16 @@ class AccountDetailScreen extends ConsumerWidget {
   }
 }
 
-class _AccountDetails extends ConsumerWidget {
-  const _AccountDetails({required this.account});
+class _AccountDetails extends StatelessWidget {
+  const _AccountDetails({required this.account, required this.balance});
 
   final Account account;
 
+  /// `null` while balances are loading.
+  final Money? balance;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
@@ -65,7 +70,7 @@ class _AccountDetails extends ConsumerWidget {
         Text('Current balance', style: textTheme.labelLarge),
         const SizedBox(height: Spacing.xs),
         Text(
-          formatBalance(account.type, currentBalance(account)),
+          balance == null ? '…' : formatBalance(account.type, balance!),
           style: textTheme.headlineMedium,
         ),
         if (account.isArchived) ...[
@@ -87,7 +92,9 @@ class _AccountDetails extends ConsumerWidget {
         const SizedBox(height: Spacing.sm),
         const Text('Transaction history will appear here.'),
         const SizedBox(height: Spacing.xl),
-        _ArchiveButton(account: account),
+        // Archiving needs the balance to decide whether to confirm.
+        if (balance case final known?)
+          _ArchiveButton(account: account, balance: known),
       ],
     );
   }
@@ -111,9 +118,10 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _ArchiveButton extends ConsumerWidget {
-  const _ArchiveButton({required this.account});
+  const _ArchiveButton({required this.account, required this.balance});
 
   final Account account;
+  final Money balance;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -129,10 +137,11 @@ class _ArchiveButton extends ConsumerWidget {
   }
 
   Future<void> _archive(BuildContext context, WidgetRef ref) async {
-    if (needsArchiveConfirmation(account)) {
+    if (needsArchiveConfirmation(balance)) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (_) => _ConfirmArchiveDialog(account: account),
+        builder: (_) =>
+            _ConfirmArchiveDialog(account: account, balance: balance),
       );
       if (confirmed != true || !context.mounted) return;
     }
@@ -168,17 +177,18 @@ class _ArchiveButton extends ConsumerWidget {
 }
 
 class _ConfirmArchiveDialog extends StatelessWidget {
-  const _ConfirmArchiveDialog({required this.account});
+  const _ConfirmArchiveDialog({required this.account, required this.balance});
 
   final Account account;
+  final Money balance;
 
   @override
   Widget build(BuildContext context) {
-    final balance = formatBalance(account.type, currentBalance(account));
+    final formatted = formatBalance(account.type, balance);
     return AlertDialog(
       title: const Text('Archive this account?'),
       content: Text(
-        '${account.name} still has a balance: $balance. Archived accounts '
+        '${account.name} still has a balance: $formatted. Archived accounts '
         "are hidden from your account list and totals, and you can't add "
         'transactions to them. You can unarchive it later.',
       ),

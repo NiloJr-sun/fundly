@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../domain/account.dart';
-import '../domain/account_balance.dart';
 import '../domain/account_type.dart';
 import 'account_detail_screen.dart';
 import 'account_display.dart';
+import 'accounts_providers.dart';
+
+const double _floatingButtonClearance = 88;
 
 /// Accounts grouped into one section per [AccountType] that has accounts.
 ///
 /// Expects [accounts] already ordered by type then name.
-const double _floatingButtonClearance = 88;
-
 class AccountList extends StatelessWidget {
   const AccountList({super.key, required this.accounts});
 
@@ -61,17 +62,18 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// One account row: name and formatted current balance. Tap for details.
-class AccountTile extends StatelessWidget {
+class AccountTile extends ConsumerWidget {
   const AccountTile({super.key, required this.account});
 
   final Account account;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balance = ref.watch(accountBalancesProvider).value?[account.id];
     return ListTile(
       title: Text(account.name),
       trailing: Text(
-        formatBalance(account.type, currentBalance(account)),
+        balance == null ? '…' : formatBalance(account.type, balance),
         style: Theme.of(context).textTheme.bodyLarge,
       ),
       onTap: () => Navigator.of(context).push(

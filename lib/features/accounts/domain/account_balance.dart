@@ -1,14 +1,39 @@
 import '../../../core/money/money.dart';
+import '../../transactions/domain/transaction.dart';
+import '../../transactions/domain/transaction_effects.dart';
 import 'account.dart';
 
-/// The account's current balance, signed per the D1 convention.
+/// Current balances for [accounts], keyed by account id.
 ///
-/// This is the single place balances are calculated; screens must not do
-/// their own arithmetic. In Phase 1 there are no transactions yet, so the
-/// balance is the opening balance. Roadmap task 2.4 adds posted transactions.
-Money currentBalance(Account account) => account.openingBalance;
+/// This is the single place balances are calculated (CLAUDE.md §2, "Ledger-
+/// driven"); screens must not do their own arithmetic. Each balance is the
+/// opening balance plus the signed effects of every transaction that touches
+/// the account (D1). Because balances are always derived, editing or deleting
+/// a transaction recalculates them automatically (rule 11).
+///
+/// Effects on accounts not in [accounts] are ignored.
+Map<int, Money> balancesFor(
+  Iterable<Account> accounts,
+  Iterable<TransactionDraft> transactions,
+) {
+  final balances = <int, Money>{
+    for (final account in accounts) account.id: account.openingBalance,
+  };
+  for (final effect in transactions.expand(effectsOf)) {
+    final balance = balances[effect.accountId];
+    if (balance != null) {
+      balances[effect.accountId] = balance + effect.change;
+    }
+  }
+  return balances;
+}
 
-/// Whether archiving [account] needs explicit confirmation: it still has a
-/// balance, so hiding it would hide money held or owed (CLAUDE.md §2).
-bool needsArchiveConfirmation(Account account) =>
-    !currentBalance(account).isZero;
+/// Current balance of one [account]; see [balancesFor].
+Money currentBalance(
+  Account account,
+  Iterable<TransactionDraft> transactions,
+) => balancesFor([account], transactions)[account.id]!;
+
+/// Whether archiving an account with [balance] needs explicit confirmation:
+/// hiding it would hide money held or owed (CLAUDE.md §2).
+bool needsArchiveConfirmation(Money balance) => !balance.isZero;
