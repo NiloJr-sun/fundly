@@ -12,6 +12,10 @@ import 'package:fundly/features/spending/presentation/summary_cards.dart';
 import '../../../helpers/provider_overrides.dart';
 import '../../transactions/domain/transaction_fixtures.dart';
 
+/// Finds [text] inside a summary card, ignoring the recent transactions list.
+Finder inCard(String text) =>
+    find.descendant(of: find.byType(Card), matching: find.text(text));
+
 void main() {
   Account withOpening(int id, int openingMinor) =>
       accounts[id]!.copyWith(openingBalance: php(openingMinor));
@@ -62,10 +66,10 @@ void main() {
     // BDO: 15,000 + 30,000 - 500 - 2,000 - 3,000 - 70 = 39,430.
     // Wallet: +2,000. Archived Old Wallet excluded.
     expect(find.text('Available money'), findsOneWidget);
-    expect(find.text('₱41,430.00'), findsOneWidget);
+    expect(inCard('₱41,430.00'), findsOneWidget);
     // Card: owed 3,000 + 1,200 - 3,000 paid = 1,200.
-    expect(find.text('₱1,200.00'), findsOneWidget);
-    expect(find.text('₱50,000.00'), findsOneWidget);
+    expect(inCard('₱1,200.00'), findsOneWidget);
+    expect(inCard('₱50,000.00'), findsOneWidget);
   });
 
   testWidgets('shows this month\'s inflow and spending (rule 5)', (
@@ -75,9 +79,9 @@ void main() {
 
     expect(find.text('This month'), findsNWidgets(2), reason: 'title+chip');
     expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
-    expect(find.text('+₱30,000.00'), findsOneWidget);
+    expect(inCard('+₱30,000.00'), findsOneWidget);
     // 500 + 1,200 card purchase; transfer, card payment and October excluded.
-    expect(find.text('-₱1,700.00'), findsOneWidget);
+    expect(inCard('-₱1,700.00'), findsOneWidget);
   });
 
   testWidgets('shows placeholders while loading', (tester) async {
@@ -114,9 +118,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('₱0.00'), findsNWidgets(3));
-    expect(find.text('+₱0.00'), findsOneWidget);
-    expect(find.text('-₱0.00'), findsOneWidget);
+    expect(inCard('₱0.00'), findsNWidgets(3));
+    expect(inCard('+₱0.00'), findsOneWidget);
+    expect(inCard('-₱0.00'), findsOneWidget);
   });
 
   group('formatOwed', () {
@@ -150,8 +154,8 @@ void main() {
 
       expect(find.text('Last month'), findsNWidgets(2), reason: 'title+chip');
       expect(find.text('Oct 1, 2026 – Oct 31, 2026'), findsOneWidget);
-      expect(find.text('-₱70.00'), findsOneWidget);
-      expect(find.text('+₱0.00'), findsOneWidget);
+      expect(inCard('-₱70.00'), findsOneWidget);
+      expect(inCard('+₱0.00'), findsOneWidget);
     });
 
     testWidgets('This month switches back', (tester) async {
@@ -161,7 +165,7 @@ void main() {
       await tapChip(tester, 'This month');
 
       expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
-      expect(find.text('-₱1,700.00'), findsOneWidget);
+      expect(inCard('-₱1,700.00'), findsOneWidget);
     });
 
     testWidgets(
@@ -196,7 +200,7 @@ void main() {
 
       expect(find.text('Custom range'), findsOneWidget);
       expect(find.text('Oct 20, 2026 – Oct 20, 2026'), findsOneWidget);
-      expect(find.text('-₱70.00'), findsOneWidget);
+      expect(inCard('-₱70.00'), findsOneWidget);
     });
   });
 }

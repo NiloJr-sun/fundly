@@ -4,10 +4,11 @@ import '../../../app/theme/spacing.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_form_screen.dart';
 import '../../transactions/presentation/transaction_type_picker.dart';
+import 'recent_transactions.dart';
 import 'summary_cards.dart';
 
-/// The Spending tab: balance summary, totals for the current period, and the
-/// entry point for adding transactions.
+/// The Spending tab: balance summary, totals for the selected period, recent
+/// transactions, and the entry point for adding transactions.
 class SpendingScreen extends StatelessWidget {
   const SpendingScreen({super.key});
 
@@ -50,6 +51,8 @@ class SpendingScreen extends StatelessWidget {
           BalanceSummaryCards(),
           SizedBox(height: Spacing.lg),
           PeriodTotalsCards(),
+          SizedBox(height: Spacing.lg),
+          RecentTransactions(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
