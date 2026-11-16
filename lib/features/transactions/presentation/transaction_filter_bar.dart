@@ -111,10 +111,15 @@ class TransactionFilterBar extends ConsumerWidget {
   }
 
   Future<void> _pickCategory(BuildContext context, WidgetRef ref) async {
+    // Archived categories are included so their history can be found.
     final categories = ref.read(allCategoriesProvider).value ?? const [];
     final picked = await _pickFromSheet<int>(context, 'Category', [
       for (final category in categories)
-        (value: category.id, label: category.name, detail: null),
+        (
+          value: category.id,
+          label: category.name,
+          detail: category.isArchived ? 'Archived' : null,
+        ),
     ]);
     if (picked == null) return;
     final notifier = ref.read(transactionFilterProvider.notifier);

@@ -155,6 +155,10 @@ enum TransactionField {
     field: TransactionField.category,
     message: 'This category no longer exists.',
   ),
+  TransactionValidationError.categoryArchived => (
+    field: TransactionField.category,
+    message: 'This category is archived. Choose another.',
+  ),
   TransactionValidationError.categoryWrongKind ||
   TransactionValidationError.categoryNotAllowed => (
     field: TransactionField.category,

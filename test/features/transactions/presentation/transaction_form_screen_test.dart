@@ -157,6 +157,17 @@ void main() {
       expect(find.text('Salary'), findsNothing);
     });
 
+    testWidgets('hides archived categories', (tester) async {
+      await openForm(tester, TransactionType.spending);
+
+      await tester.tap(
+        find.widgetWithText(DropdownButtonFormField<int>, 'Category'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Gifts'), findsNothing);
+    });
+
     testWidgets('a picked date is saved', (tester) async {
       await openForm(tester, TransactionType.spending);
 
@@ -435,6 +446,20 @@ void main() {
       await save(tester);
 
       expect(repository.updated.single.draft.sourceAccountId, oldWalletId);
+    });
+
+    testWidgets('keeps an archived category the transaction uses', (
+      tester,
+    ) async {
+      final gift = saved(spending(category: giftsId), id: 9);
+      await openForm(tester, gift.type, editing: gift);
+
+      expect(find.text('Gifts (archived)'), findsOneWidget);
+
+      await tester.enterText(field('Amount'), '1');
+      await save(tester);
+
+      expect(repository.updated.single.draft.categoryId, giftsId);
     });
 
     testWidgets('validates edits like new transactions', (tester) async {

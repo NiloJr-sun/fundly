@@ -48,6 +48,9 @@ enum TransactionValidationError {
   categoryNotAllowed,
   categoryNotFound,
 
+  /// A new transaction cannot use an archived category (task 4.1).
+  categoryArchived,
+
   /// Spending needs a spending category; inflow an inflow category.
   categoryWrongKind,
 
@@ -84,7 +87,8 @@ Set<AccountType> allowedDestinationAccountTypes(TransactionType type) =>
 ///
 /// [accounts] and [categories] are looked up by id and must include archived
 /// records. Pass [existing] when editing: an edit may keep an archived
-/// account the transaction already used, but may not change the type.
+/// account or category the transaction already used, but may not change the
+/// type.
 Set<TransactionValidationError> validateTransaction(
   TransactionDraft draft, {
   required Map<int, Account> accounts,
@@ -133,7 +137,7 @@ Set<TransactionValidationError> validateTransaction(
   }
 
   _checkPayee(draft, errors);
-  _checkCategory(draft, categories, errors);
+  _checkCategory(draft, categories, existing?.categoryId, errors);
 
   if (draft.note.trim().length > maxNoteLength) {
     errors.add(TransactionValidationError.noteTooLong);
@@ -223,6 +227,7 @@ void _checkPayee(
 void _checkCategory(
   TransactionDraft draft,
   Map<int, Category> categories,
+  int? previousCategoryId,
   Set<TransactionValidationError> errors,
 ) {
   final categoryId = draft.categoryId;
@@ -250,5 +255,8 @@ void _checkCategory(
     errors.add(TransactionValidationError.categoryNotFound);
   } else if (category.kind != expectedKind) {
     errors.add(TransactionValidationError.categoryWrongKind);
+  } else if (category.isArchived && categoryId != previousCategoryId) {
+    // An edit may keep an archived category it already used.
+    errors.add(TransactionValidationError.categoryArchived);
   }
 }

@@ -1,9 +1,17 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
+import 'package:fundly/core/money/money.dart';
+import 'package:fundly/core/time/calendar_date.dart';
+import 'package:fundly/features/accounts/data/account_repository.dart';
+import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/data/default_categories.dart';
 import 'package:fundly/features/categories/domain/category.dart';
+import 'package:fundly/features/categories/domain/category_validation_exception.dart';
+import 'package:fundly/features/transactions/data/transaction_repository.dart';
+import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 void main() {
   late AppDatabase database;
@@ -75,6 +83,146 @@ void main() {
 
       final names = (await repository.watchAll().first).map((c) => c.name);
       expect(names, contains('Gifts'));
+    });
+  });
+
+  Matcher throwsCategoryError(CategoryValidationError error) => throwsA(
+    isA<CategoryValidationException>().having((e) => e.error, 'error', error),
+  );
+
+  Future<Category> named(String name) async =>
+      (await repository.watchAll().first).firstWhere((c) => c.name == name);
+
+  group('create', () {
+    test('adds a trimmed, active category after the seeded ones', () async {
+      final created = await repository.create(
+        name: '  Gifts ',
+        kind: CategoryKind.spending,
+      );
+
+      expect(created.name, 'Gifts');
+      expect(created.kind, CategoryKind.spending);
+      expect(created.isArchived, isFalse);
+      expect((await repository.watchAll().first).last, created);
+    });
+
+    test('rejects empty and over-long names', () async {
+      await expectLater(
+        repository.create(name: '   ', kind: CategoryKind.spending),
+        throwsCategoryError(CategoryValidationError.nameEmpty),
+      );
+      await expectLater(
+        repository.create(name: 'a' * 41, kind: CategoryKind.spending),
+        throwsCategoryError(CategoryValidationError.nameTooLong),
+      );
+    });
+
+    test('rejects a name used by either kind, ignoring case', () async {
+      await expectLater(
+        repository.create(name: 'SALARY', kind: CategoryKind.spending),
+        throwsCategoryError(CategoryValidationError.nameTaken),
+      );
+    });
+
+    test('rejects the name of an archived category', () async {
+      final food = await named('Food');
+      await repository.setArchived(food.id, archived: true);
+
+      await expectLater(
+        repository.create(name: 'food', kind: CategoryKind.spending),
+        throwsCategoryError(CategoryValidationError.nameTaken),
+      );
+    });
+  });
+
+  group('rename', () {
+    test('changes the name and keeps the kind', () async {
+      final salary = await named('Salary');
+
+      final renamed = await repository.rename(salary.id, ' Wages ');
+
+      expect(renamed.name, 'Wages');
+      expect(renamed.kind, CategoryKind.inflow);
+    });
+
+    test('may change only the case of its own name', () async {
+      final food = await named('Food');
+
+      expect((await repository.rename(food.id, 'FOOD')).name, 'FOOD');
+    });
+
+    test('rejects a name used by another category', () async {
+      final food = await named('Food');
+
+      await expectLater(
+        repository.rename(food.id, 'transport'),
+        throwsCategoryError(CategoryValidationError.nameTaken),
+      );
+    });
+
+    test('throws for an unknown id', () {
+      expect(repository.rename(999, 'Gifts'), throwsStateError);
+    });
+  });
+
+  group('setArchived', () {
+    test('archives and restores, keeping the category listed', () async {
+      final food = await named('Food');
+
+      await repository.setArchived(food.id, archived: true);
+      expect((await named('Food')).isArchived, isTrue);
+
+      await repository.setArchived(food.id, archived: false);
+      expect((await named('Food')).isArchived, isFalse);
+    });
+
+    test('throws for an unknown id', () {
+      expect(repository.setArchived(999, archived: true), throwsStateError);
+    });
+  });
+
+  group('delete', () {
+    test('removes a category no transaction uses', () async {
+      final gifts = await repository.create(
+        name: 'Gifts',
+        kind: CategoryKind.spending,
+      );
+
+      await repository.delete(gifts.id);
+
+      expect(
+        (await repository.watchAll().first).map((c) => c.id),
+        isNot(contains(gifts.id)),
+      );
+    });
+
+    test('rejects a category used by a transaction and keeps it', () async {
+      final food = await named('Food');
+      final bdo = await AccountRepository(database).create(
+        name: 'BDO Savings',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: const Money(minorUnits: 0, currencyCode: 'PHP'),
+      );
+      await TransactionRepository(database).create(
+        TransactionDraft(
+          type: TransactionType.spending,
+          amount: const Money(minorUnits: 50000, currencyCode: 'PHP'),
+          date: CalendarDate(2026, 11, 16),
+          payee: 'SM Supermarket',
+          categoryId: food.id,
+          sourceAccountId: bdo.id,
+        ),
+      );
+
+      await expectLater(
+        repository.delete(food.id),
+        throwsCategoryError(CategoryValidationError.inUse),
+      );
+      expect(await named('Food'), food);
+    });
+
+    test('throws for an unknown id', () {
+      expect(repository.delete(999), throwsStateError);
     });
   });
 

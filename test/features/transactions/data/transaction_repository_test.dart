@@ -237,6 +237,19 @@ void main() {
       expect(updated.amount, php(1));
     });
 
+    test('may keep an archived category it already uses', () async {
+      final original = await repository.create(spending());
+      await CategoryRepository(database).setArchived(food, archived: true);
+
+      final updated = await repository.update(original.id, spending(amount: 1));
+
+      expect(updated.categoryId, food);
+      await expectLater(
+        repository.create(spending()),
+        throwsValidation({TransactionValidationError.categoryArchived}),
+      );
+    });
+
     test('G7: may not move to an archived account', () async {
       final original = await repository.create(spending());
       await accounts.setArchived(wallet, archived: true);

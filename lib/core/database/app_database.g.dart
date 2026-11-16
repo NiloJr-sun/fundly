@@ -517,8 +517,23 @@ class $CategoriesTable extends Categories
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<CategoryKind>($CategoriesTable.$converterkind);
+  static const VerificationMeta _isArchivedMeta = const VerificationMeta(
+    'isArchived',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, kind];
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+    'is_archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, kind, isArchived];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -541,6 +556,12 @@ class $CategoriesTable extends Categories
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+        _isArchivedMeta,
+        isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
+      );
     }
     return context;
   }
@@ -565,6 +586,10 @@ class $CategoriesTable extends Categories
           data['${effectivePrefix}kind'],
         )!,
       ),
+      isArchived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_archived'],
+      )!,
     );
   }
 
@@ -583,7 +608,13 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
 
   /// Stored by enum name (`spending` or `inflow`).
   final CategoryKind kind;
-  const CategoryRow({required this.id, required this.name, required this.kind});
+  final bool isArchived;
+  const CategoryRow({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.isArchived,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -594,6 +625,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         $CategoriesTable.$converterkind.toSql(kind),
       );
     }
+    map['is_archived'] = Variable<bool>(isArchived);
     return map;
   }
 
@@ -602,6 +634,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       id: Value(id),
       name: Value(name),
       kind: Value(kind),
+      isArchived: Value(isArchived),
     );
   }
 
@@ -616,6 +649,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       kind: $CategoriesTable.$converterkind.fromJson(
         serializer.fromJson<String>(json['kind']),
       ),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
     );
   }
   @override
@@ -627,20 +661,29 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       'kind': serializer.toJson<String>(
         $CategoriesTable.$converterkind.toJson(kind),
       ),
+      'isArchived': serializer.toJson<bool>(isArchived),
     };
   }
 
-  CategoryRow copyWith({int? id, String? name, CategoryKind? kind}) =>
-      CategoryRow(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        kind: kind ?? this.kind,
-      );
+  CategoryRow copyWith({
+    int? id,
+    String? name,
+    CategoryKind? kind,
+    bool? isArchived,
+  }) => CategoryRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    isArchived: isArchived ?? this.isArchived,
+  );
   CategoryRow copyWithCompanion(CategoriesCompanion data) {
     return CategoryRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       kind: data.kind.present ? data.kind.value : this.kind,
+      isArchived: data.isArchived.present
+          ? data.isArchived.value
+          : this.isArchived,
     );
   }
 
@@ -649,46 +692,53 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     return (StringBuffer('CategoryRow(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('kind: $kind')
+          ..write('kind: $kind, ')
+          ..write('isArchived: $isArchived')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, kind);
+  int get hashCode => Object.hash(id, name, kind, isArchived);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is CategoryRow &&
           other.id == this.id &&
           other.name == this.name &&
-          other.kind == this.kind);
+          other.kind == this.kind &&
+          other.isArchived == this.isArchived);
 }
 
 class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<int> id;
   final Value<String> name;
   final Value<CategoryKind> kind;
+  final Value<bool> isArchived;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.kind = const Value.absent(),
+    this.isArchived = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required CategoryKind kind,
+    this.isArchived = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind);
   static Insertable<CategoryRow> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? kind,
+    Expression<bool>? isArchived,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (kind != null) 'kind': kind,
+      if (isArchived != null) 'is_archived': isArchived,
     });
   }
 
@@ -696,11 +746,13 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<int>? id,
     Value<String>? name,
     Value<CategoryKind>? kind,
+    Value<bool>? isArchived,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       kind: kind ?? this.kind,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 
@@ -718,6 +770,9 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
         $CategoriesTable.$converterkind.toSql(kind.value),
       );
     }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
     return map;
   }
 
@@ -726,7 +781,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     return (StringBuffer('CategoriesCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('kind: $kind')
+          ..write('kind: $kind, ')
+          ..write('isArchived: $isArchived')
           ..write(')'))
         .toString();
   }
@@ -1753,11 +1809,13 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
   required String name,
   required CategoryKind kind,
+  Value<bool> isArchived,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<CategoryKind> kind,
+  Value<bool> isArchived,
 });
 
 final class $$CategoriesTableReferences
@@ -1808,6 +1866,11 @@ class $$CategoriesTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> transactionsRefs(
     Expression<bool> Function($$TransactionsTableFilterComposer f) f,
   ) {
@@ -1857,6 +1920,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.kind,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -1876,6 +1944,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<CategoryKind, String> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => column,
+  );
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -1929,16 +2002,30 @@ class $$CategoriesTableTableManager
               $$CategoriesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$CategoriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-            Value<CategoryKind> kind = const Value.absent(),
-          }) => CategoriesCompanion(id: id, name: name, kind: kind),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String name,
-            required CategoryKind kind,
-          }) => CategoriesCompanion.insert(id: id, name: name, kind: kind),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<CategoryKind> kind = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
+              }) => CategoriesCompanion(
+                id: id,
+                name: name,
+                kind: kind,
+                isArchived: isArchived,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required CategoryKind kind,
+                Value<bool> isArchived = const Value.absent(),
+              }) => CategoriesCompanion.insert(
+                id: id,
+                name: name,
+                kind: kind,
+                isArchived: isArchived,
+              ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (

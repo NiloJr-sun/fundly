@@ -46,6 +46,7 @@ final accounts = <int, Account>{
 
 const foodId = 10;
 const salaryId = 20;
+const giftsId = 30; // archived spending category
 
 final categories = <int, Category>{
   foodId: const Category(id: foodId, name: 'Food', kind: CategoryKind.spending),
@@ -53,6 +54,12 @@ final categories = <int, Category>{
     id: salaryId,
     name: 'Salary',
     kind: CategoryKind.inflow,
+  ),
+  giftsId: const Category(
+    id: giftsId,
+    name: 'Gifts',
+    kind: CategoryKind.spending,
+    isArchived: true,
   ),
 };
 

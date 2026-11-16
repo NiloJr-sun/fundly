@@ -189,6 +189,33 @@ void main() {
     });
   });
 
+  group('archived categories (task 4.1)', () {
+    test('cannot be used by a new transaction', () {
+      expect(validate(spending(category: giftsId)), {E.categoryArchived});
+    });
+
+    test('an edit may keep an archived category it already used', () {
+      final original = saved(spending(category: giftsId));
+
+      expect(
+        validate(spending(category: giftsId, amount: 1), existing: original),
+        isEmpty,
+      );
+    });
+
+    test('an edit may not switch to an archived category', () {
+      final original = saved(spending());
+
+      expect(validate(spending(category: giftsId), existing: original), {
+        E.categoryArchived,
+      });
+    });
+
+    test('the kind is still checked first', () {
+      expect(validate(inflow(category: giftsId)), {E.categoryWrongKind});
+    });
+  });
+
   group('G8: the type cannot change on edit', () {
     test('changing spending to inflow is rejected', () {
       final original = saved(spending());

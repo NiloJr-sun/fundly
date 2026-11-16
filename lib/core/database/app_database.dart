@@ -28,7 +28,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -48,6 +48,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(schema.transactionsDate);
         await m.createIndex(schema.transactionsSourceAccount);
         await m.createIndex(schema.transactionsDestinationAccount);
+      },
+      // v4: categories can be archived (task 4.1).
+      from3To4: (m, schema) async {
+        await m.addColumn(schema.categories, schema.categories.isArchived);
       },
     ),
     beforeOpen: (details) async {

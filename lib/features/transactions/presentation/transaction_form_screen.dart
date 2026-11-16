@@ -296,7 +296,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           ),
           if (_categoryKind != null)
             _CategoryField(
-              categories: categories,
+              categories: _selectableCategories(categories),
               optional: _type == TransactionType.inflow,
               value: _categoryId,
               onChanged: (id) => setState(() => _categoryId = id),
@@ -333,6 +333,14 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         if (!account.isArchived || kept.contains(account.id)) account,
     ];
   }
+
+  /// Active categories, plus the archived category this transaction already
+  /// uses (an edit may keep it). Validation still sees every category.
+  List<Category> _selectableCategories(List<Category> categories) => [
+    for (final category in categories)
+      if (!category.isArchived || category.id == widget.transaction?.categoryId)
+        category,
+  ];
 
   static List<Account> _usable(
     List<Account> accounts,
@@ -443,7 +451,12 @@ class _CategoryField extends StatelessWidget {
       items: [
         if (optional) const DropdownMenuItem<int>(child: Text('None')),
         for (final category in categories)
-          DropdownMenuItem(value: category.id, child: Text(category.name)),
+          DropdownMenuItem(
+            value: category.id,
+            child: Text(
+              '${category.name}${category.isArchived ? ' (archived)' : ''}',
+            ),
+          ),
       ],
       onChanged: onChanged,
       validator: validator,

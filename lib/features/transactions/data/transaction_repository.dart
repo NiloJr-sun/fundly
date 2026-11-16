@@ -90,7 +90,8 @@ class TransactionRepository {
   }
 
   /// Validates and saves changes to transaction [id]. The type cannot change
-  /// (G8), and an archived account it already uses may be kept (G7).
+  /// (G8), and an archived account (G7) or category it already uses may be
+  /// kept.
   ///
   /// Throws [TransactionValidationException], or [StateError] if the
   /// transaction does not exist.
