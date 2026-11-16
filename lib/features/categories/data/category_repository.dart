@@ -70,7 +70,8 @@ class CategoryRepository {
     if (changed == 0) throw StateError('Category $id does not exist.');
   }
 
-  /// Deletes category [id] if no transaction uses it.
+  /// Deletes category [id] if no transaction uses it. Its monthly plans are
+  /// deleted with it (the foreign key cascades).
   ///
   /// Throws [CategoryValidationException] with
   /// [CategoryValidationError.inUse] if a transaction uses it, or

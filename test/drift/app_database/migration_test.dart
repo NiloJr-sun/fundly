@@ -10,6 +10,7 @@ import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
+import 'generated/schema_v5.dart' as v5;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -222,5 +223,91 @@ void main() {
         ]);
       },
     );
+  });
+
+  group('to v5 keeps existing data; monthly plans start empty', () {
+    const account = v1.AccountsData(
+      id: 1,
+      name: 'BDO Savings',
+      type: 'savingsCash',
+      openingBalanceMinor: 1500000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:30:00.000Z',
+      isArchived: 0,
+    );
+
+    test('from v4', () async {
+      const categories = [
+        v4.CategoriesData(id: 1, name: 'Food', kind: 'spending', isArchived: 0),
+        v4.CategoriesData(
+          id: 2,
+          name: 'Gifts',
+          kind: 'spending',
+          isArchived: 1,
+        ),
+      ];
+      const transaction = v4.TransactionsData(
+        id: 1,
+        type: 'spending',
+        amountMinor: 50000,
+        currencyCode: 'PHP',
+        date: '2026-11-16',
+        payee: 'SM Supermarket',
+        categoryId: 1,
+        sourceAccountId: 1,
+        note: '',
+        createdAt: '2026-11-16T10:00:00.000Z',
+        updatedAt: '2026-11-16T10:00:00.000Z',
+      );
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 4,
+        newVersion: 5,
+        createOld: v4.DatabaseAtV4.new,
+        createNew: v5.DatabaseAtV5.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch
+            ..insert(oldDb.accounts, v4.AccountsData.fromJson(account.toJson()))
+            ..insertAll(oldDb.categories, categories)
+            ..insert(oldDb.transactions, transaction);
+        },
+        validateItems: (newDb) async {
+          final accounts = await newDb.select(newDb.accounts).get();
+          expect(accounts.map((row) => row.toJson()).toList(), [
+            account.toJson(),
+          ]);
+          final migratedCategories = await newDb.select(newDb.categories).get();
+          expect(
+            migratedCategories.map((row) => row.toJson()).toList(),
+            categories.map((row) => row.toJson()).toList(),
+          );
+          final transactions = await newDb.select(newDb.transactions).get();
+          expect(transactions.map((row) => row.toJson()).toList(), [
+            transaction.toJson(),
+          ]);
+          expect(await newDb.select(newDb.monthlyPlans).get(), isEmpty);
+        },
+      );
+    });
+
+    test('from v1 in one step', () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 1,
+        newVersion: 5,
+        createOld: v1.DatabaseAtV1.new,
+        createNew: v5.DatabaseAtV5.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) => batch.insert(oldDb.accounts, account),
+        validateItems: (newDb) async {
+          final accounts = await newDb.select(newDb.accounts).get();
+          expect(accounts.map((row) => row.toJson()).toList(), [
+            account.toJson(),
+          ]);
+          expect(await newDb.select(newDb.categories).get(), hasLength(9));
+          expect(await newDb.select(newDb.monthlyPlans).get(), isEmpty);
+        },
+      );
+    });
   });
 }

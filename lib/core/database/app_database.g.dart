@@ -1527,12 +1527,493 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   }
 }
 
+class $MonthlyPlansTable extends MonthlyPlans
+    with TableInfo<$MonthlyPlansTable, MonthlyPlanRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MonthlyPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<CalendarMonth, String> month =
+      GeneratedColumn<String>(
+        'month',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<CalendarMonth>($MonthlyPlansTable.$convertermonth);
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _plannedAmountMinorMeta =
+      const VerificationMeta('plannedAmountMinor');
+  @override
+  late final GeneratedColumn<int> plannedAmountMinor = GeneratedColumn<int>(
+    'planned_amount_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    month,
+    categoryId,
+    plannedAmountMinor,
+    currencyCode,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'monthly_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MonthlyPlanRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('planned_amount_minor')) {
+      context.handle(
+        _plannedAmountMinorMeta,
+        plannedAmountMinor.isAcceptableOrUnknown(
+          data['planned_amount_minor']!,
+          _plannedAmountMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_plannedAmountMinorMeta);
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyCodeMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {month, categoryId},
+  ];
+  @override
+  MonthlyPlanRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MonthlyPlanRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      month: $MonthlyPlansTable.$convertermonth.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}month'],
+        )!,
+      ),
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+      plannedAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}planned_amount_minor'],
+      )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MonthlyPlansTable createAlias(String alias) {
+    return $MonthlyPlansTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<CalendarMonth, String> $convertermonth =
+      const CalendarMonthConverter();
+}
+
+class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
+  final int id;
+
+  /// `YYYY-MM`.
+  final CalendarMonth month;
+  final int categoryId;
+
+  /// Zero or positive minor units (centavos for PHP).
+  final int plannedAmountMinor;
+  final String currencyCode;
+
+  /// UTC instants.
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const MonthlyPlanRow({
+    required this.id,
+    required this.month,
+    required this.categoryId,
+    required this.plannedAmountMinor,
+    required this.currencyCode,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    {
+      map['month'] = Variable<String>(
+        $MonthlyPlansTable.$convertermonth.toSql(month),
+      );
+    }
+    map['category_id'] = Variable<int>(categoryId);
+    map['planned_amount_minor'] = Variable<int>(plannedAmountMinor);
+    map['currency_code'] = Variable<String>(currencyCode);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  MonthlyPlansCompanion toCompanion(bool nullToAbsent) {
+    return MonthlyPlansCompanion(
+      id: Value(id),
+      month: Value(month),
+      categoryId: Value(categoryId),
+      plannedAmountMinor: Value(plannedAmountMinor),
+      currencyCode: Value(currencyCode),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory MonthlyPlanRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MonthlyPlanRow(
+      id: serializer.fromJson<int>(json['id']),
+      month: serializer.fromJson<CalendarMonth>(json['month']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      plannedAmountMinor: serializer.fromJson<int>(json['plannedAmountMinor']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'month': serializer.toJson<CalendarMonth>(month),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'plannedAmountMinor': serializer.toJson<int>(plannedAmountMinor),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  MonthlyPlanRow copyWith({
+    int? id,
+    CalendarMonth? month,
+    int? categoryId,
+    int? plannedAmountMinor,
+    String? currencyCode,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => MonthlyPlanRow(
+    id: id ?? this.id,
+    month: month ?? this.month,
+    categoryId: categoryId ?? this.categoryId,
+    plannedAmountMinor: plannedAmountMinor ?? this.plannedAmountMinor,
+    currencyCode: currencyCode ?? this.currencyCode,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  MonthlyPlanRow copyWithCompanion(MonthlyPlansCompanion data) {
+    return MonthlyPlanRow(
+      id: data.id.present ? data.id.value : this.id,
+      month: data.month.present ? data.month.value : this.month,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      plannedAmountMinor: data.plannedAmountMinor.present
+          ? data.plannedAmountMinor.value
+          : this.plannedAmountMinor,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthlyPlanRow(')
+          ..write('id: $id, ')
+          ..write('month: $month, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('plannedAmountMinor: $plannedAmountMinor, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    month,
+    categoryId,
+    plannedAmountMinor,
+    currencyCode,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MonthlyPlanRow &&
+          other.id == this.id &&
+          other.month == this.month &&
+          other.categoryId == this.categoryId &&
+          other.plannedAmountMinor == this.plannedAmountMinor &&
+          other.currencyCode == this.currencyCode &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
+  final Value<int> id;
+  final Value<CalendarMonth> month;
+  final Value<int> categoryId;
+  final Value<int> plannedAmountMinor;
+  final Value<String> currencyCode;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const MonthlyPlansCompanion({
+    this.id = const Value.absent(),
+    this.month = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.plannedAmountMinor = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  MonthlyPlansCompanion.insert({
+    this.id = const Value.absent(),
+    required CalendarMonth month,
+    required int categoryId,
+    required int plannedAmountMinor,
+    required String currencyCode,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : month = Value(month),
+       categoryId = Value(categoryId),
+       plannedAmountMinor = Value(plannedAmountMinor),
+       currencyCode = Value(currencyCode),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<MonthlyPlanRow> custom({
+    Expression<int>? id,
+    Expression<String>? month,
+    Expression<int>? categoryId,
+    Expression<int>? plannedAmountMinor,
+    Expression<String>? currencyCode,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (month != null) 'month': month,
+      if (categoryId != null) 'category_id': categoryId,
+      if (plannedAmountMinor != null)
+        'planned_amount_minor': plannedAmountMinor,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  MonthlyPlansCompanion copyWith({
+    Value<int>? id,
+    Value<CalendarMonth>? month,
+    Value<int>? categoryId,
+    Value<int>? plannedAmountMinor,
+    Value<String>? currencyCode,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return MonthlyPlansCompanion(
+      id: id ?? this.id,
+      month: month ?? this.month,
+      categoryId: categoryId ?? this.categoryId,
+      plannedAmountMinor: plannedAmountMinor ?? this.plannedAmountMinor,
+      currencyCode: currencyCode ?? this.currencyCode,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<String>(
+        $MonthlyPlansTable.$convertermonth.toSql(month.value),
+      );
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (plannedAmountMinor.present) {
+      map['planned_amount_minor'] = Variable<int>(plannedAmountMinor.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthlyPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('month: $month, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('plannedAmountMinor: $plannedAmountMinor, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
+  late final $MonthlyPlansTable monthlyPlans = $MonthlyPlansTable(this);
   late final Index transactionsDate = Index(
     'transactions_date',
     'CREATE INDEX transactions_date ON transactions (date)',
@@ -1553,10 +2034,21 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     accounts,
     categories,
     transactions,
+    monthlyPlans,
     transactionsDate,
     transactionsSourceAccount,
     transactionsDestinationAccount,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'categories',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('monthly_plans', kind: UpdateKind.delete)],
+    ),
+  ]);
   @override
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);
@@ -1839,6 +2331,24 @@ final class $$CategoriesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$MonthlyPlansTable, List<MonthlyPlanRow>>
+  _monthlyPlansRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.monthlyPlans,
+    aliasName: 'categories__id__monthly_plans__category_id',
+  );
+
+  $$MonthlyPlansTableProcessedTableManager get monthlyPlansRefs {
+    final manager = $$MonthlyPlansTableTableManager(
+      $_db,
+      $_db.monthlyPlans,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_monthlyPlansRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CategoriesTableFilterComposer
@@ -1887,6 +2397,31 @@ class $$CategoriesTableFilterComposer
           }) => $$TransactionsTableFilterComposer(
             $db: $db,
             $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> monthlyPlansRefs(
+    Expression<bool> Function($$MonthlyPlansTableFilterComposer f) f,
+  ) {
+    final $$MonthlyPlansTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.monthlyPlans,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MonthlyPlansTableFilterComposer(
+            $db: $db,
+            $table: $db.monthlyPlans,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -1974,6 +2509,31 @@ class $$CategoriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> monthlyPlansRefs<T extends Object>(
+    Expression<T> Function($$MonthlyPlansTableAnnotationComposer a) f,
+  ) {
+    final $$MonthlyPlansTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.monthlyPlans,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MonthlyPlansTableAnnotationComposer(
+            $db: $db,
+            $table: $db.monthlyPlans,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -1989,7 +2549,7 @@ class $$CategoriesTableTableManager
           $$CategoriesTableUpdateCompanionBuilder,
           (CategoryRow, $$CategoriesTableReferences),
           CategoryRow,
-          PrefetchHooks Function({bool transactionsRefs})
+          PrefetchHooks Function({bool transactionsRefs, bool monthlyPlansRefs})
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
     : super(
@@ -2034,37 +2594,61 @@ class $$CategoriesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({transactionsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (transactionsRefs) db.transactions],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (transactionsRefs)
-                    await $_getPrefetchedDataByColumns<
-                      CategoryRow,
-                      $CategoriesTable,
-                      TransactionRow,
-                      $TransactionsTable
-                    >(
-                      currentTable: table,
-                      referencedTable: $$CategoriesTableReferences
-                          ._transactionsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$CategoriesTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).transactionsRefs,
-                      currentColumn: 'id',
-                      referencedColumn: 'category_id',
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({transactionsRefs = false, monthlyPlansRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (transactionsRefs) db.transactions,
+                    if (monthlyPlansRefs) db.monthlyPlans,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (transactionsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          CategoryRow,
+                          $CategoriesTable,
+                          TransactionRow,
+                          $TransactionsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._transactionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).transactionsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'category_id',
+                          typedResults: items,
+                        ),
+                      if (monthlyPlansRefs)
+                        await $_getPrefetchedDataByColumns<
+                          CategoryRow,
+                          $CategoriesTable,
+                          MonthlyPlanRow,
+                          $MonthlyPlansTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._monthlyPlansRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).monthlyPlansRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'category_id',
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2081,7 +2665,7 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableUpdateCompanionBuilder,
       (CategoryRow, $$CategoriesTableReferences),
       CategoryRow,
-      PrefetchHooks Function({bool transactionsRefs})
+      PrefetchHooks Function({bool transactionsRefs, bool monthlyPlansRefs})
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({
@@ -2715,6 +3299,358 @@ typedef $$TransactionsTableProcessedTableManager =
         bool destinationAccountId,
       })
     >;
+typedef $$MonthlyPlansTableCreateCompanionBuilder =
+    MonthlyPlansCompanion Function({
+      Value<int> id,
+      required CalendarMonth month,
+      required int categoryId,
+      required int plannedAmountMinor,
+      required String currencyCode,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$MonthlyPlansTableUpdateCompanionBuilder =
+    MonthlyPlansCompanion Function({
+      Value<int> id,
+      Value<CalendarMonth> month,
+      Value<int> categoryId,
+      Value<int> plannedAmountMinor,
+      Value<String> currencyCode,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$MonthlyPlansTableReferences
+    extends BaseReferences<_$AppDatabase, $MonthlyPlansTable, MonthlyPlanRow> {
+  $$MonthlyPlansTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias('monthly_plans__category_id__categories__id');
+
+  $$CategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<int>('category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$MonthlyPlansTableFilterComposer
+    extends Composer<_$AppDatabase, $MonthlyPlansTable> {
+  $$MonthlyPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CalendarMonth, CalendarMonth, String>
+  get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get plannedAmountMinor => $composableBuilder(
+    column: $table.plannedAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MonthlyPlansTableOrderingComposer
+    extends Composer<_$AppDatabase, $MonthlyPlansTable> {
+  $$MonthlyPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get plannedAmountMinor => $composableBuilder(
+    column: $table.plannedAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MonthlyPlansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MonthlyPlansTable> {
+  $$MonthlyPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<CalendarMonth, String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get plannedAmountMinor => $composableBuilder(
+    column: $table.plannedAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$MonthlyPlansTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MonthlyPlansTable,
+          MonthlyPlanRow,
+          $$MonthlyPlansTableFilterComposer,
+          $$MonthlyPlansTableOrderingComposer,
+          $$MonthlyPlansTableAnnotationComposer,
+          $$MonthlyPlansTableCreateCompanionBuilder,
+          $$MonthlyPlansTableUpdateCompanionBuilder,
+          (MonthlyPlanRow, $$MonthlyPlansTableReferences),
+          MonthlyPlanRow,
+          PrefetchHooks Function({bool categoryId})
+        > {
+  $$MonthlyPlansTableTableManager(_$AppDatabase db, $MonthlyPlansTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MonthlyPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MonthlyPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MonthlyPlansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<CalendarMonth> month = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+                Value<int> plannedAmountMinor = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => MonthlyPlansCompanion(
+                id: id,
+                month: month,
+                categoryId: categoryId,
+                plannedAmountMinor: plannedAmountMinor,
+                currencyCode: currencyCode,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required CalendarMonth month,
+                required int categoryId,
+                required int plannedAmountMinor,
+                required String currencyCode,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => MonthlyPlansCompanion.insert(
+                id: id,
+                month: month,
+                categoryId: categoryId,
+                plannedAmountMinor: plannedAmountMinor,
+                currencyCode: currencyCode,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$MonthlyPlansTable, MonthlyPlanRow>(table),
+                  $$MonthlyPlansTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (categoryId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.categoryId,
+                        referencedTable: $$MonthlyPlansTableReferences
+                            ._categoryIdTable(db),
+                        referencedColumn: $$MonthlyPlansTableReferences
+                            ._categoryIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$MonthlyPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MonthlyPlansTable,
+      MonthlyPlanRow,
+      $$MonthlyPlansTableFilterComposer,
+      $$MonthlyPlansTableOrderingComposer,
+      $$MonthlyPlansTableAnnotationComposer,
+      $$MonthlyPlansTableCreateCompanionBuilder,
+      $$MonthlyPlansTableUpdateCompanionBuilder,
+      (MonthlyPlanRow, $$MonthlyPlansTableReferences),
+      MonthlyPlanRow,
+      PrefetchHooks Function({bool categoryId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2725,4 +3661,6 @@ class $AppDatabaseManager {
       $$CategoriesTableTableManager(_db, _db.categories);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
+  $$MonthlyPlansTableTableManager get monthlyPlans =>
+      $$MonthlyPlansTableTableManager(_db, _db.monthlyPlans);
 }
