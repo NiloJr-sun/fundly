@@ -42,7 +42,7 @@ void main() {
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
       await tester.pumpWidget(
-        ProviderScope(overrides: fakeAccounts(), child: const FundlyApp()),
+        ProviderScope(overrides: noAccounts(), child: const FundlyApp()),
       );
 
       return Theme.of(tester.element(find.byType(HomeShell))).brightness;

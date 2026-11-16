@@ -257,6 +257,32 @@ void main() {
     });
   });
 
+  group('setArchived', () {
+    test('hides the account from the active list and keeps it', () async {
+      final account = await create('Old Wallet', entered: 5000);
+
+      await repository.setArchived(account.id, archived: true);
+
+      expect(await repository.watchAll().first, isEmpty);
+      final archived = await repository.watchById(account.id).first;
+      expect(archived!.isArchived, isTrue);
+      expect(archived.openingBalance, php(5000));
+    });
+
+    test('unarchiving restores it to the active list', () async {
+      final account = await create('Old Wallet');
+      await repository.setArchived(account.id, archived: true);
+
+      await repository.setArchived(account.id, archived: false);
+
+      expect((await repository.watchAll().first).single.id, account.id);
+    });
+
+    test('throws for an unknown id', () {
+      expect(repository.setArchived(999, archived: true), throwsStateError);
+    });
+  });
+
   group('watchById', () {
     test('emits null for a missing account', () async {
       expect(await repository.watchById(42).first, isNull);

@@ -8,7 +8,7 @@ import '../helpers/provider_overrides.dart';
 void main() {
   testWidgets('FundlyApp launches into the home shell', (tester) async {
     await tester.pumpWidget(
-      ProviderScope(overrides: fakeAccounts(), child: const FundlyApp()),
+      ProviderScope(overrides: noAccounts(), child: const FundlyApp()),
     );
 
     expect(find.byType(HomeShell), findsOneWidget);

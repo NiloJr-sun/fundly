@@ -11,6 +11,7 @@ import 'package:fundly/features/accounts/domain/account_validation_exception.dar
 class FakeAccountRepository implements AccountRepository {
   final List<({String name, AccountType type, Money entered})> created = [];
   final List<({int id, String? name, Money? entered})> updated = [];
+  final List<({int id, bool archived})> archivedChanges = [];
 
   /// When set, the next create/update throws this instead of saving.
   AccountValidationError? failWith;
@@ -48,6 +49,11 @@ class FakeAccountRepository implements AccountRepository {
           enteredOpeningAmount ?? const Money.zero(Account.defaultCurrency),
       createdAt: DateTime.utc(2026, 11, 16),
     );
+  }
+
+  @override
+  Future<void> setArchived(int id, {required bool archived}) async {
+    archivedChanges.add((id: id, archived: archived));
   }
 
   void _maybeFail() {

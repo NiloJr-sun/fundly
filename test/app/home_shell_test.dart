@@ -11,7 +11,7 @@ import '../helpers/provider_overrides.dart';
 void main() {
   Future<void> pumpShell(WidgetTester tester) => tester.pumpWidget(
     ProviderScope(
-      overrides: fakeAccounts(),
+      overrides: noAccounts(),
       child: const MaterialApp(home: HomeShell()),
     ),
   );

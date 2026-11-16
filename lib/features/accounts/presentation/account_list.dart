@@ -4,8 +4,8 @@ import '../../../app/theme/spacing.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
 import '../domain/account_type.dart';
+import 'account_detail_screen.dart';
 import 'account_display.dart';
-import 'account_form_screen.dart';
 
 /// Accounts grouped into one section per [AccountType] that has accounts.
 ///
@@ -60,7 +60,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// One account row: name and formatted current balance. Tap to edit.
+/// One account row: name and formatted current balance. Tap for details.
 class AccountTile extends StatelessWidget {
   const AccountTile({super.key, required this.account});
 
@@ -74,10 +74,9 @@ class AccountTile extends StatelessWidget {
         formatBalance(account.type, currentBalance(account)),
         style: Theme.of(context).textTheme.bodyLarge,
       ),
-      // Task 1.6 replaces this with the account detail screen.
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => AccountFormScreen(account: account),
+          builder: (_) => AccountDetailScreen(accountId: account.id),
         ),
       ),
     );

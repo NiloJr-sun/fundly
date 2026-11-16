@@ -7,3 +7,18 @@ import '../domain/account.dart';
 final activeAccountsProvider = StreamProvider<List<Account>>(
   (ref) => ref.watch(accountRepositoryProvider).watchAll(),
 );
+
+/// Archived accounts, ordered by type then name.
+final archivedAccountsProvider = StreamProvider<List<Account>>(
+  (ref) => ref
+      .watch(accountRepositoryProvider)
+      .watchAll(includeArchived: true)
+      .map(
+        (accounts) => accounts.where((account) => account.isArchived).toList(),
+      ),
+);
+
+/// One account by id, or `null` if it does not exist.
+final accountByIdProvider = StreamProvider.family<Account?, int>(
+  (ref, id) => ref.watch(accountRepositoryProvider).watchById(id),
+);

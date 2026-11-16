@@ -103,6 +103,20 @@ class AccountRepository {
     return _toDomain(rows.single);
   }
 
+  /// Archives or restores account [id]. Archived accounts keep their history
+  /// but are hidden from the active list and pickers (G7).
+  ///
+  /// Whether the user must confirm first is a UI decision; see
+  /// `needsArchiveConfirmation`. Throws [StateError] if the account does not
+  /// exist.
+  Future<void> setArchived(int id, {required bool archived}) async {
+    final changed =
+        await (_database.update(_accounts)
+              ..where((account) => account.id.equals(id)))
+            .write(AccountsCompanion(isArchived: Value(archived)));
+    if (changed == 0) throw StateError('Account $id does not exist.');
+  }
+
   /// Returns the trimmed name, or throws if it is invalid or already used.
   Future<String> _validName(String name, {int? excludingId}) async {
     switch (validateAccountName(name)) {

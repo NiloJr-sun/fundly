@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
@@ -38,7 +39,7 @@ void main() {
   testWidgets('shows an empty state when there are no accounts', (
     tester,
   ) async {
-    await pumpScreen(tester, fakeAccounts());
+    await pumpScreen(tester, noAccounts());
 
     expect(find.textContaining('No accounts yet.'), findsOneWidget);
     expect(find.byType(ListTile), findsNothing);
@@ -112,7 +113,7 @@ void main() {
   });
 
   testWidgets('the Add account button opens the form', (tester) async {
-    await pumpScreen(tester, fakeAccounts());
+    await pumpScreen(tester, noAccounts());
 
     await tester.tap(find.text('Add account'));
     await tester.pumpAndSettle();
@@ -121,7 +122,7 @@ void main() {
     expect(find.text('New account'), findsOneWidget);
   });
 
-  testWidgets('tapping an account opens it for editing', (tester) async {
+  testWidgets('tapping an account opens its details', (tester) async {
     await pumpScreen(
       tester,
       fakeAccounts([account(1, 'BDO Savings', AccountType.savingsCash, 0)]),
@@ -130,6 +131,6 @@ void main() {
     await tester.tap(find.text('BDO Savings'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit account'), findsOneWidget);
+    expect(find.byType(AccountDetailScreen), findsOneWidget);
   });
 }
