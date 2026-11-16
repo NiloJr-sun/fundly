@@ -22,14 +22,25 @@ import '../domain/transaction_type.dart';
 import '../domain/transaction_validation_exception.dart';
 import 'transaction_display.dart';
 
-/// Adds a transaction of [type]. Closes itself after a successful save.
+/// Adds a transaction of [type], or edits [transaction] when given. Closes
+/// itself after a successful save.
+///
+/// When editing, the type cannot change (G8), and an archived account the
+/// transaction already uses stays selectable (G7).
 ///
 /// Field errors come from [validateTransaction], the same rules the
 /// repository enforces, so the form and the data layer cannot disagree.
 class TransactionFormScreen extends ConsumerStatefulWidget {
-  const TransactionFormScreen({super.key, required this.type, this.clock});
+  const TransactionFormScreen({super.key, required this.type, this.clock})
+    : transaction = null;
+
+  /// Edits [transaction]; its type is fixed.
+  TransactionFormScreen.edit({super.key, required Transaction this.transaction})
+    : type = transaction.type,
+      clock = null;
 
   final TransactionType type;
+  final Transaction? transaction;
 
   /// Supplies "today" for the default date. Defaults to the system clock.
   final DateTime Function()? clock;
@@ -57,6 +68,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
   TransactionType get _type => widget.type;
 
+  bool get _isEditing => widget.transaction != null;
+
   CategoryKind? get _categoryKind => switch (_type) {
     TransactionType.spending => CategoryKind.spending,
     TransactionType.inflow => CategoryKind.inflow,
@@ -66,7 +79,18 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   @override
   void initState() {
     super.initState();
-    _date = CalendarDate.today(clock: widget.clock);
+    final transaction = widget.transaction;
+    if (transaction == null) {
+      _date = CalendarDate.today(clock: widget.clock);
+      return;
+    }
+    _amountController.text = MoneyFormatter.formatForInput(transaction.amount);
+    _payeeController.text = transaction.payee;
+    _noteController.text = transaction.note;
+    _date = transaction.date;
+    _sourceAccountId = transaction.sourceAccountId;
+    _destinationAccountId = transaction.destinationAccountId;
+    _categoryId = transaction.categoryId;
   }
 
   @override
@@ -124,6 +148,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         draft,
         accounts: {for (final account in accounts) account.id: account},
         categories: {for (final category in categories) category.id: category},
+        existing: widget.transaction,
       ),
     );
     if (amountError != null) errors[TransactionField.amount] = amountError;
@@ -133,9 +158,21 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
-      await ref.read(transactionRepositoryProvider).create(draft);
+      final repository = ref.read(transactionRepositoryProvider);
+      final existing = widget.transaction;
+      if (existing == null) {
+        await repository.create(draft);
+      } else {
+        await repository.update(existing.id, draft);
+      }
       messenger.showSnackBar(
-        SnackBar(content: Text('${transactionTypeLabel(_type)} saved')),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Changes saved'
+                : '${transactionTypeLabel(_type)} saved',
+          ),
+        ),
       );
       navigator.pop();
     } on TransactionValidationException catch (exception) {
@@ -176,14 +213,19 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(activeAccountsProvider);
+    // All accounts, so validation can see archived ones an edit keeps.
+    final accounts = ref.watch(allAccountsProvider);
     final kind = _categoryKind;
     final categories = kind == null
         ? const AsyncData<List<Category>>([])
         : ref.watch(categoriesByKindProvider(kind));
 
     return Scaffold(
-      appBar: AppBar(title: Text('New ${transactionTypeLabel(_type)}')),
+      appBar: AppBar(
+        title: Text(
+          '${_isEditing ? 'Edit' : 'New'} ${transactionTypeLabel(_type)}',
+        ),
+      ),
       body: switch ((accounts, categories)) {
         (AsyncData(value: final a), AsyncData(value: final c)) => _buildForm(
           a,
@@ -198,9 +240,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   }
 
   Widget _buildForm(List<Account> accounts, List<Category> categories) {
-    final sources = _usable(accounts, allowedSourceAccountTypes(_type));
+    final selectable = _selectable(accounts);
+    final sources = _usable(selectable, allowedSourceAccountTypes(_type));
     final destinations = _usable(
-      accounts,
+      selectable,
       allowedDestinationAccountTypes(_type),
     );
     final missing = _missingAccountsMessage(sources, destinations);
@@ -278,6 +321,19 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     );
   }
 
+  /// Active accounts, plus any archived account this transaction already
+  /// uses (G7: an edit may keep it).
+  List<Account> _selectable(List<Account> accounts) {
+    final kept = {
+      widget.transaction?.sourceAccountId,
+      widget.transaction?.destinationAccountId,
+    };
+    return [
+      for (final account in accounts)
+        if (!account.isArchived || kept.contains(account.id)) account,
+    ];
+  }
+
   static List<Account> _usable(
     List<Account> accounts,
     Set<AccountType> types,
@@ -350,7 +406,8 @@ class _AccountField extends StatelessWidget {
           DropdownMenuItem(
             value: account.id,
             child: Text(
-              '${account.name} · ${accountTypeLabel(account.type)}',
+              '${account.name} · ${accountTypeLabel(account.type)}'
+              '${account.isArchived ? ' (archived)' : ''}',
               overflow: TextOverflow.ellipsis,
             ),
           ),

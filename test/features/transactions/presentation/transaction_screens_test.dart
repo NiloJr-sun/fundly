@@ -7,7 +7,9 @@ import 'package:fundly/features/accounts/presentation/account_detail_screen.dart
 import 'package:fundly/features/spending/presentation/spending_screen.dart';
 import 'package:fundly/features/transactions/presentation/all_transactions_screen.dart';
 import 'package:fundly/features/transactions/presentation/transaction_detail_screen.dart';
+import 'package:fundly/features/transactions/presentation/transaction_form_screen.dart';
 
+import '../../../helpers/fake_transaction_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 import '../domain/transaction_fixtures.dart';
 
@@ -209,6 +211,89 @@ void main() {
       await pump(tester, const TransactionDetailScreen(transactionId: 404));
 
       expect(find.text('This transaction no longer exists.'), findsOneWidget);
+    });
+  });
+
+  group('Edit and delete', () {
+    late FakeTransactionRepository repository;
+
+    setUp(() => repository = FakeTransactionRepository());
+
+    /// Opens the details of transaction [id] from a placeholder page so
+    /// deleting can pop.
+    Future<void> openDetail(WidgetTester tester, int id) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: fakeAccounts(
+            active,
+            archived: archived,
+            transactions: transactions,
+            categories: categories.values.toList(),
+            transactionRepository: repository,
+          ),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          TransactionDetailScreen(transactionId: id),
+                    ),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Edit opens the form filled in for this transaction', (
+      tester,
+    ) async {
+      await openDetail(tester, move.id);
+
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TransactionFormScreen), findsOneWidget);
+      expect(find.text('Edit Transfer'), findsOneWidget);
+      expect(find.text('2000.00'), findsOneWidget);
+    });
+
+    testWidgets('Delete asks first; Cancel keeps the transaction', (
+      tester,
+    ) async {
+      await openDetail(tester, lunch.id);
+
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this transaction?'), findsOneWidget);
+      expect(find.textContaining('Jollibee · ₱150.00'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, isEmpty);
+      expect(find.byType(TransactionDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('confirming deletes and closes the details', (tester) async {
+      await openDetail(tester, lunch.id);
+
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, [lunch.id]);
+      expect(find.byType(TransactionDetailScreen), findsNothing);
+      expect(find.text('Transaction deleted'), findsOneWidget);
     });
   });
 }

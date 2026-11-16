@@ -7,6 +7,7 @@ import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/presentation/categories_providers.dart';
 import 'package:fundly/features/transactions/data/transaction_repository.dart';
+import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_rules.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'package:fundly/features/transactions/presentation/transaction_form_screen.dart';
@@ -19,24 +20,22 @@ void main() {
 
   setUp(() => repository = FakeTransactionRepository());
 
-  final activeAccounts = [
-    for (final account in accounts.values)
-      if (!account.isArchived) account,
-  ];
   List<Category> ofKind(CategoryKind kind) =>
       categories.values.where((c) => c.kind == kind).toList();
 
-  /// Opens the form for [type] from a placeholder page so saving can pop.
+  /// Opens the form for [type] (or [editing] an existing transaction) from a
+  /// placeholder page so saving can pop.
   Future<void> openForm(
     WidgetTester tester,
     TransactionType type, {
     List<Account>? withAccounts,
+    Transaction? editing,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          activeAccountsProvider.overrideWith(
-            (ref) => Stream.value(withAccounts ?? activeAccounts),
+          allAccountsProvider.overrideWith(
+            (ref) => Stream.value(withAccounts ?? accounts.values.toList()),
           ),
           categoriesByKindProvider.overrideWith(
             (ref, kind) => Stream.value(ofKind(kind)),
@@ -49,10 +48,12 @@ void main() {
               body: TextButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => TransactionFormScreen(
-                      type: type,
-                      clock: () => DateTime(2026, 11, 16, 10),
-                    ),
+                    builder: (_) => editing != null
+                        ? TransactionFormScreen.edit(transaction: editing)
+                        : TransactionFormScreen(
+                            type: type,
+                            clock: () => DateTime(2026, 11, 16, 10),
+                          ),
                   ),
                 ),
                 child: const Text('open'),
@@ -374,6 +375,78 @@ void main() {
       );
 
       expect(find.text('Add a Credit account first.'), findsOneWidget);
+    });
+  });
+
+  group('Editing', () {
+    final original = saved(
+      spending(
+        amount: 50000,
+        from: bdoId,
+        payee: 'SM Supermarket',
+        date: CalendarDate(2026, 11, 2),
+        note: 'Weekly',
+      ),
+      id: 7,
+    );
+
+    testWidgets('fills in the existing values', (tester) async {
+      await openForm(tester, original.type, editing: original);
+
+      expect(find.text('Edit Spending'), findsOneWidget);
+      expect(find.text('500.00'), findsOneWidget);
+      expect(find.text('Nov 2, 2026'), findsOneWidget);
+      expect(find.text('BDO Savings · Savings / Cash'), findsOneWidget);
+      expect(find.text('SM Supermarket'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Weekly'), findsOneWidget);
+    });
+
+    testWidgets('saves changes with update, keeping the type', (tester) async {
+      await openForm(tester, original.type, editing: original);
+
+      await tester.enterText(field('Amount'), '750');
+      await choose(tester, 'Paid from', 'RCBC Credit · Credit');
+      await save(tester);
+
+      expect(repository.created, isEmpty);
+      final update = repository.updated.single;
+      expect(update.id, 7);
+      expect(update.draft.type, TransactionType.spending);
+      expect(update.draft.amount, php(75000));
+      expect(update.draft.sourceAccountId, rcbcCardId);
+      expect(update.draft.date, CalendarDate(2026, 11, 2));
+      expect(find.text('Changes saved'), findsOneWidget);
+      expect(find.byType(TransactionFormScreen), findsNothing);
+    });
+
+    testWidgets('G7: keeps an archived account the transaction uses', (
+      tester,
+    ) async {
+      final fromOld = saved(spending(from: oldWalletId), id: 8);
+      await openForm(tester, fromOld.type, editing: fromOld);
+
+      expect(
+        find.text('Old Wallet · Savings / Cash (archived)'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(field('Amount'), '1');
+      await save(tester);
+
+      expect(repository.updated.single.draft.sourceAccountId, oldWalletId);
+    });
+
+    testWidgets('validates edits like new transactions', (tester) async {
+      await openForm(tester, original.type, editing: original);
+
+      await tester.enterText(field('Amount'), '0');
+      await tester.enterText(field('Paid to'), '');
+      await save(tester);
+
+      expect(find.text('Enter an amount greater than zero.'), findsOneWidget);
+      expect(find.text('Enter who you paid.'), findsOneWidget);
+      expect(repository.updated, isEmpty);
     });
   });
 }

@@ -8,8 +8,10 @@ import '../../../core/widgets/centered_message.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
+import '../data/transaction_repository.dart';
 import '../domain/transaction.dart';
 import 'transaction_display.dart';
+import 'transaction_form_screen.dart';
 import 'transactions_providers.dart';
 
 /// Shows one transaction's trail: where the money came from and went, which
@@ -22,8 +24,30 @@ class TransactionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transaction = ref.watch(transactionByIdProvider(transactionId));
+    final loaded = transaction.value;
     return Scaffold(
-      appBar: AppBar(title: const Text('Transaction')),
+      appBar: AppBar(
+        title: const Text('Transaction'),
+        actions: [
+          if (loaded != null) ...[
+            IconButton(
+              tooltip: 'Edit',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      TransactionFormScreen.edit(transaction: loaded),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Delete',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _delete(context, ref, loaded),
+            ),
+          ],
+        ],
+      ),
       body: switch (transaction) {
         AsyncData(value: final Transaction found) => _TransactionDetails(
           transaction: found,
@@ -38,6 +62,50 @@ class TransactionDetailScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Deletes [transaction] after confirmation. Balances recalculate on their
+/// own because they are derived from the remaining transactions (rule 11).
+Future<void> _delete(
+  BuildContext context,
+  WidgetRef ref,
+  Transaction transaction,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete this transaction?'),
+      content: Text(
+        '${transactionTitle(transaction)} · '
+        '${MoneyFormatter.format(transaction.amount)}\n\n'
+        "Account balances will be recalculated. This can't be undone.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context);
+  try {
+    await ref.read(transactionRepositoryProvider).delete(transaction.id);
+  } on Object {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('The transaction could not be deleted.')),
+    );
+    return;
+  }
+  messenger.showSnackBar(const SnackBar(content: Text('Transaction deleted')));
+  navigator.pop();
 }
 
 class _TransactionDetails extends ConsumerWidget {
