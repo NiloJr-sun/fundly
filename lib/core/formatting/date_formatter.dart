@@ -5,4 +5,8 @@ abstract final class DateFormatter {
   /// A medium date such as `Nov 16, 2026`, converted to local time first.
   static String localDate(DateTime instant, {String? locale}) =>
       DateFormat.yMMMd(locale).format(instant.toLocal());
+
+  /// A month and year such as `November 2026`.
+  static String monthYear(int year, int month, {String? locale}) =>
+      DateFormat.yMMMM(locale).format(DateTime(year, month));
 }

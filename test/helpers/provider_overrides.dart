@@ -7,20 +7,25 @@ import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/presentation/categories_providers.dart';
+import 'package:fundly/features/plans/data/plan_repository.dart';
+import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/presentation/plans_providers.dart';
 import 'package:fundly/features/transactions/data/transaction_repository.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/presentation/transactions_providers.dart';
 
 import 'fake_account_repository.dart';
 import 'fake_category_repository.dart';
+import 'fake_plan_repository.dart';
 import 'fake_transaction_repository.dart';
 
 /// Overrides that keep widget tests off the real on-device database.
 ///
 /// Account lookups by id search both [accounts] and [archived]. Balances come
 /// from [balancesFor] over [transactions], exactly as in the app. Pass
-/// [repository], [categoryRepository] or [transactionRepository] to inspect
-/// what screens asked them to do.
+/// [plans] are returned for whichever month they belong to. Pass
+/// [repository], [categoryRepository], [planRepository] or
+/// [transactionRepository] to inspect what screens asked them to do.
 List<Override> fakeAccounts(
   List<Account> accounts, {
   List<Account> archived = const [],
@@ -28,6 +33,8 @@ List<Override> fakeAccounts(
   List<Category> categories = const [],
   FakeAccountRepository? repository,
   FakeCategoryRepository? categoryRepository,
+  List<MonthlyPlan> plans = const [],
+  FakePlanRepository? planRepository,
   FakeTransactionRepository? transactionRepository,
 }) {
   final everyAccount = [...accounts, ...archived];
@@ -61,6 +68,15 @@ List<Override> fakeAccounts(
     allCategoriesProvider.overrideWith((ref) => Stream.value(categories)),
     categoryRepositoryProvider.overrideWithValue(
       categoryRepository ?? FakeCategoryRepository(),
+    ),
+    monthPlansProvider.overrideWith(
+      (ref, month) => Stream.value([
+        for (final plan in plans)
+          if (plan.month == month) plan,
+      ]),
+    ),
+    planRepositoryProvider.overrideWithValue(
+      planRepository ?? FakePlanRepository(),
     ),
     allTransactionsProvider.overrideWith((ref) => Stream.value(transactions)),
     transactionsForAccountProvider.overrideWith(
