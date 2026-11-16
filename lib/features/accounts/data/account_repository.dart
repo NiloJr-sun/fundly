@@ -7,6 +7,7 @@ import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
+import 'account_row_mapping.dart';
 
 /// Reads and writes [Account]s, enforcing the account rules before anything
 /// reaches the database.
@@ -27,7 +28,8 @@ class AccountRepository {
       query.where((account) => account.isArchived.equals(false));
     }
     return query.watch().map(
-      (rows) => rows.map(_toDomain).toList()..sort(_byTypeThenName),
+      (rows) =>
+          rows.map((row) => row.toDomain()).toList()..sort(_byTypeThenName),
     );
   }
 
@@ -35,9 +37,7 @@ class AccountRepository {
   Stream<Account?> watchById(int id) {
     final query = _database.select(_accounts)
       ..where((account) => account.id.equals(id));
-    return query.watchSingleOrNull().map(
-      (row) => row == null ? null : _toDomain(row),
-    );
+    return query.watchSingleOrNull().map((row) => row?.toDomain());
   }
 
   /// Creates an account. [enteredOpeningAmount] is the zero or positive amount
@@ -64,7 +64,7 @@ class AccountRepository {
             createdAt: _now().toUtc(),
           ),
         );
-    return _toDomain(row);
+    return row.toDomain();
   }
 
   /// Updates the editable fields of account [id]. The type cannot change.
@@ -100,7 +100,7 @@ class AccountRepository {
             openingBalanceMinor: Value.absentIfNull(openingBalance?.minorUnits),
           ),
         );
-    return _toDomain(rows.single);
+    return rows.single.toDomain();
   }
 
   /// Archives or restores account [id]. Archived accounts keep their history
@@ -167,18 +167,6 @@ class AccountRepository {
       );
     }
   }
-
-  static Account _toDomain(AccountRow row) => Account(
-    id: row.id,
-    name: row.name,
-    type: row.type,
-    openingBalance: Money(
-      minorUnits: row.openingBalanceMinor,
-      currencyCode: row.currencyCode,
-    ),
-    createdAt: row.createdAt.toUtc(),
-    isArchived: row.isArchived,
-  );
 
   static int _byTypeThenName(Account a, Account b) {
     final byType = a.type.index.compareTo(b.type.index);

@@ -86,6 +86,7 @@ lib/
   core/
     database/               # drift AppDatabase (SQLite)
     money/                  # Money, MoneyParser
+    time/                   # CalendarDate
     formatting/             # MoneyFormatter
   features/
     spending/presentation/
@@ -97,6 +98,9 @@ lib/
     categories/
       data/                 # table, seeded defaults, repository
       domain/               # Category, CategoryKind
+    transactions/
+      data/                 # table, repository
+      domain/               # Transaction, effects, rules
 test/                       # mirrors lib/
 drift_schemas/              # schema snapshot per version
 ```

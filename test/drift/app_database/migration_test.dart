@@ -8,6 +8,7 @@ import 'package:fundly/core/database/app_database.dart';
 import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -86,5 +87,68 @@ void main() {
         ]);
       },
     );
+  });
+
+  group('to v3 keeps accounts and categories; transactions start empty', () {
+    const account = v1.AccountsData(
+      id: 1,
+      name: 'BDO Savings',
+      type: 'savingsCash',
+      openingBalanceMinor: 1500000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:30:00.000Z',
+      isArchived: 0,
+    );
+
+    Future<void> validateV3(v3.DatabaseAtV3 db) async {
+      final accounts = await db.select(db.accounts).get();
+      expect(accounts.map((row) => row.toJson()).toList(), [account.toJson()]);
+      expect(await db.select(db.categories).get(), hasLength(9));
+      expect(await db.select(db.transactions).get(), isEmpty);
+    }
+
+    test('from v2', () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 2,
+        newVersion: 3,
+        createOld: v2.DatabaseAtV2.new,
+        createNew: v3.DatabaseAtV3.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insert(
+            oldDb.accounts,
+            v2.AccountsData.fromJson(account.toJson()),
+          );
+          // v2 databases already hold the seeded categories.
+          batch.insertAll(oldDb.categories, [
+            for (final (i, (name, kind)) in const [
+              ('Food', 'spending'),
+              ('Transport', 'spending'),
+              ('Utilities', 'spending'),
+              ('Subscriptions', 'spending'),
+              ('Shopping', 'spending'),
+              ('Health', 'spending'),
+              ('Other', 'spending'),
+              ('Salary', 'inflow'),
+              ('Other income', 'inflow'),
+            ].indexed)
+              v2.CategoriesData(id: i + 1, name: name, kind: kind),
+          ]);
+        },
+        validateItems: validateV3,
+      );
+    });
+
+    test('from v1 in one step', () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 1,
+        newVersion: 3,
+        createOld: v1.DatabaseAtV1.new,
+        createNew: v3.DatabaseAtV3.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) => batch.insert(oldDb.accounts, account),
+        validateItems: validateV3,
+      );
+    });
   });
 }

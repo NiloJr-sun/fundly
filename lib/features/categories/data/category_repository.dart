@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../domain/category.dart';
+import 'category_row_mapping.dart';
 
 /// Reads [Category]s. The list is fixed in Phase 2 (G1), so there are no
 /// write methods yet.
@@ -19,10 +20,7 @@ class CategoryRepository {
       query.where((category) => category.kind.equalsValue(kind));
     }
     return query.watch().map(
-      (rows) => [
-        for (final row in rows)
-          Category(id: row.id, name: row.name, kind: row.kind),
-      ],
+      (rows) => [for (final row in rows) row.toDomain()],
     );
   }
 }
