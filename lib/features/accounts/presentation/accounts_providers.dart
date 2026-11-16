@@ -50,3 +50,10 @@ final accountBalancesProvider = Provider<AsyncValue<Map<int, Money>>>((ref) {
     _ => const AsyncLoading(),
   };
 });
+
+/// Every account (including archived), keyed by id, for showing names.
+/// Empty while loading.
+final accountsByIdProvider = Provider<Map<int, Account>>((ref) {
+  final accounts = ref.watch(allAccountsProvider).value ?? const [];
+  return {for (final account in accounts) account.id: account};
+});

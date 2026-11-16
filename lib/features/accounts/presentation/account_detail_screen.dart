@@ -5,6 +5,8 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/widgets/centered_message.dart';
+import '../../transactions/presentation/transaction_tile.dart';
+import '../../transactions/presentation/transactions_providers.dart';
 import '../data/account_repository.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
@@ -87,16 +89,39 @@ class _AccountDetails extends StatelessWidget {
           label: 'Created',
           value: DateFormatter.localDate(account.createdAt),
         ),
-        const Divider(height: Spacing.xl),
-        Text('Transactions', style: textTheme.titleMedium),
-        const SizedBox(height: Spacing.sm),
-        const Text('Transaction history will appear here.'),
-        const SizedBox(height: Spacing.xl),
+        const SizedBox(height: Spacing.md),
         // Archiving needs the balance to decide whether to confirm.
         if (balance case final known?)
           _ArchiveButton(account: account, balance: known),
+        const Divider(height: Spacing.xl),
+        Text('Transactions', style: textTheme.titleMedium),
+        const SizedBox(height: Spacing.sm),
+        _AccountTransactions(accountId: account.id),
       ],
     );
+  }
+}
+
+class _AccountTransactions extends ConsumerWidget {
+  const _AccountTransactions({required this.accountId});
+
+  final int accountId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return switch (ref.watch(transactionsForAccountProvider(accountId))) {
+      AsyncData(value: final list) when list.isEmpty => const Text(
+        'No transactions yet.',
+      ),
+      AsyncData(value: final list) => Column(
+        children: [
+          for (final transaction in list)
+            TransactionTile(transaction: transaction, accountId: accountId),
+        ],
+      ),
+      AsyncError() => const Text('Transactions could not be loaded.'),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
   }
 }
 

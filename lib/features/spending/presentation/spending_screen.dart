@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/centered_message.dart';
+import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_form_screen.dart';
 import '../../transactions/presentation/transaction_type_picker.dart';
 
@@ -22,7 +23,20 @@ class SpendingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Spending')),
+      appBar: AppBar(
+        title: const Text('Spending'),
+        actions: [
+          IconButton(
+            tooltip: 'All transactions',
+            icon: const Icon(Icons.receipt_long_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AllTransactionsScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: const CenteredMessage(
         'Your balances and recent activity will appear here.',
       ),

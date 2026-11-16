@@ -1,3 +1,9 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/formatting/money_formatter.dart';
+import '../../../core/money/money.dart';
+import '../domain/transaction.dart';
+import '../domain/transaction_effects.dart';
 import '../domain/transaction_rules.dart';
 import '../domain/transaction_type.dart';
 
@@ -16,6 +22,47 @@ String transactionTypeDescription(TransactionType type) => switch (type) {
   TransactionType.transfer => 'Move money between your accounts, or pay a loan',
   TransactionType.creditCardPayment => 'Pay off a credit card',
 };
+
+IconData transactionTypeIcon(TransactionType type) => switch (type) {
+  TransactionType.spending => Icons.shopping_bag_outlined,
+  TransactionType.inflow => Icons.savings_outlined,
+  TransactionType.transfer => Icons.swap_horiz,
+  TransactionType.creditCardPayment => Icons.credit_score_outlined,
+};
+
+/// The amount as shown in a list.
+///
+/// With [accountId], the sign is the transaction's effect on that account
+/// (from [effectsOf]), e.g. `-₱2,000.00` for a transfer out. Without it,
+/// spending is negative, inflow positive, and transfers and card payments
+/// unsigned because they only move money between the user's own accounts.
+String transactionAmountText(TransactionDraft transaction, {int? accountId}) {
+  if (accountId != null) {
+    final change = effectsOf(transaction)
+        .where((effect) => effect.accountId == accountId)
+        .fold(
+          Money.zero(transaction.amount.currencyCode),
+          (total, effect) => total + effect.change,
+        );
+    return _signed(change);
+  }
+  return switch (transaction.type) {
+    TransactionType.spending => _signed(-transaction.amount),
+    TransactionType.inflow => _signed(transaction.amount),
+    TransactionType.transfer || TransactionType.creditCardPayment =>
+      MoneyFormatter.format(transaction.amount),
+  };
+}
+
+String _signed(Money money) => money.isNegative || money.isZero
+    ? MoneyFormatter.format(money)
+    : '+${MoneyFormatter.format(money)}';
+
+/// Payee if given, otherwise the type name, e.g. "Transfer".
+String transactionTitle(TransactionDraft transaction) {
+  final payee = transaction.payee.trim();
+  return payee.isEmpty ? transactionTypeLabel(transaction.type) : payee;
+}
 
 String payeeLabel(TransactionType type) => switch (type) {
   TransactionType.spending => 'Paid to',

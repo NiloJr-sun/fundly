@@ -62,10 +62,13 @@ TransactionDraft spending({
   int? to,
   int? category = foodId,
   String payee = 'SM Supermarket',
+  CalendarDate? date,
+  String note = '',
 }) => TransactionDraft(
   type: TransactionType.spending,
   amount: php(amount),
-  date: today,
+  date: date ?? today,
+  note: note,
   payee: payee,
   categoryId: category,
   sourceAccountId: from,
@@ -114,9 +117,14 @@ TransactionDraft cardPayment({
   destinationAccountId: to,
 );
 
-/// Saves [draft] as a transaction with id 1.
-Transaction saved(TransactionDraft draft) => Transaction(
-  id: 1,
+/// Saves [draft] as a transaction with [id] (default 1).
+Transaction saved(
+  TransactionDraft draft, {
+  int id = 1,
+  DateTime? createdAt,
+  DateTime? updatedAt,
+}) => Transaction(
+  id: id,
   type: draft.type,
   amount: draft.amount,
   date: draft.date,
@@ -125,6 +133,6 @@ Transaction saved(TransactionDraft draft) => Transaction(
   sourceAccountId: draft.sourceAccountId,
   destinationAccountId: draft.destinationAccountId,
   note: draft.note,
-  createdAt: DateTime.utc(2026, 11, 16, 9),
-  updatedAt: DateTime.utc(2026, 11, 16, 9),
+  createdAt: createdAt ?? DateTime.utc(2026, 11, 16, 9),
+  updatedAt: updatedAt ?? createdAt ?? DateTime.utc(2026, 11, 16, 9),
 );

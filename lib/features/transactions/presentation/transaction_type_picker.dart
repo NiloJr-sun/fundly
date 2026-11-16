@@ -29,10 +29,3 @@ Future<TransactionType?> showTransactionTypePicker(BuildContext context) {
     ),
   );
 }
-
-IconData transactionTypeIcon(TransactionType type) => switch (type) {
-  TransactionType.spending => Icons.shopping_bag_outlined,
-  TransactionType.inflow => Icons.savings_outlined,
-  TransactionType.transfer => Icons.swap_horiz,
-  TransactionType.creditCardPayment => Icons.credit_score_outlined,
-};

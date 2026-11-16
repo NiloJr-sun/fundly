@@ -82,7 +82,7 @@ void main() {
     expect(find.text('Credit'), findsOneWidget);
     expect(find.text('PHP'), findsOneWidget);
     expect(find.text('Nov 16, 2026'), findsOneWidget);
-    expect(find.text('Transaction history will appear here.'), findsOneWidget);
+    expect(find.text('No transactions yet.'), findsOneWidget);
     expect(find.text('Archived'), findsNothing);
   });
 

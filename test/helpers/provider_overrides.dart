@@ -4,22 +4,36 @@ import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_balance.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
+import 'package:fundly/features/categories/domain/category.dart';
+import 'package:fundly/features/categories/presentation/categories_providers.dart';
+import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/presentation/transactions_providers.dart';
 
 import 'fake_account_repository.dart';
 
 /// Overrides that keep widget tests off the real on-device database.
 ///
-/// Account lookups by id search both [accounts] and [archived]. Balances are
-/// the opening balances (no transactions). Pass [repository] to inspect what
-/// screens asked it to do.
+/// Account lookups by id search both [accounts] and [archived]. Balances come
+/// from [balancesFor] over [transactions], exactly as in the app. Pass
+/// [repository] to inspect what screens asked it to do.
 List<Override> fakeAccounts(
   List<Account> accounts, {
   List<Account> archived = const [],
+  List<Transaction> transactions = const [],
+  List<Category> categories = const [],
   FakeAccountRepository? repository,
 }) {
-  Account? byId(int id) {
-    for (final account in [...accounts, ...archived]) {
+  final everyAccount = [...accounts, ...archived];
+  Account? accountById(int id) {
+    for (final account in everyAccount) {
       if (account.id == id) return account;
+    }
+    return null;
+  }
+
+  Transaction? transactionById(int id) {
+    for (final transaction in transactions) {
+      if (transaction.id == id) return transaction;
     }
     return null;
   }
@@ -27,15 +41,31 @@ List<Override> fakeAccounts(
   return [
     activeAccountsProvider.overrideWith((ref) => Stream.value(accounts)),
     archivedAccountsProvider.overrideWith((ref) => Stream.value(archived)),
-    accountByIdProvider.overrideWith((ref, id) => Stream.value(byId(id))),
+    allAccountsProvider.overrideWith((ref) => Stream.value(everyAccount)),
+    accountByIdProvider.overrideWith(
+      (ref, id) => Stream.value(accountById(id)),
+    ),
     accountBalancesProvider.overrideWithValue(
-      AsyncData(balancesFor([...accounts, ...archived], const [])),
+      AsyncData(balancesFor(everyAccount, transactions)),
     ),
     accountRepositoryProvider.overrideWithValue(
       repository ?? FakeAccountRepository(),
     ),
+    allCategoriesProvider.overrideWith((ref) => Stream.value(categories)),
+    allTransactionsProvider.overrideWith((ref) => Stream.value(transactions)),
+    transactionsForAccountProvider.overrideWith(
+      (ref, accountId) => Stream.value([
+        for (final transaction in transactions)
+          if (transaction.sourceAccountId == accountId ||
+              transaction.destinationAccountId == accountId)
+            transaction,
+      ]),
+    ),
+    transactionByIdProvider.overrideWith(
+      (ref, id) => Stream.value(transactionById(id)),
+    ),
   ];
 }
 
-/// No accounts at all.
+/// No accounts or transactions at all.
 List<Override> noAccounts() => fakeAccounts(const []);
