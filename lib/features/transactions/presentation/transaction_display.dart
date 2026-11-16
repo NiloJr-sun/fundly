@@ -88,7 +88,7 @@ enum TransactionField {
   ),
   TransactionValidationError.sameSourceAndDestination => (
     field: TransactionField.destinationAccount,
-    message: 'Choose a different account from the one above.',
+    message: "Choose a different account from the 'From' account.",
   ),
   TransactionValidationError.payeeMissing => (
     field: TransactionField.payee,

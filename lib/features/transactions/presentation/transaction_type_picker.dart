@@ -3,12 +3,8 @@ import 'package:flutter/material.dart';
 import '../domain/transaction_type.dart';
 import 'transaction_display.dart';
 
-/// Types offered when adding a transaction. Task 2.6 adds Transfer and Credit
-/// Card Payment.
-const List<TransactionType> addableTransactionTypes = [
-  TransactionType.spending,
-  TransactionType.inflow,
-];
+/// Types offered when adding a transaction, in display order.
+const List<TransactionType> addableTransactionTypes = TransactionType.values;
 
 /// Asks which kind of transaction to add. Returns `null` if dismissed.
 Future<TransactionType?> showTransactionTypePicker(BuildContext context) {
@@ -16,8 +12,10 @@ Future<TransactionType?> showTransactionTypePicker(BuildContext context) {
     context: context,
     showDragHandle: true,
     builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      // Scrolls if the sheet's height limit is smaller than its content,
+      // e.g. on short screens or in landscape.
+      child: ListView(
+        shrinkWrap: true,
         children: [
           for (final type in addableTransactionTypes)
             ListTile(

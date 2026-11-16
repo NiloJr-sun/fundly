@@ -8,7 +8,7 @@ import 'package:fundly/features/transactions/presentation/transaction_form_scree
 import '../../helpers/provider_overrides.dart';
 
 void main() {
-  testWidgets('Add transaction offers Spending and Inflow and opens the form', (
+  testWidgets('Add transaction offers all four types and opens the form', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -28,7 +28,8 @@ void main() {
 
     expect(find.text('Spending'), findsWidgets);
     expect(find.text('Inflow'), findsOneWidget);
-    expect(find.text('Transfer'), findsNothing);
+    expect(find.text('Transfer'), findsOneWidget);
+    expect(find.text('Credit card payment'), findsOneWidget);
 
     await tester.tap(find.text('Inflow'));
     await tester.pumpAndSettle();

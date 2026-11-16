@@ -243,4 +243,137 @@ void main() {
       expect(find.text('Choose a category.'), findsNothing);
     });
   });
+
+  /// Opens the [label] dropdown and returns the account options it lists.
+  Future<List<String>> optionsOf(WidgetTester tester, String label) async {
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<int>, label));
+    await tester.pumpAndSettle();
+    final options = tester
+        .widgetList<DropdownMenuItem<int>>(find.byType(DropdownMenuItem<int>))
+        .map((item) => ((item.child as Text).data!))
+        .toSet()
+        .toList();
+    await tester.tapAt(Offset.zero); // close the menu
+    await tester.pumpAndSettle();
+    return options;
+  }
+
+  group('Transfer', () {
+    testWidgets('moves money between asset accounts', (tester) async {
+      await openForm(tester, TransactionType.transfer);
+      expect(find.text('New Transfer'), findsOneWidget);
+      expect(
+        find.widgetWithText(DropdownButtonFormField<int>, 'Category'),
+        findsNothing,
+      );
+
+      await tester.enterText(field('Amount'), '2,000');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'Cash Wallet · Savings / Cash');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.type, TransactionType.transfer);
+      expect(draft.amount, php(200000));
+      expect(draft.sourceAccountId, bdoId);
+      expect(draft.destinationAccountId, walletId);
+      expect(draft.categoryId, isNull);
+      expect(draft.payee, isEmpty, reason: 'description is optional');
+      expect(find.text('Transfer saved'), findsOneWidget);
+    });
+
+    testWidgets('G4: a loan payment is a transfer to the loan', (tester) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '5000');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'Car Loan · Loan');
+      await tester.enterText(field('Description (optional)'), 'November');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.destinationAccountId, carLoanId);
+      expect(draft.payee, 'November');
+    });
+
+    testWidgets('G5: offers no credit accounts as destination', (tester) async {
+      await openForm(tester, TransactionType.transfer);
+
+      expect(await optionsOf(tester, 'From'), [
+        'BDO Savings · Savings / Cash',
+        'Cash Wallet · Savings / Cash',
+      ]);
+      expect(await optionsOf(tester, 'To'), [
+        'BDO Savings · Savings / Cash',
+        'Cash Wallet · Savings / Cash',
+        'Car Loan · Loan',
+      ]);
+    });
+
+    testWidgets('Rule 7: rejects the same account on both sides', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '100');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'BDO Savings · Savings / Cash');
+      await save(tester);
+
+      expect(
+        find.text("Choose a different account from the 'From' account."),
+        findsOneWidget,
+      );
+      expect(repository.created, isEmpty);
+    });
+
+    testWidgets('requires both accounts', (tester) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '100');
+      await save(tester);
+
+      expect(find.text('Choose an account.'), findsNWidgets(2));
+    });
+  });
+
+  group('Credit card payment', () {
+    testWidgets('pays a card from a savings account', (tester) async {
+      await openForm(tester, TransactionType.creditCardPayment);
+      expect(find.text('New Credit card payment'), findsOneWidget);
+
+      await tester.enterText(field('Amount'), '3,000');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'RCBC Credit · Credit');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.type, TransactionType.creditCardPayment);
+      expect(draft.amount, php(300000));
+      expect(draft.sourceAccountId, bdoId);
+      expect(draft.destinationAccountId, rcbcCardId);
+      expect(draft.categoryId, isNull);
+      expect(find.text('Credit card payment saved'), findsOneWidget);
+    });
+
+    testWidgets('offers only credit accounts as destination', (tester) async {
+      await openForm(tester, TransactionType.creditCardPayment);
+
+      expect(await optionsOf(tester, 'To'), ['RCBC Credit · Credit']);
+      expect(await optionsOf(tester, 'From'), [
+        'BDO Savings · Savings / Cash',
+        'Cash Wallet · Savings / Cash',
+      ]);
+    });
+
+    testWidgets('explains when there is no credit account', (tester) async {
+      await openForm(
+        tester,
+        TransactionType.creditCardPayment,
+        withAccounts: [accounts[bdoId]!],
+      );
+
+      expect(find.text('Add a Credit account first.'), findsOneWidget);
+    });
+  });
 }
