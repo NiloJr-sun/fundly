@@ -13,8 +13,6 @@ import '../../../helpers/provider_overrides.dart';
 import '../../transactions/domain/transaction_fixtures.dart';
 
 void main() {
-  final november = DateRange.monthOf(CalendarDate(2026, 11, 16));
-
   Account withOpening(int id, int openingMinor) =>
       accounts[id]!.copyWith(openingBalance: php(openingMinor));
 
@@ -48,7 +46,7 @@ void main() {
             archived: archived,
             transactions: transactions,
           ),
-          currentPeriodProvider.overrideWithValue(november),
+          todayProvider.overrideWithValue(CalendarDate(2026, 11, 16)),
           ...extra,
         ],
         retry: (_, _) => null,
@@ -75,7 +73,7 @@ void main() {
   ) async {
     await pump(tester);
 
-    expect(find.text('This month'), findsOneWidget);
+    expect(find.text('This month'), findsNWidgets(2), reason: 'title+chip');
     expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
     expect(find.text('+₱30,000.00'), findsOneWidget);
     // 500 + 1,200 card purchase; transfer, card payment and October excluded.
@@ -109,7 +107,7 @@ void main() {
       ProviderScope(
         overrides: [
           ...noAccounts(),
-          currentPeriodProvider.overrideWithValue(november),
+          todayProvider.overrideWithValue(CalendarDate(2026, 11, 16)),
         ],
         child: const MaterialApp(home: SpendingScreen()),
       ),
@@ -126,6 +124,79 @@ void main() {
       expect(formatOwed(php(120000)), '₱1,200.00');
       expect(formatOwed(php(0)), '₱0.00');
       expect(formatOwed(php(-2500)), 'Overpaid ₱25.00');
+    });
+  });
+
+  group('period selector', () {
+    Future<void> tapChip(WidgetTester tester, String label) async {
+      await tester.ensureVisible(find.widgetWithText(ChoiceChip, label));
+      await tester.tap(find.widgetWithText(ChoiceChip, label));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('starts on this month', (tester) async {
+      await pump(tester);
+
+      final chip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'This month'),
+      );
+      expect(chip.selected, isTrue);
+    });
+
+    testWidgets('Last month shows October totals', (tester) async {
+      await pump(tester);
+
+      await tapChip(tester, 'Last month');
+
+      expect(find.text('Last month'), findsNWidgets(2), reason: 'title+chip');
+      expect(find.text('Oct 1, 2026 – Oct 31, 2026'), findsOneWidget);
+      expect(find.text('-₱70.00'), findsOneWidget);
+      expect(find.text('+₱0.00'), findsOneWidget);
+    });
+
+    testWidgets('This month switches back', (tester) async {
+      await pump(tester);
+      await tapChip(tester, 'Last month');
+
+      await tapChip(tester, 'This month');
+
+      expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
+      expect(find.text('-₱1,700.00'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Custom opens a date range picker; cancelling keeps the period',
+      (tester) async {
+        await pump(tester);
+
+        await tapChip(tester, 'Custom');
+        expect(find.byType(DateRangePickerDialog), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
+        final chip = tester.widget<ChoiceChip>(
+          find.widgetWithText(ChoiceChip, 'This month'),
+        );
+        expect(chip.selected, isTrue);
+      },
+    );
+
+    testWidgets('a custom range filters the totals', (tester) async {
+      await pump(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SpendingScreen)),
+      );
+
+      container
+          .read(selectedPeriodProvider.notifier)
+          .selectCustom(DateRange(october, october));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Custom range'), findsOneWidget);
+      expect(find.text('Oct 20, 2026 – Oct 20, 2026'), findsOneWidget);
+      expect(find.text('-₱70.00'), findsOneWidget);
     });
   });
 }

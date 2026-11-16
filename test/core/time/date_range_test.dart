@@ -46,5 +46,22 @@ void main() {
         });
       });
     });
+
+    group('monthBefore', () {
+      final cases = {
+        CalendarDate(2026, 11, 16): ('2026-10-01', '2026-10-31'),
+        CalendarDate(2026, 1, 15): ('2025-12-01', '2025-12-31'),
+        CalendarDate(2026, 3, 31): ('2026-02-01', '2026-02-28'),
+        CalendarDate(2028, 3, 1): ('2028-02-01', '2028-02-29'),
+      };
+      cases.forEach((date, expected) {
+        test('$date -> ${expected.$1} to ${expected.$2}', () {
+          final range = DateRange.monthBefore(date);
+
+          expect(range.start.toIsoString(), expected.$1);
+          expect(range.end.toIsoString(), expected.$2);
+        });
+      });
+    });
   });
 }

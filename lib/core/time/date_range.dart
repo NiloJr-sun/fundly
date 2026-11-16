@@ -19,6 +19,12 @@ final class DateRange {
     CalendarDate.fromDateTime(DateTime.utc(date.year, date.month + 1, 0)),
   );
 
+  /// The whole calendar month before the one containing [date].
+  factory DateRange.monthBefore(CalendarDate date) => DateRange.monthOf(
+    // Day 1 of month 0 normalises to December of the previous year.
+    CalendarDate.fromDateTime(DateTime.utc(date.year, date.month - 1, 1)),
+  );
+
   final CalendarDate start;
   final CalendarDate end;
 

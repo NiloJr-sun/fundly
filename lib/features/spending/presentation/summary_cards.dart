@@ -6,6 +6,7 @@ import '../../../core/formatting/date_formatter.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/date_range.dart';
+import 'period_selector.dart';
 import 'spending_providers.dart';
 
 /// Formats an amount owed (positive when money is owed).
@@ -62,24 +63,29 @@ class BalanceSummaryCards extends ConsumerWidget {
   }
 }
 
-/// Inflow and spending for the current period. Transfers and card payments
-/// are not included (rule 5).
+/// Inflow and spending for the selected period, with the period selector.
+/// Transfers and card payments are not included (rule 5).
 class PeriodTotalsCards extends ConsumerWidget {
   const PeriodTotalsCards({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final period = ref.watch(currentPeriodProvider);
+    final selection = ref.watch(selectedPeriodProvider);
     final totals = ref.watch(periodTotalsProvider);
     final value = totals.value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('This month', style: Theme.of(context).textTheme.titleMedium),
         Text(
-          formatPeriod(period),
+          periodPresetLabel(selection.preset),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Text(
+          formatPeriod(selection.range),
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        const SizedBox(height: Spacing.sm),
+        const PeriodSelector(),
         const SizedBox(height: Spacing.sm),
         if (totals is AsyncError)
           const _ErrorCard('Totals could not be loaded.')
