@@ -563,5 +563,10 @@ suggestions as approved decisions.
   2026-11-16              Account names: trimmed, Confirmed
                           1-40 characters, unique 
                           ignoring case (enforced 
-                          in the data layer)      
+                          in the data layer),     
+                          including archived      
+                          accounts                
+
+  2026-11-16              Generated code          Confirmed
+                          (*.g.dart) is committed 
   -----------------------------------------------------------------------
