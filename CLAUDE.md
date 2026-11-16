@@ -213,10 +213,10 @@ No production feature logic is required yet.
 
 ### Phase 1 --- Account management ✅ Complete (2026-11-16)
 
-Roadmap tasks 1.1–1.6 are done. One part of the acceptance criteria is
-deferred: `currentBalance()` in `features/accounts/domain/account_balance.dart`
-is the single balance function, but until Phase 2 it returns the opening
-balance only. Roadmap task 2.4 adds posted transactions to it.
+Roadmap tasks 1.1–1.6 are done. The acceptance criterion about
+transactions was met in Phase 2 (task 2.4): `balancesFor()` in
+`features/accounts/domain/account_balance.dart` derives every balance
+from the opening balance plus transaction effects.
 
 -   [x] Define account types: Savings/Cash, Credit, Loan.
 -   [x] Define account domain model and persistence (drift schema v1).
@@ -234,17 +234,25 @@ accounts screen with unarchive.
 balances are calculated consistently from opening balances and
 transactions.
 
-### Phase 2 --- Transaction foundation
+### Phase 2 --- Transaction foundation ✅ Complete (2026-11-16)
 
--   [ ] Define transaction domain model.
--   [ ] Implement spending.
--   [ ] Implement inflow.
--   [ ] Implement transfer.
--   [ ] Implement credit-card payment.
--   [ ] Implement transaction persistence.
--   [ ] Implement transaction list and details.
--   [ ] Add edit and delete behavior with recalculation.
--   [ ] Add domain tests for all balance effects.
+Roadmap tasks 2.1–2.8 are done. The database is at schema v3
+(accounts, seeded categories, transactions), with migration tests for
+every upgrade path.
+
+-   [x] Define transaction domain model.
+-   [x] Implement spending.
+-   [x] Implement inflow.
+-   [x] Implement transfer.
+-   [x] Implement credit-card payment.
+-   [x] Implement transaction persistence.
+-   [x] Implement transaction list and details.
+-   [x] Add edit and delete behavior with recalculation.
+-   [x] Add domain tests for all balance effects.
+
+Also delivered: a fixed, seeded category list (G1); `CalendarDate` for
+transaction dates (G9); per-account transaction history on the account
+detail screen; "All transactions" reachable from the Spending tab.
 
 **Acceptance:** A user can record all four transaction types and see
 correct account balances and transaction history.
@@ -474,14 +482,17 @@ correct screen is not sufficient.
 
 ## 10. Current Status
 
-Phases 0 and 1 are complete. Phase 2 (Transaction foundation) is next,
-starting with roadmap task 2.1. Before starting it, the product owner
-must confirm roadmap items G1, G4, G5, G8 and G9 (see
-[docs/ROADMAP.md](docs/ROADMAP.md)). Phase 2 includes the first schema
-change (v1 → v2), which must ship with a migration test.
+Phases 0, 1 and 2 are complete. Phase 3 (Spending overview) is next,
+starting with roadmap task 3.1. Before starting it, the product owner
+must confirm roadmap decision D2 (the meaning of "Available money"; see
+[docs/ROADMAP.md](docs/ROADMAP.md)).
+
+Every schema change must bump `schemaVersion`, run
+`dart run drift_dev make-migrations`, and ship with a data-integrity
+migration test.
 
 Work one roadmap task at a time and stop after each. Do not implement
-budgets, authentication, cloud sync, or other Phase 3+ functionality
+budgets, authentication, cloud sync, or other Phase 4+ functionality
 until explicitly requested.
 
 ------------------------------------------------------------------------
