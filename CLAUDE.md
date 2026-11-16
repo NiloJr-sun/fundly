@@ -616,4 +616,20 @@ suggestions as approved decisions.
                           local calendar date (no 
                           time); created/updated  
                           timestamps are UTC (G9) 
+
+  2026-11-16              Allowed accounts:       Confirmed
+                          Spending from           
+                          Savings/Cash or Credit; 
+                          Inflow to Savings/Cash  
+                          or Credit; Transfer     
+                          from Savings/Cash to    
+                          Savings/Cash or Loan;   
+                          CC Payment from         
+                          Savings/Cash to Credit  
+
+  2026-11-16              Payee required for      Confirmed
+                          Spending and Inflow,    
+                          optional otherwise; max 
+                          60 chars. Note max 500. 
+                          Future dates allowed    
   -----------------------------------------------------------------------
