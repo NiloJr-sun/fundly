@@ -26,12 +26,16 @@ void main() {
     await tester.tap(find.text('Add transaction'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Spending'), findsWidgets);
-    expect(find.text('Inflow'), findsOneWidget);
-    expect(find.text('Transfer'), findsOneWidget);
-    expect(find.text('Credit card payment'), findsOneWidget);
+    Finder inSheet(String text) => find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text(text),
+    );
+    expect(inSheet('Spending'), findsOneWidget);
+    expect(inSheet('Inflow'), findsOneWidget);
+    expect(inSheet('Transfer'), findsOneWidget);
+    expect(inSheet('Credit card payment'), findsOneWidget);
 
-    await tester.tap(find.text('Inflow'));
+    await tester.tap(inSheet('Inflow'));
     await tester.pumpAndSettle();
 
     expect(find.byType(TransactionFormScreen), findsOneWidget);

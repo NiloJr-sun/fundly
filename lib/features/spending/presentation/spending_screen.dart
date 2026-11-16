@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/widgets/centered_message.dart';
+import '../../../app/theme/spacing.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_form_screen.dart';
 import '../../transactions/presentation/transaction_type_picker.dart';
+import 'summary_cards.dart';
 
-/// The Spending tab. The overview arrives in roadmap Phase 3; for now it is
-/// the entry point for adding transactions.
+/// The Spending tab: balance summary, totals for the current period, and the
+/// entry point for adding transactions.
 class SpendingScreen extends StatelessWidget {
   const SpendingScreen({super.key});
 
@@ -37,8 +38,19 @@ class SpendingScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const CenteredMessage(
-        'Your balances and recent activity will appear here.',
+      body: ListView(
+        // Bottom padding keeps content clear of the floating button.
+        padding: const EdgeInsets.fromLTRB(
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          88,
+        ),
+        children: const [
+          BalanceSummaryCards(),
+          SizedBox(height: Spacing.lg),
+          PeriodTotalsCards(),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addTransaction(context),
