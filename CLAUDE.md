@@ -643,4 +643,15 @@ suggestions as approved decisions.
                           optional otherwise; max 
                           60 chars. Note max 500. 
                           Future dates allowed    
+
+  2026-11-16              Available money = total Confirmed
+                          of active Savings/Cash  
+                          balances; Credit owed   
+                          and Loans owed shown    
+                          separately; no net      
+                          worth (D2)              
+
+  2026-11-16              Spending tab totals     Confirmed
+                          default to the current  
+                          calendar month          
   -----------------------------------------------------------------------
