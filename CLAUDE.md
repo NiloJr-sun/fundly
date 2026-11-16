@@ -281,13 +281,27 @@ and include archived accounts.
 records and exclude transfers and credit-card payments from
 spending/inflow totals.
 
-### Phase 4 --- Basic Plans
+### Phase 4 --- Basic Plans ✅ Complete (2026-11-16)
 
--   [ ] Define spending categories.
--   [ ] Allow transactions to be assigned a category.
--   [ ] Create a monthly budget record.
--   [ ] Set a planned amount per category.
--   [ ] Calculate actual spending and remaining amount.
+Roadmap tasks 4.1–4.4 are done. The database is at schema v5
+(`categories.is_archived` in v4, `monthly_plans` in v5), with migration
+tests for every upgrade path. Planned vs actual vs remaining comes from
+`planSummaries()` in `features/plans/domain/plan_summary.dart`; actual
+counts Spending only, so transfers, card payments and inflows (including
+refunds) are excluded.
+
+-   [x] Define spending categories (add, rename, archive, delete when
+    unused; Categories screen opened from the Plans tab).
+-   [x] Allow transactions to be assigned a category (since Phase 2; new
+    transactions cannot use archived categories).
+-   [x] Create a monthly budget record (`monthly_plans`,
+    `PlanRepository`).
+-   [x] Set a planned amount per category (Plans tab).
+-   [x] Calculate actual spending and remaining amount.
+
+Also delivered: `CalendarMonth` value type stored as `YYYY-MM`; a month
+selector on the Plans tab with a "This month" shortcut; overspending
+shown in red.
 
 **Acceptance:** A user can set a simple monthly amount for a category
 and compare it with eligible spending.
@@ -494,18 +508,18 @@ correct screen is not sufficient.
 
 ## 10. Current Status
 
-Phases 0, 1, 2 and 3 are complete. Phase 4 (Basic Plans) is next,
-starting with roadmap task 4.1 (see [docs/ROADMAP.md](docs/ROADMAP.md)).
-Phase 4 changes the schema (category management and monthly plans), so
-its plan needs product-owner approval before implementation.
+Phases 0–4 are complete: the MVP roadmap is delivered. Nothing beyond
+it is approved yet. Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a
+proposal only (JSON backup/export recommended first); the product owner
+must approve any next step before work starts.
 
 Every schema change must bump `schemaVersion`, run
 `dart run drift_dev make-migrations`, and ship with a data-integrity
 migration test.
 
 Work one roadmap task at a time and stop after each. Do not implement
-budgets, authentication, cloud sync, or other Phase 4+ functionality
-until explicitly requested.
+authentication, cloud sync, Phase 5 items, or anything in §6 until
+explicitly requested.
 
 ------------------------------------------------------------------------
 
@@ -675,4 +689,38 @@ suggestions as approved decisions.
                           includes archived       
                           accounts and matches    
                           either side             
+
+  2026-11-16              Categories can be       Confirmed
+                          added, renamed,         
+                          archived and            
+                          unarchived; deleted     
+                          only when no            
+                          transaction uses them.  
+                          Names follow the        
+                          account-name rules;     
+                          kind is locked; new     
+                          transactions cannot use 
+                          archived categories,    
+                          edits may keep them     
+                          (task 4.1)              
+
+  2026-11-16              Monthly plans: spending Confirmed
+                          categories only; one    
+                          plan per category per   
+                          month; zero allowed and 
+                          differs from no plan;   
+                          no new plans for        
+                          archived categories; no 
+                          carry-over between      
+                          months; deleting a      
+                          category deletes its    
+                          plans (task 4.2)        
+
+  2026-11-16              Plan actual counts      Confirmed
+                          Spending only; archived 
+                          categories appear only  
+                          with a plan or spending 
+                          that month; no whole-   
+                          month totals yet (tasks 
+                          4.3, 4.4)               
   -----------------------------------------------------------------------
