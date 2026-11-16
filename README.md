@@ -94,6 +94,9 @@ lib/
       data/                 # tables, repository
       domain/               # Account, rules
       presentation/
+    categories/
+      data/                 # table, seeded defaults, repository
+      domain/               # Category, CategoryKind
 test/                       # mirrors lib/
 drift_schemas/              # schema snapshot per version
 ```
