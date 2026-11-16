@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
 import 'package:fundly/features/spending/presentation/spending_screen.dart';
 
+import '../helpers/provider_overrides.dart';
+
 void main() {
-  Future<void> pumpShell(WidgetTester tester) =>
-      tester.pumpWidget(const MaterialApp(home: HomeShell()));
+  Future<void> pumpShell(WidgetTester tester) => tester.pumpWidget(
+    ProviderScope(
+      overrides: fakeAccounts(),
+      child: const MaterialApp(home: HomeShell()),
+    ),
+  );
 
   Future<void> tapTab(WidgetTester tester, String label) async {
     await tester.tap(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/app.dart';
 import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/app/theme/app_theme.dart';
+
+import '../../helpers/provider_overrides.dart';
 
 void main() {
   group('AppTheme', () {
@@ -38,7 +41,9 @@ void main() {
       tester.platformDispatcher.platformBrightnessTestValue = brightness;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-      await tester.pumpWidget(const FundlyApp());
+      await tester.pumpWidget(
+        ProviderScope(overrides: fakeAccounts(), child: const FundlyApp()),
+      );
 
       return Theme.of(tester.element(find.byType(HomeShell))).brightness;
     }
