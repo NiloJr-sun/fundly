@@ -211,19 +211,24 @@ appropriate tests before moving on.
 **Acceptance:** The app launches and the three main tabs are navigable.
 No production feature logic is required yet.
 
-### Phase 1 --- Account management 🚧 In progress
+### Phase 1 --- Account management ✅ Complete (2026-11-16)
 
-Progress: roadmap task 1.1 is done — the `Money` value type, parser and
-formatter in `lib/core/` (integer minor units, rule 9). The checklist
-items below are still open.
+Roadmap tasks 1.1–1.6 are done. One part of the acceptance criteria is
+deferred: `currentBalance()` in `features/accounts/domain/account_balance.dart`
+is the single balance function, but until Phase 2 it returns the opening
+balance only. Roadmap task 2.4 adds posted transactions to it.
 
--   [ ] Define account types: Savings/Cash, Credit, Loan.
--   [ ] Define account domain model and persistence.
--   [ ] Create account list screen.
--   [ ] Create account form.
--   [ ] Support opening balance.
--   [ ] Show account details and derived current balance.
--   [ ] Add validation and tests.
+-   [x] Define account types: Savings/Cash, Credit, Loan.
+-   [x] Define account domain model and persistence (drift schema v1).
+-   [x] Create account list screen.
+-   [x] Create account form.
+-   [x] Support opening balance.
+-   [x] Show account details and derived current balance.
+-   [x] Add validation and tests.
+
+Also delivered: `Money` value type, parser and formatter (`lib/core/`);
+archive with confirmation when the balance is non-zero; an Archived
+accounts screen with unarchive.
 
 **Acceptance:** A user can create and view multiple accounts. Account
 balances are calculated consistently from opening balances and
@@ -469,13 +474,15 @@ correct screen is not sufficient.
 
 ## 10. Current Status
 
-Phase 0 is complete. Phase 1 (Account management) is in progress; the
-next roadmap task is 1.2 (account domain model). See
-[docs/ROADMAP.md](docs/ROADMAP.md) for the task breakdown.
+Phases 0 and 1 are complete. Phase 2 (Transaction foundation) is next,
+starting with roadmap task 2.1. Before starting it, the product owner
+must confirm roadmap items G1, G4, G5, G8 and G9 (see
+[docs/ROADMAP.md](docs/ROADMAP.md)). Phase 2 includes the first schema
+change (v1 → v2), which must ship with a migration test.
 
 Work one roadmap task at a time and stop after each. Do not implement
-transactions, budgets, authentication, cloud sync, or other Phase 2+
-functionality until explicitly requested.
+budgets, authentication, cloud sync, or other Phase 3+ functionality
+until explicitly requested.
 
 ------------------------------------------------------------------------
 
@@ -569,4 +576,11 @@ suggestions as approved decisions.
 
   2026-11-16              Generated code          Confirmed
                           (*.g.dart) is committed 
+
+  2026-11-16              Archiving: confirm only Implemented in task
+                          when balance is non-    1.6
+                          zero; archived accounts 
+                          can be unarchived from  
+                          an Archived accounts    
+                          screen                  
   -----------------------------------------------------------------------
