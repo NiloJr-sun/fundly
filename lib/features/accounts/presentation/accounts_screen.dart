@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
+import 'account_form_screen.dart';
 import 'account_list.dart';
 import 'accounts_providers.dart';
 
@@ -25,6 +26,13 @@ class AccountsScreen extends ConsumerWidget {
         ),
         _ => const Center(child: CircularProgressIndicator()),
       },
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AccountFormScreen()),
+        ),
+        icon: const Icon(Icons.add),
+        label: const Text('Add account'),
+      ),
     );
   }
 }

@@ -41,4 +41,28 @@ abstract final class MoneyFormatter {
         ? '${wholeFormat.symbols.MINUS_SIGN}$result'
         : result;
   }
+
+  /// Formats [money] for pre-filling a text field: no symbol or grouping,
+  /// e.g. `3000.00`. The result parses back with `MoneyParser`.
+  ///
+  /// Uses the absolute value, because amounts are entered as positive values.
+  static String formatForInput(Money money) {
+    final decimalDigits = Money.decimalDigitsFor(money.currencyCode);
+    final perWhole = Money.minorUnitsPerWhole(money.currencyCode);
+    final whole = (money.minorUnits ~/ perWhole).abs();
+    if (decimalDigits == 0) return '$whole';
+    final fraction = money.minorUnits
+        .remainder(perWhole)
+        .abs()
+        .toString()
+        .padLeft(decimalDigits, '0');
+    return '$whole.$fraction';
+  }
+
+  /// The currency symbol for [currencyCode], e.g. `₱` for PHP.
+  static String symbolFor(String currencyCode, {String? locale}) =>
+      NumberFormat.simpleCurrency(
+        locale: locale,
+        name: currencyCode,
+      ).currencySymbol;
 }

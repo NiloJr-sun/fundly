@@ -5,10 +5,13 @@ import '../domain/account.dart';
 import '../domain/account_balance.dart';
 import '../domain/account_type.dart';
 import 'account_display.dart';
+import 'account_form_screen.dart';
 
 /// Accounts grouped into one section per [AccountType] that has accounts.
 ///
 /// Expects [accounts] already ordered by type then name.
+const double _floatingButtonClearance = 88;
+
 class AccountList extends StatelessWidget {
   const AccountList({super.key, required this.accounts});
 
@@ -24,7 +27,11 @@ class AccountList extends StatelessWidget {
         ..add(_SectionHeader(title: accountTypeLabel(type)))
         ..addAll(ofType.map((account) => AccountTile(account: account)));
     }
-    return ListView(children: children);
+    return ListView(
+      // Keep the last row clear of the floating "Add account" button.
+      padding: const EdgeInsets.only(bottom: _floatingButtonClearance),
+      children: children,
+    );
   }
 }
 
@@ -53,7 +60,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// One account row: name and formatted current balance.
+/// One account row: name and formatted current balance. Tap to edit.
 class AccountTile extends StatelessWidget {
   const AccountTile({super.key, required this.account});
 
@@ -66,6 +73,12 @@ class AccountTile extends StatelessWidget {
       trailing: Text(
         formatBalance(account.type, currentBalance(account)),
         style: Theme.of(context).textTheme.bodyLarge,
+      ),
+      // Task 1.6 replaces this with the account detail screen.
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AccountFormScreen(account: account),
+        ),
       ),
     );
   }

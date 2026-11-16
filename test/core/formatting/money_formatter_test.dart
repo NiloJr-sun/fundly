@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/formatting/money_formatter.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/core/money/money_parser.dart';
 
 String formatPhp(int minorUnits) => MoneyFormatter.format(
   Money(minorUnits: minorUnits, currencyCode: 'PHP'),
@@ -38,5 +39,51 @@ void main() {
         '¥1,234',
       );
     });
+  });
+
+  group('MoneyFormatter.formatForInput', () {
+    final cases = <int, String>{
+      0: '0.00',
+      5: '0.05',
+      123450: '1234.50',
+      -300000: '3000.00',
+      -50: '0.50',
+    };
+    cases.forEach((minorUnits, expected) {
+      test('$minorUnits -> $expected', () {
+        expect(
+          MoneyFormatter.formatForInput(
+            Money(minorUnits: minorUnits, currencyCode: 'PHP'),
+          ),
+          expected,
+        );
+      });
+    });
+
+    test('round-trips through MoneyParser', () {
+      for (final minorUnits in [0, 1, 99, 100, 123456789, 99999999999999]) {
+        final money = Money(minorUnits: minorUnits, currencyCode: 'PHP');
+        expect(
+          MoneyParser.parse(
+            MoneyFormatter.formatForInput(money),
+            currencyCode: 'PHP',
+          ),
+          money,
+        );
+      }
+    });
+
+    test('has no decimal point for JPY', () {
+      expect(
+        MoneyFormatter.formatForInput(
+          const Money(minorUnits: 1234, currencyCode: 'JPY'),
+        ),
+        '1234',
+      );
+    });
+  });
+
+  test('symbolFor', () {
+    expect(MoneyFormatter.symbolFor('PHP', locale: 'en'), '₱');
   });
 }
