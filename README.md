@@ -6,8 +6,24 @@ spending. It works offline and keeps all data on the device.
 - Product direction and engineering rules: [CLAUDE.md](CLAUDE.md)
 - Delivery plan and open decisions: [docs/ROADMAP.md](docs/ROADMAP.md)
 
-**Status:** Phase 0 (project foundation). The app has three placeholder tabs:
-Spending, Plans and Account.
+**Status:** Phases 0–4 are complete, so the MVP is delivered. Nothing beyond
+it is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md) for the Phase 5
+proposal.
+
+## Features
+
+- **Account:** create Savings/Cash, Credit and Loan accounts with an opening
+  balance; view details and history; rename; archive and unarchive.
+- **Transactions:** record Spending, Inflow, Transfer and Credit Card
+  Payment; edit and delete them. Balances are always derived from the opening
+  balance plus transactions.
+- **Spending:** Available money, Credit owed and Loans owed; inflow and
+  spending totals for this month, last month or a custom range (transfers and
+  card payments excluded); the 10 latest transactions; an All transactions
+  list filtered by date, account and category.
+- **Plans:** a planned amount per spending category per month, compared with
+  actual spending and what is left. Categories can be added, renamed, archived
+  and deleted when unused.
 
 ## Requirements
 
@@ -84,25 +100,33 @@ lib/
     home_shell.dart         # bottom navigation: Spending, Plans, Account
     theme/                  # AppTheme (light/dark), Spacing
   core/
-    database/               # drift AppDatabase (SQLite)
+    database/               # drift AppDatabase (SQLite), migrations, converters
+    formatting/             # MoneyFormatter, DateFormatter
     money/                  # Money, MoneyParser
-    time/                   # CalendarDate
-    formatting/             # MoneyFormatter
+    time/                   # CalendarDate, CalendarMonth, DateRange
+    widgets/                # shared widgets
   features/
-    spending/presentation/
-    plans/presentation/
     accounts/
-      data/                 # tables, repository
-      domain/               # Account, rules
+      data/                 # table, repository
+      domain/               # Account, AccountType, rules, balance calculator
       presentation/
     categories/
       data/                 # table, seeded defaults, repository
-      domain/               # Category, CategoryKind
+      domain/               # Category, CategoryKind, rules
+      presentation/         # Categories screen and form
     transactions/
       data/                 # table, repository
-      domain/               # Transaction, effects, rules
-test/                       # mirrors lib/
-drift_schemas/              # schema snapshot per version
+      domain/               # Transaction, effects, rules, filter
+      presentation/
+    spending/
+      domain/               # period totals, balance summary
+      presentation/         # Spending tab
+    plans/
+      data/                 # monthly_plans table, repository
+      domain/               # MonthlyPlan, plan summaries
+      presentation/         # Plans tab
+test/                       # mirrors lib/; helpers/ holds fakes and fixtures
+drift_schemas/              # schema snapshot per version (currently v5)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

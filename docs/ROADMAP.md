@@ -14,16 +14,21 @@ Last updated: 2026-11-16
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Project | Fresh `flutter create` scaffold (counter app), iOS + Android |
-| Dependencies | `flutter_lints` only |
-| Git | **Not initialised** |
-| Tests | Default `widget_test.dart` |
+| Roadmap | **Phases 0–4 done** (MVP delivered). Phase 5 is a proposal, not approved |
+| Platforms | iOS (primary), Android best-effort |
+| Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl; dev: drift_dev, build_runner, flutter_lints |
+| Database | Schema **v5**: accounts, categories, transactions, monthly_plans; migration tests for every step |
+| Git | One commit per task on `main` |
+| Tests | Domain, repository, migration and widget tests; all passing |
 
 ---
 
 ## 1. Gaps and conflicts found in CLAUDE.md
 
-These need a decision before the phase that depends on them.
+These needed a decision before the phase that depended on them. **All are
+resolved:** G1 and G4–G9 follow the proposed resolutions and are logged in
+CLAUDE.md §11; G2 and G3 were settled by D1 and D2; G11 was done in task 0.1.
+G10 remains open (see Phase 5).
 
 | # | Issue | Affects | Proposed resolution |
 |---|---|---|---|
@@ -44,6 +49,9 @@ These need a decision before the phase that depends on them.
 ## 2. Decisions needed
 
 Each decision has a recommendation. Once you confirm one, log it in CLAUDE.md §11.
+
+**All of D1–D7 are confirmed** as recommended and logged in CLAUDE.md §11.
+For D6 the answer was iOS; the theme seed is teal.
 
 ### D1 — Balance sign convention (needed before Phase 1)
 
@@ -132,7 +140,9 @@ Rules for every task:
 
 Size: **S** ≈ one short session, **M** ≈ one longer session or two.
 
-### Phase 0 — Foundation  ✅ *when the app launches with 3 navigable tabs*
+### Phase 0 — Foundation — ✅ Done (2026-11-16)
+
+Done *when the app launches with 3 navigable tabs*.
 
 | ID | Task | Size | Done when |
 |---|---|---|---|
@@ -142,7 +152,9 @@ Size: **S** ≈ one short session, **M** ≈ one longer session or two.
 | 0.4 | Theme: M3 `ColorScheme.fromSeed`, light + dark, spacing constants | S | Both themes render |
 | 0.5 | Make lints stricter (e.g. `prefer_const_constructors`, `always_declare_return_types`); write the README with setup, run and test commands | S | `flutter analyze` is clean |
 
-### Phase 1 — Accounts  ✅ *when you can create and view accounts and balances come from the opening balance*
+### Phase 1 — Accounts — ✅ Done (2026-11-16)
+
+Done *when you can create and view accounts and balances come from the opening balance*.
 
 Before you start, confirm D1, D3, D4 and G6–G7 and log them.
 
@@ -159,7 +171,9 @@ Before you start, confirm D1, D3, D4 and G6–G7 and log them.
 Task 2.4 replaces this with `opening + Σ effects` in **one** domain function.
 Screens never compute balances themselves.
 
-### Phase 2 — Transactions  ✅ *when all 4 types are recorded with correct balances*
+### Phase 2 — Transactions — ✅ Done (2026-11-16)
+
+Done *when all 4 types are recorded with correct balances*.
 
 Before you start, confirm G1, G4, G5, G8 and G9.
 
@@ -174,7 +188,9 @@ Before you start, confirm G1, G4, G5, G8 and G9.
 | 2.7 | Transaction list (on the account detail screen + all transactions) and a detail view | M | Widget test |
 | 2.8 | Edit and delete with confirmation; balances update automatically through the streams | S | Tests: balance after edit/delete |
 
-### Phase 3 — Spending overview  ✅ *when dashboard totals match the records*
+### Phase 3 — Spending overview — ✅ Done (2026-11-16)
+
+Done *when dashboard totals match the records*.
 
 Before you start, confirm D2.
 
@@ -186,7 +202,9 @@ Before you start, confirm D2.
 | 3.4 | Recent transactions (latest 10) + "See all" | S | — |
 | 3.5 | Filters on the all-transactions list: date range, account, category | M | Tests for the filter query |
 
-### Phase 4 — Basic Plans  ✅ *when you can compare a monthly plan with actual spending*
+### Phase 4 — Basic Plans — ✅ Done (2026-11-16)
+
+Done *when you can compare a monthly plan with actual spending*.
 
 | ID | Task | Size | Done when |
 |---|---|---|---|
@@ -229,4 +247,6 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 
 ## 6. Next step
 
-Answer D1–D7 (or accept the recommendations), then start **task 0.1**.
+The MVP roadmap is delivered. Nothing further is approved. The product owner
+decides what comes next; the recommended candidate is the JSON backup/export
+in Phase 5 (G10). Plan it like any other task: propose, approve, then build.
