@@ -441,8 +441,8 @@ void main() {
         find.descendant(
           of: card(),
           matching: find.text(
-            'BDO Savings balance ₱35,000.00\nAssigned ₱5,000.00'
-            ' · Remaining ₱5,000.00',
+            'BDO Savings balance: ₱35,000.00\nAssigned: ₱5,000.00'
+            '\nRemaining: ₱5,000.00',
           ),
         ),
         findsOneWidget,
@@ -468,7 +468,7 @@ void main() {
       );
       expect(amountText(tester).data, '₱6,000.00');
       expect(
-        find.textContaining('BDO Savings balance ₱10,000.00'),
+        find.textContaining('BDO Savings balance: ₱10,000.00'),
         findsOneWidget,
       );
     });
@@ -487,7 +487,7 @@ void main() {
         ],
       );
       expect(amountText(tester).data, '₱6,000.00');
-      expect(find.textContaining('Remaining ₱3,000.00'), findsOneWidget);
+      expect(find.textContaining('Remaining: ₱3,000.00'), findsOneWidget);
     });
 
     testWidgets('is red when more was assigned than came in', (tester) async {
@@ -499,7 +499,10 @@ void main() {
 
       final amount = amountText(tester);
       expect(amount.data, '-₱5,000.00');
-      expect(find.textContaining('Overallocated by ₱5,000.00'), findsOneWidget);
+      expect(
+        find.textContaining('Overallocated by: ₱5,000.00'),
+        findsOneWidget,
+      );
       final context = tester.element(card());
       expect(amount.style?.color, Theme.of(context).colorScheme.error);
     });

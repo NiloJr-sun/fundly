@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
@@ -70,6 +71,15 @@ class PlanRow extends StatelessWidget {
                 _Amount(
                   label: 'Assigned',
                   value: MoneyFormatter.format(summary.assigned),
+                  color: summary.assigned.isZero
+                      ? theme.colorScheme.error
+                      : switch (status) {
+                          PlanStatus.underfunded => AppColors.of(
+                            context,
+                          ).warning,
+                          PlanStatus.funded => AppColors.of(context).positive,
+                          null => theme.colorScheme.onSurface,
+                        },
                   onTap: onEdit == null
                       ? null
                       : () => onEdit(PlanAmountField.assigned),
@@ -181,7 +191,7 @@ class _Amount extends StatelessWidget {
           child: Text(
             value,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: linked ? theme.colorScheme.primary : color,
+              color: color ?? (linked ? theme.colorScheme.primary : null),
               decoration: underline ? TextDecoration.underline : null,
             ),
           ),
