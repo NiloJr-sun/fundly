@@ -182,6 +182,75 @@ void main() {
       expect(top(find.text('Liability')), lessThan(top(row('Card payoff'))));
     });
 
+    testWidgets('groups start expanded and collapse independently', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(
+        tester,
+        withCategories: [
+          ...allCategories,
+          const Category(
+            id: 40,
+            name: 'Emergency fund',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.savings,
+          ),
+          const Category(
+            id: 41,
+            name: 'Card payoff',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.liability,
+          ),
+        ],
+      );
+      expect(row('Food'), findsOneWidget);
+      expect(row('Emergency fund'), findsOneWidget);
+      expect(row('Card payoff'), findsOneWidget);
+      await tester.tap(find.text('Spending'));
+      await tester.pumpAndSettle();
+      expect(row('Food'), findsNothing);
+      expect(row('Transport'), findsNothing);
+      expect(row('Emergency fund'), findsOneWidget);
+      expect(row('Card payoff'), findsOneWidget);
+      expect(find.text('Ready to assign'), findsOneWidget);
+      await tester.tap(find.text('Savings'));
+      await tester.pumpAndSettle();
+      expect(row('Emergency fund'), findsNothing);
+      expect(row('Card payoff'), findsOneWidget);
+      await tester.tap(find.text('Liability'));
+      await tester.pumpAndSettle();
+      expect(row('Card payoff'), findsNothing);
+      await tester.tap(find.text('Spending'));
+      await tester.pumpAndSettle();
+      expect(row('Food'), findsOneWidget);
+      expect(row('Transport'), findsOneWidget);
+      expect(row('Emergency fund'), findsNothing);
+    });
+
+    testWidgets('a collapsed section stays collapsed when switching months', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [
+          plan(foodId, 100000),
+          plan(foodId, 200000, month: october),
+        ],
+      );
+      await tester.tap(find.text('Spending'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Previous month'));
+      await tester.pumpAndSettle();
+      expect(find.text('October 2026'), findsOneWidget);
+      expect(row('Food'), findsNothing);
+      await tester.tap(find.text('Spending'));
+      await tester.pumpAndSettle();
+      expect(amount(tester, 'Food', 'Target'), '₱2,000.00');
+    });
+
     testWidgets('a section with only Savings categories hides Spending', (
       tester,
     ) async {

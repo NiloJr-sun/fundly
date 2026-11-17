@@ -177,46 +177,37 @@ class _PlanList extends ConsumerWidget {
           ),
         // One section per group that has rows, in [PlanGroup] order.
         for (final group in PlanGroup.values)
-          if (rows.any((row) => row.category.planGroup == group)) ...[
-            _GroupHeading(planGroupLabel(group)),
-            for (final summary in rows)
-              if (summary.category.planGroup == group)
-                PlanRow(
-                  summary: summary,
-                  onEdit: (field) => _edit(context, ref, summary, field),
-                  onActivityTap: () =>
-                      showPlanActivity(context, month, summary.category),
-                  onArchive: () => archivePlan(context, ref, summary.category),
+          if (rows.any((row) => row.category.planGroup == group))
+            ExpansionTile(
+              key: PageStorageKey('plans-group-${group.name}'),
+              initiallyExpanded: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+              title: Semantics(
+                header: true,
+                child: Text(
+                  planGroupLabel(group),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-          ],
+              ),
+              children: [
+                for (final summary in rows)
+                  if (summary.category.planGroup == group)
+                    PlanRow(
+                      summary: summary,
+                      onEdit: (field) => _edit(context, ref, summary, field),
+                      onActivityTap: () =>
+                          showPlanActivity(context, month, summary.category),
+                      onArchive: () =>
+                          archivePlan(context, ref, summary.category),
+                    ),
+              ],
+            ),
       ],
-    );
-  }
-}
-
-/// "Spending", "Savings" or "Liability", above that group's categories.
-class _GroupHeading extends StatelessWidget {
-  const _GroupHeading(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.md,
-        Spacing.md,
-        Spacing.md,
-        Spacing.xs,
-      ),
-      child: Semantics(
-        header: true,
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-      ),
     );
   }
 }
