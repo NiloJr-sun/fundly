@@ -975,8 +975,29 @@ class $CategoriesTable extends Categories
         requiredDuringInsert: false,
         defaultValue: const Constant('spending'),
       ).withConverter<PlanGroup>($CategoriesTable.$converterplanGroup);
+  static const VerificationMeta _linkedAccountIdMeta = const VerificationMeta(
+    'linkedAccountId',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, kind, isArchived, planGroup];
+  late final GeneratedColumn<int> linkedAccountId = GeneratedColumn<int>(
+    'linked_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'UNIQUE REFERENCES accounts (id) ON DELETE SET NULL',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    kind,
+    isArchived,
+    planGroup,
+    linkedAccountId,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1004,6 +1025,15 @@ class $CategoriesTable extends Categories
       context.handle(
         _isArchivedMeta,
         isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
+      );
+    }
+    if (data.containsKey('linked_account_id')) {
+      context.handle(
+        _linkedAccountIdMeta,
+        linkedAccountId.isAcceptableOrUnknown(
+          data['linked_account_id']!,
+          _linkedAccountIdMeta,
+        ),
       );
     }
     return context;
@@ -1039,6 +1069,10 @@ class $CategoriesTable extends Categories
           data['${effectivePrefix}plan_group'],
         )!,
       ),
+      linkedAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}linked_account_id'],
+      ),
     );
   }
 
@@ -1064,12 +1098,16 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   /// The Plans page section, stored by enum name. Inflow categories keep the
   /// default; the repository only lets spending categories change it.
   final PlanGroup planGroup;
+
+  /// Managed Plans row for one liability account; normal categories have none.
+  final int? linkedAccountId;
   const CategoryRow({
     required this.id,
     required this.name,
     required this.kind,
     required this.isArchived,
     required this.planGroup,
+    this.linkedAccountId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1087,6 +1125,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         $CategoriesTable.$converterplanGroup.toSql(planGroup),
       );
     }
+    if (!nullToAbsent || linkedAccountId != null) {
+      map['linked_account_id'] = Variable<int>(linkedAccountId);
+    }
     return map;
   }
 
@@ -1097,6 +1138,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       kind: Value(kind),
       isArchived: Value(isArchived),
       planGroup: Value(planGroup),
+      linkedAccountId: linkedAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedAccountId),
     );
   }
 
@@ -1115,6 +1159,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       planGroup: $CategoriesTable.$converterplanGroup.fromJson(
         serializer.fromJson<String>(json['planGroup']),
       ),
+      linkedAccountId: serializer.fromJson<int?>(json['linkedAccountId']),
     );
   }
   @override
@@ -1130,6 +1175,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       'planGroup': serializer.toJson<String>(
         $CategoriesTable.$converterplanGroup.toJson(planGroup),
       ),
+      'linkedAccountId': serializer.toJson<int?>(linkedAccountId),
     };
   }
 
@@ -1139,12 +1185,16 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     CategoryKind? kind,
     bool? isArchived,
     PlanGroup? planGroup,
+    Value<int?> linkedAccountId = const Value.absent(),
   }) => CategoryRow(
     id: id ?? this.id,
     name: name ?? this.name,
     kind: kind ?? this.kind,
     isArchived: isArchived ?? this.isArchived,
     planGroup: planGroup ?? this.planGroup,
+    linkedAccountId: linkedAccountId.present
+        ? linkedAccountId.value
+        : this.linkedAccountId,
   );
   CategoryRow copyWithCompanion(CategoriesCompanion data) {
     return CategoryRow(
@@ -1155,6 +1205,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ? data.isArchived.value
           : this.isArchived,
       planGroup: data.planGroup.present ? data.planGroup.value : this.planGroup,
+      linkedAccountId: data.linkedAccountId.present
+          ? data.linkedAccountId.value
+          : this.linkedAccountId,
     );
   }
 
@@ -1165,13 +1218,15 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('name: $name, ')
           ..write('kind: $kind, ')
           ..write('isArchived: $isArchived, ')
-          ..write('planGroup: $planGroup')
+          ..write('planGroup: $planGroup, ')
+          ..write('linkedAccountId: $linkedAccountId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, kind, isArchived, planGroup);
+  int get hashCode =>
+      Object.hash(id, name, kind, isArchived, planGroup, linkedAccountId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1180,7 +1235,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.name == this.name &&
           other.kind == this.kind &&
           other.isArchived == this.isArchived &&
-          other.planGroup == this.planGroup);
+          other.planGroup == this.planGroup &&
+          other.linkedAccountId == this.linkedAccountId);
 }
 
 class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
@@ -1189,12 +1245,14 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<CategoryKind> kind;
   final Value<bool> isArchived;
   final Value<PlanGroup> planGroup;
+  final Value<int?> linkedAccountId;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.kind = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.planGroup = const Value.absent(),
+    this.linkedAccountId = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
@@ -1202,6 +1260,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     required CategoryKind kind,
     this.isArchived = const Value.absent(),
     this.planGroup = const Value.absent(),
+    this.linkedAccountId = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind);
   static Insertable<CategoryRow> custom({
@@ -1210,6 +1269,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<String>? kind,
     Expression<bool>? isArchived,
     Expression<String>? planGroup,
+    Expression<int>? linkedAccountId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1217,6 +1277,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       if (kind != null) 'kind': kind,
       if (isArchived != null) 'is_archived': isArchived,
       if (planGroup != null) 'plan_group': planGroup,
+      if (linkedAccountId != null) 'linked_account_id': linkedAccountId,
     });
   }
 
@@ -1226,6 +1287,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<CategoryKind>? kind,
     Value<bool>? isArchived,
     Value<PlanGroup>? planGroup,
+    Value<int?>? linkedAccountId,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -1233,6 +1295,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       kind: kind ?? this.kind,
       isArchived: isArchived ?? this.isArchived,
       planGroup: planGroup ?? this.planGroup,
+      linkedAccountId: linkedAccountId ?? this.linkedAccountId,
     );
   }
 
@@ -1258,6 +1321,9 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
         $CategoriesTable.$converterplanGroup.toSql(planGroup.value),
       );
     }
+    if (linkedAccountId.present) {
+      map['linked_account_id'] = Variable<int>(linkedAccountId.value);
+    }
     return map;
   }
 
@@ -1268,7 +1334,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('name: $name, ')
           ..write('kind: $kind, ')
           ..write('isArchived: $isArchived, ')
-          ..write('planGroup: $planGroup')
+          ..write('planGroup: $planGroup, ')
+          ..write('linkedAccountId: $linkedAccountId')
           ..write(')'))
         .toString();
   }
@@ -2600,6 +2667,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
     WritePropagation(
       on: TableUpdateQuery.onTableName(
+        'accounts',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('categories', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
         'categories',
         limitUpdateKind: UpdateKind.delete,
       ),
@@ -2949,6 +3023,24 @@ final class $$AccountsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$CategoriesTable, List<CategoryRow>>
+  _categoriesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.categories,
+    aliasName: 'accounts__id__categories__linked_account_id',
+  );
+
+  $$CategoriesTableProcessedTableManager get categoriesRefs {
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.linkedAccountId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_categoriesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$AccountsTableFilterComposer
@@ -3022,6 +3114,31 @@ class $$AccountsTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> categoriesRefs(
+    Expression<bool> Function($$CategoriesTableFilterComposer f) f,
+  ) {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.linkedAccountId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -3162,6 +3279,31 @@ class $$AccountsTableAnnotationComposer
         );
     return composer;
   }
+
+  Expression<T> categoriesRefs<T extends Object>(
+    Expression<T> Function($$CategoriesTableAnnotationComposer a) f,
+  ) {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.linkedAccountId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$AccountsTableTableManager
@@ -3177,7 +3319,7 @@ class $$AccountsTableTableManager
           $$AccountsTableUpdateCompanionBuilder,
           (AccountRow, $$AccountsTableReferences),
           AccountRow,
-          PrefetchHooks Function({bool customTypeId})
+          PrefetchHooks Function({bool customTypeId, bool categoriesRefs})
         > {
   $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
     : super(
@@ -3242,45 +3384,67 @@ class $$AccountsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({customTypeId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (customTypeId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.customTypeId,
-                        referencedTable: $$AccountsTableReferences
-                            ._customTypeIdTable(db),
-                        referencedColumn: $$AccountsTableReferences
-                            ._customTypeIdTable(db)
-                            .id,
-                      ) as T;
-                    }
+          prefetchHooksCallback:
+              ({customTypeId = false, categoriesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [if (categoriesRefs) db.categories],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (customTypeId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.customTypeId,
+                            referencedTable: $$AccountsTableReferences
+                                ._customTypeIdTable(db),
+                            referencedColumn: $$AccountsTableReferences
+                                ._customTypeIdTable(db)
+                                .id,
+                          ) as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (categoriesRefs)
+                        await $_getPrefetchedDataByColumns<
+                          AccountRow,
+                          $AccountsTable,
+                          CategoryRow,
+                          $CategoriesTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AccountsTableReferences
+                              ._categoriesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AccountsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).categoriesRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'linked_account_id',
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -3297,7 +3461,7 @@ typedef $$AccountsTableProcessedTableManager =
       $$AccountsTableUpdateCompanionBuilder,
       (AccountRow, $$AccountsTableReferences),
       AccountRow,
-      PrefetchHooks Function({bool customTypeId})
+      PrefetchHooks Function({bool customTypeId, bool categoriesRefs})
     >;
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
@@ -3305,6 +3469,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required CategoryKind kind,
   Value<bool> isArchived,
   Value<PlanGroup> planGroup,
+  Value<int?> linkedAccountId,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
@@ -3312,11 +3477,29 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<CategoryKind> kind,
   Value<bool> isArchived,
   Value<PlanGroup> planGroup,
+  Value<int?> linkedAccountId,
 });
 
 final class $$CategoriesTableReferences
     extends BaseReferences<_$AppDatabase, $CategoriesTable, CategoryRow> {
   $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AccountsTable _linkedAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias('categories__linked_account_id__accounts__id');
+
+  $$AccountsTableProcessedTableManager? get linkedAccountId {
+    final $_column = $_itemColumn<int>('linked_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_linkedAccountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$TransactionsTable, List<TransactionRow>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -3390,6 +3573,29 @@ class $$CategoriesTableFilterComposer
         column: $table.planGroup,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  $$AccountsTableFilterComposer get linkedAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.linkedAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> transactionsRefs(
     Expression<bool> Function($$TransactionsTableFilterComposer f) f,
@@ -3475,6 +3681,29 @@ class $$CategoriesTableOrderingComposer
     column: $table.planGroup,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$AccountsTableOrderingComposer get linkedAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.linkedAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -3502,6 +3731,29 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<PlanGroup, String> get planGroup =>
       $composableBuilder(column: $table.planGroup, builder: (column) => column);
+
+  $$AccountsTableAnnotationComposer get linkedAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.linkedAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -3567,7 +3819,11 @@ class $$CategoriesTableTableManager
           $$CategoriesTableUpdateCompanionBuilder,
           (CategoryRow, $$CategoriesTableReferences),
           CategoryRow,
-          PrefetchHooks Function({bool transactionsRefs, bool monthlyPlansRefs})
+          PrefetchHooks Function({
+            bool linkedAccountId,
+            bool transactionsRefs,
+            bool monthlyPlansRefs,
+          })
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
     : super(
@@ -3587,12 +3843,14 @@ class $$CategoriesTableTableManager
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
+                Value<int?> linkedAccountId = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
                 kind: kind,
                 isArchived: isArchived,
                 planGroup: planGroup,
+                linkedAccountId: linkedAccountId,
               ),
           createCompanionCallback:
               ({
@@ -3601,12 +3859,14 @@ class $$CategoriesTableTableManager
                 required CategoryKind kind,
                 Value<bool> isArchived = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
+                Value<int?> linkedAccountId = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
                 kind: kind,
                 isArchived: isArchived,
                 planGroup: planGroup,
+                linkedAccountId: linkedAccountId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3617,14 +3877,47 @@ class $$CategoriesTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({transactionsRefs = false, monthlyPlansRefs = false}) {
+              ({
+                linkedAccountId = false,
+                transactionsRefs = false,
+                monthlyPlansRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (transactionsRefs) db.transactions,
                     if (monthlyPlansRefs) db.monthlyPlans,
                   ],
-                  addJoins: null,
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (linkedAccountId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.linkedAccountId,
+                            referencedTable: $$CategoriesTableReferences
+                                ._linkedAccountIdTable(db),
+                            referencedColumn: $$CategoriesTableReferences
+                                ._linkedAccountIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (transactionsRefs)
@@ -3687,7 +3980,11 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableUpdateCompanionBuilder,
       (CategoryRow, $$CategoriesTableReferences),
       CategoryRow,
-      PrefetchHooks Function({bool transactionsRefs, bool monthlyPlansRefs})
+      PrefetchHooks Function({
+        bool linkedAccountId,
+        bool transactionsRefs,
+        bool monthlyPlansRefs,
+      })
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
     TransactionsCompanion Function({

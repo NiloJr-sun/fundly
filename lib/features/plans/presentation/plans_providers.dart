@@ -81,14 +81,16 @@ final planSummariesProvider =
 /// [readyToAssign]. `null` (as data) when no budget account is chosen.
 final readyToAssignProvider =
     Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {
+      final categories = ref.watch(allCategoriesProvider);
       final accounts = ref.watch(allAccountsProvider);
       final plans = ref.watch(monthPlansProvider(month));
       final transactions = ref.watch(allTransactionsProvider);
-      return switch ((accounts, plans, transactions)) {
+      return switch ((accounts, plans, transactions, categories)) {
         (
           AsyncData(value: final a),
           AsyncData(value: final p),
           AsyncData(value: final t),
+          AsyncData(value: final c),
         ) =>
           AsyncData(switch (a.where((account) => account.isBudgetAccount)) {
             final budget when budget.isEmpty => null,
@@ -97,11 +99,14 @@ final readyToAssignProvider =
               budgetAccount: budget.first,
               plans: p,
               transactions: t,
+              categories: c,
             ),
           }),
-        (AsyncError(:final error, :final stackTrace), _, _) ||
-        (_, AsyncError(:final error, :final stackTrace), _) ||
+        (AsyncError(:final error, :final stackTrace), _, _, _) ||
+        (_, AsyncError(:final error, :final stackTrace), _, _) ||
+        (_, _, AsyncError(:final error, :final stackTrace), _) ||
         (
+          _,
           _,
           _,
           AsyncError(:final error, :final stackTrace),

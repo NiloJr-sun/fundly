@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../accounts/data/accounts_table.dart';
 import '../domain/category.dart';
 
 /// SQLite table for [Category]s (added in schema v2; `is_archived` in v4;
@@ -28,9 +29,17 @@ class Categories extends Table {
       // ignore: recursive_getters
       .check(planGroup.isIn(const ['spending', 'savings', 'liability']))();
 
+  /// Managed Plans row for one liability account; normal categories have none.
+  IntColumn get linkedAccountId => integer().nullable().unique().references(
+    Accounts,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+
   @override
   List<String> get customConstraints => [
     'CHECK (length(name) BETWEEN 1 AND 40)',
+    "CHECK (linked_account_id IS NULL OR (kind = 'spending' AND plan_group = 'liability'))",
     "CHECK (kind IN ('spending', 'inflow'))",
   ];
 }

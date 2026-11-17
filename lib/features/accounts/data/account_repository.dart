@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/money/money.dart';
+import '../../categories/data/liability_plan_categories.dart';
 import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
@@ -53,7 +54,7 @@ class AccountRepository {
     required AccountType type,
     required Money enteredOpeningAmount,
     int? customTypeId,
-  }) async {
+  }) => _database.transaction(() async {
     final trimmedName = await _validName(name);
     _requireSupportedCurrency(enteredOpeningAmount);
     final openingBalance = _openingBalance(type, enteredOpeningAmount);
@@ -71,8 +72,9 @@ class AccountRepository {
             customTypeId: Value(customTypeId),
           ),
         );
+    await syncLiabilityPlanCategories(_database);
     return row.toDomain();
-  }
+  });
 
   /// Updates the editable fields of account [id]. The type cannot change.
   ///
@@ -88,7 +90,7 @@ class AccountRepository {
     String? name,
     Money? enteredOpeningAmount,
     ({int? id})? customType,
-  }) async {
+  }) => _database.transaction(() async {
     final existing = await (_database.select(
       _accounts,
     )..where((account) => account.id.equals(id))).getSingleOrNull();
@@ -119,8 +121,9 @@ class AccountRepository {
                 : Value(customType.id),
           ),
         );
+    await syncLiabilityPlanCategories(_database);
     return rows.single.toDomain();
-  }
+  });
 
   /// Archives or restores account [id]. Archived accounts keep their history
   /// but are hidden from the active list and pickers (G7).
@@ -131,20 +134,22 @@ class AccountRepository {
   ///
   /// Archiving the budget account also stops it being the budget account:
   /// archived accounts are left out of summaries (G7).
-  Future<void> setArchived(int id, {required bool archived}) async {
-    final changed =
-        await (_database.update(
-          _accounts,
-        )..where((account) => account.id.equals(id))).write(
-          AccountsCompanion(
-            isArchived: Value(archived),
-            isBudgetAccount: archived
-                ? const Value(false)
-                : const Value.absent(),
-          ),
-        );
-    if (changed == 0) throw StateError('Account $id does not exist.');
-  }
+  Future<void> setArchived(int id, {required bool archived}) =>
+      _database.transaction(() async {
+        final changed =
+            await (_database.update(
+              _accounts,
+            )..where((account) => account.id.equals(id))).write(
+              AccountsCompanion(
+                isArchived: Value(archived),
+                isBudgetAccount: archived
+                    ? const Value(false)
+                    : const Value.absent(),
+              ),
+            );
+        if (changed == 0) throw StateError('Account $id does not exist.');
+        await syncLiabilityPlanCategories(_database);
+      });
 
   /// Makes account [id] the budget account, whose current balance funds Ready
   /// to assign on Plans. Any previous budget account stops being one, in the

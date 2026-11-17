@@ -21,7 +21,11 @@ final class Category {
     required this.kind,
     this.isArchived = false,
     this.planGroup = PlanGroup.spending,
+    this.linkedAccountId,
   });
+
+  /// Non-null for a managed liability-account Plans row.
+  final int? linkedAccountId;
 
   final int id;
   final String name;
@@ -42,10 +46,12 @@ final class Category {
       other.name == name &&
       other.kind == kind &&
       other.isArchived == isArchived &&
-      other.planGroup == planGroup;
+      other.planGroup == planGroup &&
+      other.linkedAccountId == linkedAccountId;
 
   @override
-  int get hashCode => Object.hash(id, name, kind, isArchived, planGroup);
+  int get hashCode =>
+      Object.hash(id, name, kind, isArchived, planGroup, linkedAccountId);
 
   @override
   String toString() =>

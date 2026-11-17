@@ -31,8 +31,8 @@ void main() {
     categories = CategoryRepository(database);
     final all = await categories.watchAll().first;
     int idOf(String name) => all.firstWhere((c) => c.name == name).id;
-    food = idOf('Food');
-    transport = idOf('Transport');
+    food = idOf('Food & Groceries');
+    transport = idOf('Fuel');
     salary = idOf('Salary');
   });
 

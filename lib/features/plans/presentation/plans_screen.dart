@@ -119,7 +119,11 @@ class _PlanList extends ConsumerWidget {
           builder: (_) => AllTransactionsScreen(
             initialFilter: TransactionFilter(
               dateRange: month.dateRange,
-              categoryId: summary.category.id,
+              categoryId: summary.category.linkedAccountId == null
+                  ? summary.category.id
+                  : null,
+              accountId: summary.category.linkedAccountId,
+              paymentAccountId: summary.category.linkedAccountId,
             ),
           ),
         ),

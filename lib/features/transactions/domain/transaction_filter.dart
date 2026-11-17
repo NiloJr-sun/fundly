@@ -2,12 +2,18 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/time/date_range.dart';
 import 'transaction.dart';
+import 'transaction_type.dart';
 
 /// Optional filters for a transaction list. A `null` field means "any".
 /// All set fields must match.
 @immutable
 final class TransactionFilter {
-  const TransactionFilter({this.dateRange, this.accountId, this.categoryId});
+  const TransactionFilter({
+    this.dateRange,
+    this.accountId,
+    this.categoryId,
+    this.paymentAccountId,
+  });
 
   static const TransactionFilter none = TransactionFilter();
 
@@ -21,10 +27,23 @@ final class TransactionFilter {
   /// no category, so they never match a category filter.
   final int? categoryId;
 
+  /// Only transfers and credit-card payments into this liability account.
+  final int? paymentAccountId;
+
   bool get isEmpty =>
-      dateRange == null && accountId == null && categoryId == null;
+      dateRange == null &&
+      accountId == null &&
+      categoryId == null &&
+      paymentAccountId == null;
 
   bool matches(TransactionDraft transaction) {
+    final paymentAccount = paymentAccountId;
+    if (paymentAccount != null &&
+        (transaction.destinationAccountId != paymentAccount ||
+            (transaction.type != TransactionType.transfer &&
+                transaction.type != TransactionType.creditCardPayment))) {
+      return false;
+    }
     final range = dateRange;
     if (range != null && !range.contains(transaction.date)) return false;
     final account = accountId;
@@ -46,18 +65,27 @@ final class TransactionFilter {
     dateRange: value,
     accountId: accountId,
     categoryId: categoryId,
+    paymentAccountId: paymentAccountId,
   );
 
   TransactionFilter withAccount(int? value) => TransactionFilter(
     dateRange: dateRange,
     accountId: value,
     categoryId: categoryId,
+    paymentAccountId: value == accountId ? paymentAccountId : null,
   );
 
   TransactionFilter withCategory(int? value) => TransactionFilter(
     dateRange: dateRange,
     accountId: accountId,
     categoryId: value,
+    paymentAccountId: value == null ? paymentAccountId : null,
+  );
+
+  TransactionFilter withoutPaymentFilter() => TransactionFilter(
+    dateRange: dateRange,
+    accountId: accountId,
+    categoryId: categoryId,
   );
 
   @override
@@ -65,13 +93,15 @@ final class TransactionFilter {
       other is TransactionFilter &&
       other.dateRange == dateRange &&
       other.accountId == accountId &&
-      other.categoryId == categoryId;
+      other.categoryId == categoryId &&
+      other.paymentAccountId == paymentAccountId;
 
   @override
-  int get hashCode => Object.hash(dateRange, accountId, categoryId);
+  int get hashCode =>
+      Object.hash(dateRange, accountId, categoryId, paymentAccountId);
 
   @override
   String toString() =>
       'TransactionFilter(dates: $dateRange, account: $accountId, '
-      'category: $categoryId)';
+      'category: $categoryId, payments to: $paymentAccountId)';
 }

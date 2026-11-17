@@ -43,6 +43,14 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   release allocations. Overallocated amounts appear in red; saving remains
   allowed. The balance is live for every month; allocations do not carry over.
   Categories can be added, renamed, archived and deleted when unused.
+  New installations start with Rent, Utilities, Internet, Subscriptions,
+  Food & Groceries, Fuel and Miscellaneous; upgrades add missing defaults
+  while keeping existing categories and history.
+  Each active credit-card or loan account automatically gets a Liability row
+  with no Target and zero Assigned. Its name follows the account, and Activity
+  counts payments into it. Payments from the budget account reduce its remaining
+  allocation once. Renaming or archiving the account updates its row; history
+  stays available. Account rows are managed through accounts rather than Categories.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
   is plain text, so keep it private. ⋮ → Restore from backup picks a backup
@@ -153,10 +161,10 @@ lib/
       presentation/         # Plans tab, Ready to assign card
     backup/
       data/                 # BackupExporter and BackupImporter: JSON backup
-                            # format (version 1), checks, replace-all restore
+                            # format (version 4), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v9)
+drift_schemas/              # schema snapshot per version (currently v10)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

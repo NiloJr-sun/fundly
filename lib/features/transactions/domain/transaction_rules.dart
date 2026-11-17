@@ -253,6 +253,8 @@ void _checkCategory(
   final category = categories[categoryId];
   if (category == null) {
     errors.add(TransactionValidationError.categoryNotFound);
+  } else if (category.linkedAccountId != null) {
+    errors.add(TransactionValidationError.categoryNotAllowed);
   } else if (category.kind != expectedKind) {
     errors.add(TransactionValidationError.categoryWrongKind);
   } else if (category.isArchived && categoryId != previousCategoryId) {

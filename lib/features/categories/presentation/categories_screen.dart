@@ -24,7 +24,9 @@ class CategoriesScreen extends ConsumerWidget {
         AsyncData(value: final list) when list.isEmpty => const CenteredMessage(
           'No categories yet.',
         ),
-        AsyncData(value: final list) => _CategoryList(categories: list),
+        AsyncData(value: final list) => _CategoryList(
+          categories: list.where((c) => c.linkedAccountId == null).toList(),
+        ),
         AsyncError() => const CenteredMessage(
           'Your categories could not be loaded.',
         ),
@@ -48,6 +50,7 @@ class _CategoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (categories.isEmpty) return const CenteredMessage('No categories yet.');
     final active = categories.where((category) => !category.isArchived);
     final archived = categories.where((category) => category.isArchived);
     final children = <Widget>[

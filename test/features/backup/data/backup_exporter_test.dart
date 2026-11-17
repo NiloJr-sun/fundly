@@ -36,7 +36,7 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 3);
+      expect(backup['formatVersion'], 4);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
@@ -46,10 +46,11 @@ void main() {
       expect(backup['categories'], hasLength(9));
       expect((backup['categories']! as List).first, {
         'id': 1,
-        'name': 'Food',
+        'name': 'Rent',
         'kind': 'spending',
         'isArchived': false,
         'planGroup': 'spending',
+        'linkedAccountId': null,
       });
     },
   );
@@ -166,6 +167,7 @@ void main() {
       'kind': 'spending',
       'isArchived': false,
       'planGroup': 'savings',
+      'linkedAccountId': null,
     });
     expect(backup['transactions'], [
       {

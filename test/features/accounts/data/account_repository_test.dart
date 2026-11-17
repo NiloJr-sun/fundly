@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -246,19 +248,16 @@ void main() {
       final names = repository.watchAll().map(
         (accounts) => accounts.map((a) => a.name).toList(),
       );
-      final expectation = expectLater(
-        names,
-        emitsInOrder([
-          <String>[],
-          ['BDO'],
-          ['BDO Savings'],
-        ]),
-      );
-
+      final iterator = StreamIterator(names);
+      expect(await iterator.moveNext(), isTrue);
+      expect(iterator.current, isEmpty);
       final account = await create('BDO');
+      expect(await iterator.moveNext(), isTrue);
+      expect(iterator.current, ['BDO']);
       await repository.update(account.id, name: 'BDO Savings');
-
-      await expectation;
+      expect(await iterator.moveNext(), isTrue);
+      expect(iterator.current, ['BDO Savings']);
+      await iterator.cancel();
     });
   });
 

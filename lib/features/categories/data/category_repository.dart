@@ -65,6 +65,9 @@ class CategoryRepository {
           _categories,
         )..where((category) => category.id.equals(id))).getSingleOrNull();
         if (existing == null) throw StateError('Category $id does not exist.');
+        if (existing.linkedAccountId != null) {
+          throw StateError('Manage this Plans row through its account.');
+        }
         _requireGroupAllowed(existing.kind, planGroup);
         final rows =
             await (_database.update(
@@ -92,6 +95,7 @@ class CategoryRepository {
   /// Throws [CategoryValidationException] when a rule is broken, or
   /// [StateError] if the category does not exist.
   Future<Category> rename(int id, String name) async {
+    await _requireUnlinked(id);
     final trimmedName = await _validName(name, excludingId: id);
     final rows =
         await (_database.update(_categories)
@@ -106,6 +110,7 @@ class CategoryRepository {
   ///
   /// Throws [StateError] if the category does not exist.
   Future<void> setArchived(int id, {required bool archived}) async {
+    await _requireUnlinked(id);
     final changed =
         await (_database.update(_categories)
               ..where((category) => category.id.equals(id)))
@@ -120,6 +125,7 @@ class CategoryRepository {
   /// [CategoryValidationError.inUse] if a transaction uses it, or
   /// [StateError] if the category does not exist.
   Future<void> delete(int id) => _database.transaction(() async {
+    await _requireUnlinked(id);
     final transactions = _database.transactions;
     final usage = transactions.id.count();
     final count =
@@ -136,6 +142,15 @@ class CategoryRepository {
     )..where((category) => category.id.equals(id))).go();
     if (deleted == 0) throw StateError('Category $id does not exist.');
   });
+
+  Future<void> _requireUnlinked(int id) async {
+    final row = await (_database.select(
+      _categories,
+    )..where((category) => category.id.equals(id))).getSingleOrNull();
+    if (row?.linkedAccountId != null) {
+      throw StateError('Manage this Plans row through its account.');
+    }
+  }
 
   /// Returns the trimmed name, or throws if it is invalid or already used.
   Future<String> _validName(String name, {int? excludingId}) async {

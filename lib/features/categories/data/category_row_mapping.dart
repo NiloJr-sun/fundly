@@ -8,5 +8,6 @@ extension CategoryRowMapping on CategoryRow {
     kind: kind,
     isArchived: isArchived,
     planGroup: planGroup,
+    linkedAccountId: linkedAccountId,
   );
 }

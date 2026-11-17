@@ -49,7 +49,7 @@ void main() {
     loan = await account('Car Loan', AccountType.loan);
 
     final categories = await CategoryRepository(database).watchAll().first;
-    food = categories.firstWhere((c) => c.name == 'Food').id;
+    food = categories.firstWhere((c) => c.name == 'Food & Groceries').id;
     salary = categories
         .firstWhere((c) => c.kind == CategoryKind.inflow && c.name == 'Salary')
         .id;

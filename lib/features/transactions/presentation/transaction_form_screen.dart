@@ -338,7 +338,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   /// uses (an edit may keep it). Validation still sees every category.
   List<Category> _selectableCategories(List<Category> categories) => [
     for (final category in categories)
-      if (!category.isArchived || category.id == widget.transaction?.categoryId)
+      if (category.linkedAccountId == null &&
+          (!category.isArchived ||
+              category.id == widget.transaction?.categoryId))
         category,
   ];
 

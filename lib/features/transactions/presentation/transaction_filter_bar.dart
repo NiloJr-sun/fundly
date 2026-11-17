@@ -59,6 +59,11 @@ class TransactionFilterBar extends ConsumerWidget {
             onPressed: () => _pickCategory(context, ref),
             onClear: () => notifier.set(filter.withCategory(null)),
           ),
+          if (filter.paymentAccountId != null)
+            InputChip(
+              label: const Text('Debt payments'),
+              onDeleted: () => notifier.set(filter.withoutPaymentFilter()),
+            ),
           if (!filter.isEmpty)
             TextButton(
               onPressed: () => notifier.set(TransactionFilter.none),
@@ -128,11 +133,12 @@ class TransactionFilterBar extends ConsumerWidget {
     final categories = ref.read(allCategoriesProvider).value ?? const [];
     final picked = await _pickFromSheet<int>(context, 'Category', [
       for (final category in categories)
-        (
-          value: category.id,
-          label: category.name,
-          detail: category.isArchived ? 'Archived' : null,
-        ),
+        if (category.linkedAccountId == null)
+          (
+            value: category.id,
+            label: category.name,
+            detail: category.isArchived ? 'Archived' : null,
+          ),
     ]);
     if (picked == null) return;
     final notifier = ref.read(

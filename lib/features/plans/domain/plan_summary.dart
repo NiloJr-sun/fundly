@@ -38,7 +38,7 @@ final class CategoryPlanSummary {
   /// Money set aside this month; zero when nothing is assigned.
   final Money assigned;
 
-  /// Spending dated in the month with this category. Zero or positive.
+  /// Spending, or payments into a linked liability, dated in the month.
   final Money activity;
 
   /// Whether a plan is saved for this month (a target, an assigned amount,
@@ -82,9 +82,9 @@ final class CategoryPlanSummary {
 
 /// One row per spending category for [month], in the order of [categories].
 ///
-/// - Activity counts only Spending transactions dated in the month (rule 5):
-///   transfers, card payments and inflows (including refunds) are ignored.
-///   Card purchases are Spending, so they count once (rule 6).
+/// - Regular category Activity counts Spending only. Linked liability rows
+///   count transfers and card payments into their account. Neither changes
+///   spending/inflow totals; card purchases remain Spending in their category.
 /// - Rows cover active spending categories, plus any archived spending
 ///   category with a plan or spending this month, so no history is hidden.
 /// - Inflow categories never appear: plans are for spending only.
@@ -101,18 +101,17 @@ List<CategoryPlanSummary> planSummaries({
       if (plan.month == month) plan.categoryId: plan,
   };
 
-  final range = month.dateRange;
+  final entries = transactions.toList();
   final activityByCategory = <int, Money>{};
-  for (final transaction in transactions) {
-    final categoryId = transaction.categoryId;
-    if (!transaction.type.countsAsSpending ||
-        categoryId == null ||
-        !range.contains(transaction.date)) {
-      continue;
+  for (final category in categories) {
+    var activity = Money.zero(currencyCode);
+    for (final transaction in entries) {
+      if (month.dateRange.contains(transaction.date) &&
+          isCategoryPlanActivity(category, transaction)) {
+        activity += transaction.amount;
+      }
     }
-    activityByCategory[categoryId] =
-        (activityByCategory[categoryId] ?? Money.zero(currencyCode)) +
-        transaction.amount;
+    if (!activity.isZero) activityByCategory[category.id] = activity;
   }
 
   return [
@@ -130,6 +129,19 @@ List<CategoryPlanSummary> planSummaries({
           hasPlan: planByCategory.containsKey(category.id),
         ),
   ];
+}
+
+/// Debt rows count payments to the linked account; regular rows count Spending.
+/// Payments remain excluded from spending totals throughout the app.
+bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
+  final accountId = category.linkedAccountId;
+  if (accountId != null) {
+    return transaction.destinationAccountId == accountId &&
+        (transaction.type == TransactionType.transfer ||
+            transaction.type == TransactionType.creditCardPayment);
+  }
+  return transaction.type == TransactionType.spending &&
+      transaction.categoryId == category.id;
 }
 
 /// Current budget-account balance and the selected month's allocations.
@@ -163,22 +175,37 @@ final class ReadyToAssign {
 /// Current balance (including opening money and all recorded transactions)
 /// minus the selected month's remaining allocations. This is a live balance,
 /// even when viewing another month; monthly allocations do not carry over.
-/// Only Spending from the budget account in that month releases an allocation.
+/// Spending and linked liability payments from the budget account in that
+/// month release their respective allocations.
 /// Each category's remaining allocation is floored at zero so overspending
-/// cannot release money reserved for other categories. Transfers and card
-/// payments affect the balance but never release category allocations.
+/// cannot release money reserved for other categories. Other transfers affect
+/// the balance without releasing allocations.
 ReadyToAssign readyToAssign({
   required CalendarMonth month,
   required Account budgetAccount,
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
+  Iterable<Category> categories = const [],
 }) {
   final entries = transactions.toList();
   final zero = Money.zero(budgetAccount.openingBalance.currencyCode);
   final spent = <int, Money>{};
+  final debtCategories = {
+    for (final category in categories)
+      if (category.linkedAccountId != null)
+        category.linkedAccountId!: category.id,
+  };
   for (final transaction in entries) {
-    final category = transaction.categoryId;
-    if (transaction.type == TransactionType.spending &&
+    final paymentCategory = debtCategories[transaction.destinationAccountId];
+    final category = transaction.type == TransactionType.spending
+        ? transaction.categoryId
+        : paymentCategory;
+    final eligible =
+        transaction.type == TransactionType.spending ||
+        (paymentCategory != null &&
+            (transaction.type == TransactionType.transfer ||
+                transaction.type == TransactionType.creditCardPayment));
+    if (eligible &&
         transaction.sourceAccountId == budgetAccount.id &&
         month.dateRange.contains(transaction.date) &&
         category != null) {

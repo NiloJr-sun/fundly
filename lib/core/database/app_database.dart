@@ -7,6 +7,7 @@ import '../../features/accounts/data/custom_account_types_table.dart';
 import '../../features/accounts/domain/account_type.dart';
 import '../../features/categories/data/categories_table.dart';
 import '../../features/categories/data/default_categories.dart';
+import '../../features/categories/data/liability_plan_categories.dart';
 import '../../features/categories/domain/category.dart';
 import '../../features/plans/data/monthly_plans_table.dart';
 import '../../features/transactions/data/transactions_table.dart';
@@ -40,13 +41,13 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      await seedDefaultCategories(this);
+      await addCurrentDefaultCategories(this);
     },
     onUpgrade: stepByStep(
       // v2: add categories with the fixed seeded list (G1).
@@ -102,6 +103,17 @@ class AppDatabase extends _$AppDatabase {
       from8To9: (m, schema) async {
         await m.addColumn(schema.accounts, schema.accounts.isBudgetAccount);
         await m.createIndex(schema.accountsOneBudgetAccount);
+      },
+      // v10: stable links between liability accounts and their Plans rows.
+      from9To10: (m, schema) async {
+        await m.alterTable(
+          TableMigration(
+            schema.categories,
+            newColumns: [schema.categories.linkedAccountId],
+          ),
+        );
+        await addCurrentDefaultCategories(this);
+        await syncLiabilityPlanCategories(this);
       },
     ),
     beforeOpen: (details) async {

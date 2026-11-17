@@ -233,21 +233,24 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.11 | Plans groups: each spending category is in Spending, Savings or Liability (fixed list), set in the category form; Plans shows a section per group. Backup format 2 adds `planGroup` | v8 | Migration, repository, backup and widget tests |
 | R.12 | Ready to assign on Plans: live budget-account balance including opening money minus the selected month’s remaining allocations; each category reserves max(Assigned − that month’s Spending from the budget account, 0); other-account spending does not release allocations; no allocation carry-over; red warning when overallocated, saving allowed | — | Calculator and widget tests |
 | R.13 | Budget account: one active Savings/Cash account (custom asset types included) can be tagged in the account form; moving the tag asks first; archiving removes it. Backup format 3 adds `isBudgetAccount` | v9 | Migration, repository, backup and widget tests |
+| R.14 | New default spending categories; keep existing data and add missing defaults on upgrade. Auto-create linked Liability Plans rows for Credit/Loan accounts, synchronize names/archive status, count payments as Activity, release remaining allocations only for payments from the budget account. Backup format 4 adds linkedAccountId; older formats remain restorable | v10 | Migration, repository, calculator, backup and widget tests |
 
 ### Phase 5 — After the MVP (one item approved)
 
 | ID | Task | Status |
 |---|---|---|
-| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 3) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 4) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
-Backup format 3: a header (`app`, `formatVersion`, `schemaVersion`,
+Backup format 4: a header (`app`, `formatVersion`, `schemaVersion`,
 `exportedAt`) and arrays `customAccountTypes`, `accounts`, `categories`,
 `transactions` and `monthlyPlans`. Format 2 added `planGroup` to
-categories and format 3 added `isBudgetAccount` to accounts; restore still
-accepts formats 1 and 2 (categories in the Spending group, no budget
-account). Money is integer minor units, dates
+categories, format 3 added `isBudgetAccount` to accounts, and format 4 adds
+`linkedAccountId` to categories for automatic liability Plans rows. Restore
+still accepts formats 1–3 (format 1 categories default to Spending; formats
+1–2 have no budget account). Missing liability rows are generated and included
+in the restore preview counts. Money is integer minor units, dates
 `YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
 derived balances are left out. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;

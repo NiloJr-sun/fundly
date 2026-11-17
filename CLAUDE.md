@@ -513,10 +513,10 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements (R.1–R.13 in the roadmap, ending with Plans groups and the
+refinements (R.1–R.14 in the roadmap, ending with Plans groups and the
 budget account behind Ready to assign) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
-v9 and backups at format 3. [AGENTS.md](AGENTS.md) summarises the current
+v10 and backups at format 4. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
@@ -629,16 +629,17 @@ suggestions as approved decisions.
                           an Archived accounts    
                           screen                  
 
-  2026-11-16              Phase 2 categories:     Confirmed
-                          fixed seeded list.      
-                          Spending: Food,         
-                          Transport, Utilities,   
-                          Subscriptions,          
-                          Shopping, Health,       
-                          Other. Inflow           
-                          (optional): Salary,     
-                          Other income. Phase 4   
-                          adds management (G1)    
+  2026-11-17              Default spending        Confirmed
+                          categories: Rent,
+                          Utilities, Internet,
+                          Subscriptions, Food &
+                          Groceries, Fuel,
+                          Miscellaneous. Inflow:
+                          Salary, Other income.
+                          Upgrade adds missing
+                          defaults, preserving
+                          existing categories and
+                          history (G1).
 
   2026-11-16              Loan payments are       Confirmed
                           Transfers from an asset 
@@ -754,7 +755,9 @@ suggestions as approved decisions.
                           edited total, not       
                           checked against income. 
                           Activity counts         
-                          Spending only and opens 
+                          Spending, except debt
+                          rows count payments;
+                          Activity opens
                           that month's            
                           transactions. Available 
                           = Assigned - Activity,  
@@ -898,8 +901,9 @@ suggestions as approved decisions.
                           for the selected month.
                           Remaining per category
                           is Assigned minus that
-                          month’s Spending from
-                          the budget account,
+                          month’s Spending (or
+                          linked debt payments)
+                          from the budget account,
                           floored at zero. Other
                           accounts/card purchases
                           do not release money.
@@ -922,4 +926,33 @@ suggestions as approved decisions.
                           archiving removes it.   
                           Backup format 3 adds    
                           isBudgetAccount         
+
+  2026-11-17              Liability Plans rows    Confirmed
+                          (schema v10): auto-add
+                          one linked category per
+                          active Credit or Loan
+                          account, custom types
+                          included. Keep name and
+                          archive status synced.
+                          Start with no Target,
+                          Assigned zero. Activity
+                          counts CC Payments and
+                          Transfers into that
+                          account. Budget-source
+                          payments release its
+                          remaining allocation,
+                          floored at zero. Other
+                          payments do not. Debt
+                          rows are managed via
+                          accounts, not category
+                          pickers. Archive keeps
+                          history; deleting an
+                          unused archived account
+                          detaches its old row.
+                          Name clashes get a debt
+                          suffix. Backup format 4
+                          adds linkedAccountId;
+                          formats 1–3 restore and
+                          create missing rows.
+
   -----------------------------------------------------------------------

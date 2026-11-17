@@ -31,8 +31,8 @@ class BackupExporter {
 
   /// Version of the backup format, independent of the database schema.
   /// 2 added `planGroup` to categories; 3 added `isBudgetAccount` to
-  /// accounts.
-  static const int formatVersion = 3;
+  /// accounts. Format 4 adds category `linkedAccountId`.
+  static const int formatVersion = 4;
 
   final AppDatabase _database;
   final DateTime Function() _now;
@@ -81,6 +81,7 @@ class BackupExporter {
             'kind': category.kind.name,
             'isArchived': category.isArchived,
             'planGroup': category.planGroup.name,
+            'linkedAccountId': category.linkedAccountId,
           },
       ],
       'transactions': [

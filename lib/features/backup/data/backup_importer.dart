@@ -12,6 +12,7 @@ import '../../accounts/domain/account.dart';
 import '../../accounts/domain/account_rules.dart';
 import '../../accounts/domain/account_type.dart';
 import '../../accounts/domain/custom_account_type_rules.dart';
+import '../../categories/data/liability_plan_categories.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/domain/category_rules.dart';
 import '../../transactions/domain/transaction.dart';
@@ -110,7 +111,7 @@ final class BackupSnapshot {
   );
 }
 
-/// Restores a backup written by [BackupExporter] (format 1 to 3),
+/// Restores a backup written by [BackupExporter] (format 1 to 4),
 /// replacing all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
@@ -147,9 +148,9 @@ class BackupImporter {
         // Children before parents, so foreign keys never dangle.
         await _database.delete(_database.monthlyPlans).go();
         await _database.delete(_database.transactions).go();
+        await _database.delete(_database.categories).go();
         await _database.delete(_database.accounts).go();
         await _database.delete(_database.customAccountTypes).go();
-        await _database.delete(_database.categories).go();
 
         await _database.batch((batch) {
           batch
@@ -162,6 +163,7 @@ class BackupImporter {
             ..insertAll(_database.transactions, snapshot._transactions)
             ..insertAll(_database.monthlyPlans, snapshot._monthlyPlans);
         });
+        await syncLiabilityPlanCategories(_database);
       });
     } on BackupImportException {
       rethrow;
@@ -250,6 +252,10 @@ class _Parser {
       }
       plans.add(plan);
     }
+    // Include generated liability rows in the preview counts too. Do this
+    // after checking original references so synthesis cannot repair a broken
+    // transaction or plan reference in the file.
+    _addMissingLiabilityRows(categories);
     return BackupSnapshot._(
       exportedAt,
       customTypes,
@@ -258,6 +264,43 @@ class _Parser {
       transactions,
       plans,
     );
+  }
+
+  void _addMissingLiabilityRows(List<CategoriesCompanion> rows) {
+    var nextId =
+        rows.fold<int>(
+          0,
+          (maxId, row) => row.id.value > maxId ? row.id.value : maxId,
+        ) +
+        1;
+    for (final account in _accounts.values) {
+      if (!account.type.isLiability ||
+          account.isArchived ||
+          _linkedAccounts.contains(account.id)) {
+        continue;
+      }
+      var name = account.name;
+      var suffixIndex = 0;
+      while (_categoryNames.contains(name.toLowerCase())) {
+        final suffix =
+            ' (debt ${account.id}${suffixIndex == 0 ? '' : '-$suffixIndex'})';
+        final prefixLength = 40 - suffix.length;
+        name =
+            '${account.name.substring(0, account.name.length > prefixLength ? prefixLength : account.name.length)}$suffix';
+        suffixIndex++;
+      }
+      _categoryNames.add(name.toLowerCase());
+      _linkedAccounts.add(account.id);
+      rows.add(
+        CategoriesCompanion.insert(
+          id: Value(nextId++),
+          name: name,
+          kind: CategoryKind.spending,
+          planGroup: const Value(PlanGroup.liability),
+          linkedAccountId: Value(account.id),
+        ),
+      );
+    }
   }
 
   int _id(_Reader reader, String kind) {
@@ -352,6 +395,7 @@ class _Parser {
   }
 
   final _categoryNames = <String>{};
+  final _linkedAccounts = <int>{};
 
   CategoriesCompanion _category(_Reader reader) {
     final id = _id(reader, 'categories');
@@ -370,12 +414,30 @@ class _Parser {
     if (kind == CategoryKind.inflow && planGroup != PlanGroup.spending) {
       reader.fail('planGroup', 'inflow categories have no group');
     }
+    final linkedAccountId = formatVersion >= 4
+        ? reader.integerOrNull('linkedAccountId')
+        : null;
+    if (linkedAccountId != null) {
+      final account = _accounts[linkedAccountId];
+      if (account == null ||
+          !account.type.isLiability ||
+          kind != CategoryKind.spending ||
+          planGroup != PlanGroup.liability ||
+          isArchived != account.isArchived ||
+          !_linkedAccounts.add(linkedAccountId)) {
+        reader.fail(
+          'linkedAccountId',
+          'must uniquely link a liability account with matching archive status',
+        );
+      }
+    }
     _categories[id] = Category(
       id: id,
       name: name,
       kind: kind,
       isArchived: isArchived,
       planGroup: planGroup,
+      linkedAccountId: linkedAccountId,
     );
     return CategoriesCompanion.insert(
       id: Value(id),
@@ -383,6 +445,7 @@ class _Parser {
       kind: kind,
       isArchived: Value(isArchived),
       planGroup: Value(planGroup),
+      linkedAccountId: Value(linkedAccountId),
     );
   }
 

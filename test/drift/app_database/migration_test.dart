@@ -7,6 +7,7 @@ import 'package:fundly/core/database/app_database.dart';
 
 import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
+import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -734,4 +735,159 @@ void main() {
       },
     );
   });
+  test(
+    'v9 to v10 preserves history and adds missing defaults and linked debts',
+    () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 9,
+        newVersion: 10,
+        createOld: v9.DatabaseAtV9.new,
+        createNew: v10.DatabaseAtV10.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch
+            ..insertAll(oldDb.accounts, const [
+              v9.AccountsData(
+                id: 1,
+                name: 'Cash',
+                type: 'savingsCash',
+                openingBalanceMinor: 100000,
+                currencyCode: 'PHP',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                isArchived: 0,
+                isBudgetAccount: 1,
+              ),
+              v9.AccountsData(
+                id: 2,
+                name: 'Utilities',
+                type: 'credit',
+                openingBalanceMinor: -10000,
+                currencyCode: 'PHP',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                isArchived: 0,
+                isBudgetAccount: 0,
+              ),
+              v9.AccountsData(
+                id: 3,
+                name: 'Loan',
+                type: 'loan',
+                openingBalanceMinor: -20000,
+                currencyCode: 'PHP',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                isArchived: 0,
+                isBudgetAccount: 0,
+              ),
+              v9.AccountsData(
+                id: 4,
+                name: 'Old loan',
+                type: 'loan',
+                openingBalanceMinor: 0,
+                currencyCode: 'PHP',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                isArchived: 1,
+                isBudgetAccount: 0,
+              ),
+            ])
+            ..insertAll(oldDb.categories, const [
+              v9.CategoriesData(
+                id: 1,
+                name: 'Utilities',
+                kind: 'spending',
+                isArchived: 0,
+                planGroup: 'savings',
+              ),
+              v9.CategoriesData(
+                id: 2,
+                name: 'Food',
+                kind: 'spending',
+                isArchived: 1,
+                planGroup: 'spending',
+              ),
+            ])
+            ..insert(
+              oldDb.transactions,
+              const v9.TransactionsData(
+                id: 1,
+                type: 'spending',
+                amountMinor: 1000,
+                currencyCode: 'PHP',
+                date: '2026-11-17',
+                payee: 'Shop',
+                categoryId: 2,
+                sourceAccountId: 1,
+                note: 'History',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                updatedAt: '2026-11-17T00:00:00.000Z',
+              ),
+            )
+            ..insert(
+              oldDb.monthlyPlans,
+              const v9.MonthlyPlansData(
+                id: 1,
+                month: '2026-11',
+                categoryId: 2,
+                targetAmountMinor: 10000,
+                assignedAmountMinor: 5000,
+                currencyCode: 'PHP',
+                createdAt: '2026-11-17T00:00:00.000Z',
+                updatedAt: '2026-11-17T00:00:00.000Z',
+              ),
+            );
+        },
+        validateItems: (db) async {
+          final categories = await db.select(db.categories).get();
+          final old = categories.singleWhere((c) => c.id == 2);
+          expect(
+            (old.name, old.isArchived, old.linkedAccountId),
+            ('Food', 1, null),
+          );
+          expect(categories.singleWhere((c) => c.id == 1).planGroup, 'savings');
+          expect(
+            categories.map((c) => c.name),
+            containsAll([
+              'Rent',
+              'Internet',
+              'Food & Groceries',
+              'Fuel',
+              'Miscellaneous',
+            ]),
+          );
+          final linked = categories
+              .where((c) => c.linkedAccountId != null)
+              .toList();
+          expect(linked.map((c) => c.linkedAccountId), [2, 3]);
+          expect(linked.first.name, startsWith('Utilities (debt '));
+          expect(linked.every((c) => c.planGroup == 'liability'), isTrue);
+          final transaction = (await db.select(db.transactions).get()).single;
+          expect(
+            (
+              transaction.id,
+              transaction.categoryId,
+              transaction.amountMinor,
+              transaction.note,
+            ),
+            (1, 2, 1000, 'History'),
+          );
+          final plan = (await db.select(db.monthlyPlans).get()).single;
+          expect(
+            (plan.id, plan.categoryId, plan.assignedAmountMinor),
+            (1, 2, 5000),
+          );
+          expect((await db.select(db.accounts).get()).first.isBudgetAccount, 1);
+          expect(
+            (await db.customSelect('PRAGMA integrity_check').get())
+                .single
+                .data
+                .values
+                .single,
+            'ok',
+          );
+          expect(
+            await db.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
 }

@@ -36,19 +36,16 @@ void main() {
     },
   );
 
-  test('filters spending categories, keeping "Other" last', () async {
+  test('filters spending categories in default order', () async {
     final names = (await repository.watchAll(kind: CategoryKind.spending).first)
         .map((c) => c.name);
 
-    expect(names, [
-      'Food',
-      'Transport',
-      'Utilities',
-      'Subscriptions',
-      'Shopping',
-      'Health',
-      'Other',
-    ]);
+    expect(
+      names,
+      defaultCategories
+          .where((c) => c.kind == CategoryKind.spending)
+          .map((c) => c.name),
+    );
   });
 
   test('filters inflow categories', () async {
@@ -66,7 +63,10 @@ void main() {
         );
 
     test('rejects a duplicate name ignoring case', () {
-      expect(insertRaw('food', 'spending'), throwsA(isA<Exception>()));
+      expect(
+        insertRaw('food & groceries', 'spending'),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('rejects an unknown kind', () {
@@ -135,11 +135,14 @@ void main() {
     });
 
     test('rejects the name of an archived category', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
       await repository.setArchived(food.id, archived: true);
 
       await expectLater(
-        repository.create(name: 'food', kind: CategoryKind.spending),
+        repository.create(
+          name: 'food & groceries',
+          kind: CategoryKind.spending,
+        ),
         throwsCategoryError(CategoryValidationError.nameTaken),
       );
     });
@@ -156,16 +159,19 @@ void main() {
     });
 
     test('may change only the case of its own name', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
 
-      expect((await repository.rename(food.id, 'FOOD')).name, 'FOOD');
+      expect(
+        (await repository.rename(food.id, 'FOOD & GROCERIES')).name,
+        'FOOD & GROCERIES',
+      );
     });
 
     test('rejects a name used by another category', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
 
       await expectLater(
-        repository.rename(food.id, 'transport'),
+        repository.rename(food.id, 'fuel'),
         throwsCategoryError(CategoryValidationError.nameTaken),
       );
     });
@@ -218,21 +224,21 @@ void main() {
     });
 
     test('setPlanGroup moves a spending category, keeping the rest', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
 
       final moved = await repository.setPlanGroup(food.id, PlanGroup.liability);
 
       expect(moved.planGroup, PlanGroup.liability);
-      expect(moved.name, 'Food');
+      expect(moved.name, 'Food & Groceries');
       expect(moved.kind, CategoryKind.spending);
-      expect(await named('Food'), moved);
+      expect(await named('Food & Groceries'), moved);
 
       final back = await repository.setPlanGroup(food.id, PlanGroup.spending);
       expect(back.planGroup, PlanGroup.spending);
     });
 
     test('setPlanGroup works on an archived category', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
       await repository.setArchived(food.id, archived: true);
 
       final moved = await repository.setPlanGroup(food.id, PlanGroup.savings);
@@ -258,13 +264,13 @@ void main() {
 
   group('setArchived', () {
     test('archives and restores, keeping the category listed', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
 
       await repository.setArchived(food.id, archived: true);
-      expect((await named('Food')).isArchived, isTrue);
+      expect((await named('Food & Groceries')).isArchived, isTrue);
 
       await repository.setArchived(food.id, archived: false);
-      expect((await named('Food')).isArchived, isFalse);
+      expect((await named('Food & Groceries')).isArchived, isFalse);
     });
 
     test('throws for an unknown id', () {
@@ -288,7 +294,7 @@ void main() {
     });
 
     test('rejects a category used by a transaction and keeps it', () async {
-      final food = await named('Food');
+      final food = await named('Food & Groceries');
       final bdo = await AccountRepository(database).create(
         name: 'BDO Savings',
         type: AccountType.savingsCash,
@@ -309,7 +315,7 @@ void main() {
         repository.delete(food.id),
         throwsCategoryError(CategoryValidationError.inUse),
       );
-      expect(await named('Food'), food);
+      expect(await named('Food & Groceries'), food);
     });
 
     test('throws for an unknown id', () {

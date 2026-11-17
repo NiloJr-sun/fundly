@@ -133,6 +133,9 @@ void main() {
   test('a format 1 backup restores with every category in Spending', () async {
     final backup = await sourceBackup();
     backup['formatVersion'] = 1;
+    (backup['categories']! as List).removeWhere(
+      (c) => (c as Map)['linkedAccountId'] != null,
+    );
     for (final category in backup['categories']! as List) {
       (category as Map<String, Object?>).remove('planGroup');
     }
@@ -141,13 +144,25 @@ void main() {
     await importer.replaceAll(importer.parse(jsonEncode(backup)));
 
     final restored = await target.select(target.categories).get();
-    expect(restored, hasLength(10));
-    expect(restored.map((c) => c.planGroup).toSet(), {PlanGroup.spending});
+    expect(
+      restored
+          .where((c) => c.linkedAccountId == null)
+          .map((c) => c.planGroup)
+          .toSet(),
+      {PlanGroup.spending},
+    );
+    expect(
+      restored.where((c) => c.linkedAccountId != null).single.planGroup,
+      PlanGroup.liability,
+    );
   });
 
   test('a format 2 backup restores with no budget account', () async {
     final backup = await sourceBackup();
     backup['formatVersion'] = 2;
+    (backup['categories']! as List).removeWhere(
+      (c) => (c as Map)['linkedAccountId'] != null,
+    );
     for (final account in backup['accounts']! as List) {
       (account as Map<String, Object?>).remove('isBudgetAccount');
     }
@@ -158,6 +173,97 @@ void main() {
     final restored = await target.select(target.accounts).get();
     expect(restored, hasLength(3));
     expect(restored.where((a) => a.isBudgetAccount), isEmpty);
+  });
+
+  test(
+    'format 3 restore creates linked rows for existing liabilities',
+    () async {
+      final backup = await sourceBackup();
+      backup['formatVersion'] = 3;
+      final oldCategories = backup['categories']! as List;
+      oldCategories.removeWhere((c) => (c as Map)['linkedAccountId'] != null);
+      for (final category in oldCategories) {
+        (category as Map).remove('linkedAccountId');
+      }
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(jsonEncode(backup)));
+      final rows = await target.select(target.categories).get();
+      final linked = rows.singleWhere((c) => c.linkedAccountId != null);
+      expect(linked.name, 'RCBC Credit');
+      expect(linked.planGroup, PlanGroup.liability);
+      expect(
+        (await target.select(target.monthlyPlans).get())
+            .single
+            .assignedAmountMinor,
+        100000,
+      );
+    },
+  );
+
+  test(
+    'linked liability rows and their plans survive export and restore',
+    () async {
+      final linked = (await source.select(source.categories).get()).singleWhere(
+        (c) => c.linkedAccountId != null,
+      );
+      await PlanRepository(source, clock: () => now).save(
+        month: CalendarMonth(2026, 11),
+        categoryId: linked.id,
+        target: php(50000),
+        assigned: php(25000),
+      );
+      final original = await exportJson(source);
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(original));
+      expect(await exportJson(target), original);
+      expect(
+        await target.customSelect('PRAGMA foreign_key_check').get(),
+        isEmpty,
+      );
+    },
+  );
+
+  for (final (description, key, value) in [
+    ('missing account', 'linkedAccountId', 999),
+    ('asset account', 'linkedAccountId', 1),
+    ('wrong group', 'planGroup', 'spending'),
+    ('archive mismatch', 'isArchived', true),
+    ('wrong kind', 'kind', 'inflow'),
+  ]) {
+    test(
+      'restore rejects a linked row with $description without changing data',
+      () async {
+        final before = await exportJson(target);
+        final backup = await sourceBackup();
+        final linked = (backup['categories']! as List)
+            .cast<Map<String, Object?>>()
+            .singleWhere((c) => c['linkedAccountId'] != null);
+        linked[key] = value;
+        final importer = BackupImporter(target);
+        await expectLater(
+          Future<void>(
+            () async => importer.replaceAll(importer.parse(jsonEncode(backup))),
+          ),
+          throwsProblem(BackupImportProblem.invalidData),
+        );
+        expect(await exportJson(target), before);
+      },
+    );
+  }
+
+  test('restore rejects two categories linked to one account', () async {
+    final backup = await sourceBackup();
+    final rows = (backup['categories']! as List).cast<Map<String, Object?>>();
+    final linked = rows.singleWhere((c) => c['linkedAccountId'] != null);
+    (backup['categories']! as List).add({
+      ...linked,
+      'id': 999,
+      'name': 'Duplicate debt',
+    });
+    expect(
+      () => parseBackup(jsonEncode(backup)),
+      throwsProblem(BackupImportProblem.invalidData, 'linkedAccountId'),
+    );
   });
 
   test('the budget account survives a round trip', () async {
@@ -184,7 +290,7 @@ void main() {
       const BackupCounts(
         customAccountTypes: 1,
         accounts: 3,
-        categories: 10,
+        categories: 11,
         transactions: 2,
         monthlyPlans: 1,
       ),
@@ -197,7 +303,7 @@ void main() {
       const BackupCounts(
         customAccountTypes: 1,
         accounts: 3,
-        categories: 10,
+        categories: 11,
         transactions: 2,
         monthlyPlans: 1,
       ),
