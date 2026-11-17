@@ -1,4 +1,4 @@
-/// Why a custom account type could not be created, renamed or deleted.
+/// Why a custom account type could not be created, updated or deleted.
 enum CustomAccountTypeValidationError {
   nameEmpty,
   nameTooLong,
@@ -7,8 +7,13 @@ enum CustomAccountTypeValidationError {
   /// built-in type (ignoring case).
   nameTaken,
 
-  /// An account, active or archived, uses the type.
+  /// An account, active or archived, uses the type, so it cannot be
+  /// deleted.
   inUse,
+
+  /// An account, active or archived, uses the type, so its base type (and
+  /// class) cannot change.
+  baseTypeInUse,
 }
 
 class CustomAccountTypeValidationException implements Exception {

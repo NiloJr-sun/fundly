@@ -49,4 +49,6 @@ String customAccountTypeErrorText(CustomAccountTypeValidationError error) =>
         'An account type with this name already exists.',
       CustomAccountTypeValidationError.inUse =>
         'Accounts use this type, so it cannot be deleted.',
+      CustomAccountTypeValidationError.baseTypeInUse =>
+        "Accounts use this type, so its class can't change.",
     };

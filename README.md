@@ -127,7 +127,7 @@ lib/
       domain/               # MonthlyPlan, plan summaries
       presentation/         # Plans tab
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v6)
+drift_schemas/              # schema snapshot per version (currently v7)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

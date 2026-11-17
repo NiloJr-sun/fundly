@@ -73,3 +73,15 @@ final customAccountTypesByIdProvider = Provider<Map<int, CustomAccountType>>((
   final types = ref.watch(customAccountTypesProvider).value ?? const [];
   return {for (final type in types) type.id: type};
 });
+
+/// How many accounts, active or archived, use each custom type, keyed by
+/// custom type id. Types without accounts are absent. Empty while loading.
+final customTypeAccountCountsProvider = Provider<Map<int, int>>((ref) {
+  final accounts = ref.watch(allAccountsProvider).value ?? const [];
+  final counts = <int, int>{};
+  for (final account in accounts) {
+    final id = account.customTypeId;
+    if (id != null) counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+});

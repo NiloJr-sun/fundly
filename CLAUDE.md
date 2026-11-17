@@ -762,4 +762,30 @@ suggestions as approved decisions.
                           without a Target.       
                           Existing plans became   
                           Target = Assigned       
+
+  2026-11-17              Custom account types    Confirmed
+                          (schema v7). Each is an 
+                          Asset (works like       
+                          Savings/Cash) or a      
+                          Liability that works    
+                          like a credit card or   
+                          a loan; accounts store  
+                          that base type, so no   
+                          rule changes. Names     
+                          follow account-name     
+                          rules and cannot reuse  
+                          a built-in name. Class  
+                          changes only while no   
+                          account (incl.          
+                          archived) uses the      
+                          type; delete only when  
+                          unused. Account tab     
+                          groups types under      
+                          Assets and Liabilities  
+                          headings (no heading    
+                          totals); custom types   
+                          follow built-ins by     
+                          name. Accounts switch   
+                          only between types      
+                          with the same base      
   -----------------------------------------------------------------------

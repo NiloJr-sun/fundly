@@ -6,8 +6,8 @@ import 'account_type.dart';
 ///
 /// It follows the rules of its [baseType]: an account of this type stores
 /// [baseType] as its [AccountType], so balances, allowed transactions and
-/// Spending totals behave exactly as for the built-in type. [baseType] never
-/// changes after creation; the name can.
+/// Spending totals behave exactly as for the built-in type. The name can
+/// change at any time; [baseType] only while no account uses the type.
 @immutable
 final class CustomAccountType {
   const CustomAccountType({

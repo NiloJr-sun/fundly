@@ -50,21 +50,44 @@ class CustomAccountTypeRepository {
     return row.toDomain();
   }
 
-  /// Renames type [id]. The base type cannot change.
+  /// Renames type [id] and/or changes its [baseType]. The base type (and so
+  /// its class) can change only while no account, active or archived, uses
+  /// the type: changing it would change those accounts' balances and could
+  /// make their transactions invalid.
   ///
   /// Throws [CustomAccountTypeValidationException] when a rule is broken, or
   /// [StateError] if the type does not exist.
-  Future<CustomAccountType> rename(int id, String name) async {
-    final trimmedName = await _validName(name, excludingId: id);
+  Future<CustomAccountType> update(
+    int id, {
+    String? name,
+    AccountType? baseType,
+  }) => _database.transaction(() async {
+    final existing = await (_database.select(
+      _types,
+    )..where((type) => type.id.equals(id))).getSingleOrNull();
+    if (existing == null) throw StateError('Account type $id does not exist.');
+
+    final trimmedName = name == null
+        ? null
+        : await _validName(name, excludingId: id);
+    final changesBase = baseType != null && baseType != existing.baseType;
+    if (changesBase && await _accountCount(id) > 0) {
+      throw const CustomAccountTypeValidationException(
+        CustomAccountTypeValidationError.baseTypeInUse,
+      );
+    }
+
     final rows =
         await (_database.update(
           _types,
         )..where((type) => type.id.equals(id))).writeReturning(
-          CustomAccountTypesCompanion(name: Value(trimmedName)),
+          CustomAccountTypesCompanion(
+            name: Value.absentIfNull(trimmedName),
+            baseType: changesBase ? Value(baseType) : const Value.absent(),
+          ),
         );
-    if (rows.isEmpty) throw StateError('Account type $id does not exist.');
     return rows.single.toDomain();
-  }
+  });
 
   /// Deletes type [id] if no account, active or archived, uses it.
   ///
@@ -72,15 +95,7 @@ class CustomAccountTypeRepository {
   /// [CustomAccountTypeValidationError.inUse] if an account uses it, or
   /// [StateError] if the type does not exist.
   Future<void> delete(int id) => _database.transaction(() async {
-    final accounts = _database.accounts;
-    final usage = accounts.id.count();
-    final count =
-        await (_database.selectOnly(accounts)
-              ..addColumns([usage])
-              ..where(accounts.customTypeId.equals(id)))
-            .map((row) => row.read(usage)!)
-            .getSingle();
-    if (count > 0) {
+    if (await _accountCount(id) > 0) {
       throw const CustomAccountTypeValidationException(
         CustomAccountTypeValidationError.inUse,
       );
@@ -90,6 +105,17 @@ class CustomAccountTypeRepository {
     )..where((type) => type.id.equals(id))).go();
     if (deleted == 0) throw StateError('Account type $id does not exist.');
   });
+
+  /// How many accounts, active or archived, use type [id].
+  Future<int> _accountCount(int id) {
+    final accounts = _database.accounts;
+    final usage = accounts.id.count();
+    return (_database.selectOnly(accounts)
+          ..addColumns([usage])
+          ..where(accounts.customTypeId.equals(id)))
+        .map((row) => row.read(usage)!)
+        .getSingle();
+  }
 
   /// Returns the trimmed name, or throws if it is invalid or already used.
   /// Names follow the account-name rules.

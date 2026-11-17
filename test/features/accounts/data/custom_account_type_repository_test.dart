@@ -89,11 +89,11 @@ void main() {
     expect(names, ['E-wallet', 'Pay later', 'time deposit']);
   });
 
-  group('rename', () {
+  group('update', () {
     test('changes the name and keeps the base type', () async {
       final type = await create('Pay later', AccountType.credit);
 
-      final renamed = await repository.rename(type.id, ' BNPL ');
+      final renamed = await repository.update(type.id, name: ' BNPL ');
 
       expect(renamed.name, 'BNPL');
       expect(renamed.baseType, AccountType.credit);
@@ -103,7 +103,10 @@ void main() {
     test('allows a case-only change of its own name', () async {
       final type = await create('E-wallet');
 
-      expect((await repository.rename(type.id, 'E-Wallet')).name, 'E-Wallet');
+      expect(
+        (await repository.update(type.id, name: 'E-Wallet')).name,
+        'E-Wallet',
+      );
     });
 
     test('rejects names of other types and built-in types', () async {
@@ -111,17 +114,80 @@ void main() {
       final type = await create('Pay later', AccountType.credit);
 
       await expectLater(
-        repository.rename(type.id, 'e-wallet'),
+        repository.update(type.id, name: 'e-wallet'),
         throwsValidation(CustomAccountTypeValidationError.nameTaken),
       );
       await expectLater(
-        repository.rename(type.id, 'Credit'),
+        repository.update(type.id, name: 'Credit'),
         throwsValidation(CustomAccountTypeValidationError.nameTaken),
       );
     });
 
     test('throws StateError for a missing type', () async {
-      await expectLater(repository.rename(42, 'Name'), throwsStateError);
+      await expectLater(repository.update(42, name: 'Name'), throwsStateError);
+    });
+
+    test('changes the base type while no account uses it', () async {
+      final type = await create('Pay later', AccountType.credit);
+
+      final asLoan = await repository.update(
+        type.id,
+        baseType: AccountType.loan,
+      );
+      expect(asLoan.baseType, AccountType.loan);
+      expect(asLoan.name, 'Pay later');
+
+      final asAsset = await repository.update(
+        type.id,
+        name: 'Savings jar',
+        baseType: AccountType.savingsCash,
+      );
+      expect(asAsset.name, 'Savings jar');
+      expect(asAsset.baseType, AccountType.savingsCash);
+      expect(await repository.watchAll().first, [asAsset]);
+    });
+
+    test('refuses a base type change while any account uses it', () async {
+      final type = await create('E-wallet');
+      final accounts = AccountRepository(database);
+      final account = await accounts.create(
+        name: 'GCash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: const Money.zero('PHP'),
+        customTypeId: type.id,
+      );
+      await accounts.setArchived(account.id, archived: true);
+
+      await expectLater(
+        repository.update(
+          type.id,
+          name: 'Renamed',
+          baseType: AccountType.credit,
+        ),
+        throwsValidation(CustomAccountTypeValidationError.baseTypeInUse),
+      );
+      expect(await repository.watchAll().first, [
+        type,
+      ], reason: 'nothing changed, not even the name');
+    });
+
+    test('a type in use can still be renamed, keeping its base', () async {
+      final type = await create('E-wallet');
+      await AccountRepository(database).create(
+        name: 'GCash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: const Money.zero('PHP'),
+        customTypeId: type.id,
+      );
+
+      final renamed = await repository.update(
+        type.id,
+        name: 'Digital wallet',
+        baseType: AccountType.savingsCash,
+      );
+
+      expect(renamed.name, 'Digital wallet');
+      expect(renamed.baseType, AccountType.savingsCash);
     });
   });
 

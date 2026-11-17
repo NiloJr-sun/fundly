@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/centered_message.dart';
 import 'account_form_screen.dart';
 import 'account_list.dart';
+import 'account_types_screen.dart';
 import 'accounts_providers.dart';
 import 'archived_accounts_screen.dart';
 
@@ -18,6 +19,15 @@ class AccountsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Account'),
         actions: [
+          IconButton(
+            tooltip: 'Account types',
+            icon: const Icon(Icons.label_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AccountTypesScreen(),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Archived accounts',
             icon: const Icon(Icons.archive_outlined),

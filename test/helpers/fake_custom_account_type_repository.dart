@@ -12,7 +12,7 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
   final int firstId;
 
   final List<CustomAccountType> created = [];
-  final List<({int id, String name})> renamed = [];
+  final List<({int id, String? name, AccountType? baseType})> updated = [];
   final List<int> deleted = [];
 
   /// When set, the next call throws this instead of saving.
@@ -35,13 +35,17 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
   }
 
   @override
-  Future<CustomAccountType> rename(int id, String name) async {
+  Future<CustomAccountType> update(
+    int id, {
+    String? name,
+    AccountType? baseType,
+  }) async {
     _maybeFail();
-    renamed.add((id: id, name: name));
+    updated.add((id: id, name: name, baseType: baseType));
     return CustomAccountType(
       id: id,
-      name: name.trim(),
-      baseType: AccountType.savingsCash,
+      name: name?.trim() ?? '',
+      baseType: baseType ?? AccountType.savingsCash,
       createdAt: DateTime.utc(2026, 11, 17),
     );
   }

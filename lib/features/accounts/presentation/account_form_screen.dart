@@ -13,8 +13,8 @@ import '../domain/account_validation_exception.dart';
 import '../domain/custom_account_type.dart';
 import 'account_display.dart';
 import 'account_form_messages.dart';
+import 'account_type_dialog.dart';
 import 'accounts_providers.dart';
-import 'new_account_type_dialog.dart';
 
 /// A choice in the account type dropdown: a built-in [type], or the custom
 /// type [customTypeId] based on it.
