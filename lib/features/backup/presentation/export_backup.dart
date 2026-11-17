@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../app/theme/spacing.dart';
 import '../data/backup_exporter.dart';
 
 /// Hands a backup file to the platform, e.g. the iOS share sheet.
@@ -60,7 +61,7 @@ Future<void> exportBackup(
           content: Row(
             children: [
               CircularProgressIndicator(),
-              SizedBox(width: 24),
+              SizedBox(width: Spacing.lg),
               Expanded(child: Text('Preparing backup…')),
             ],
           ),

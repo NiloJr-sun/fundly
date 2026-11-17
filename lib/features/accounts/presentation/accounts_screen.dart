@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/centered_message.dart';
 import '../../backup/presentation/export_backup.dart';
+import '../../backup/presentation/restore_backup.dart';
 import 'account_form_screen.dart';
 import 'account_list.dart';
 import 'account_types_screen.dart';
@@ -63,9 +64,9 @@ class AccountsScreen extends ConsumerWidget {
   }
 }
 
-enum _MoreAction { exportBackup }
+enum _MoreAction { exportBackup, restoreBackup }
 
-/// The ⋮ menu for app-level actions, such as exporting a backup.
+/// The ⋮ menu for app-level actions: exporting and restoring backups.
 class _MoreMenu extends ConsumerWidget {
   const _MoreMenu();
 
@@ -79,6 +80,11 @@ class _MoreMenu extends ConsumerWidget {
           ref,
           origin: _originOf(context),
         ),
+        _MoreAction.restoreBackup => restoreBackup(
+          context,
+          ref,
+          origin: _originOf(context),
+        ),
       },
       itemBuilder: (_) => const [
         PopupMenuItem(
@@ -87,6 +93,14 @@ class _MoreMenu extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.ios_share),
             title: Text('Export backup'),
+          ),
+        ),
+        PopupMenuItem(
+          value: _MoreAction.restoreBackup,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.restore),
+            title: Text('Restore from backup'),
           ),
         ),
       ],
