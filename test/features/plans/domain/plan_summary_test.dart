@@ -45,10 +45,12 @@ void main() {
   );
 
   List<CategoryPlanSummary> summarize({
+    bool archived = false,
     List<MonthlyPlan> plans = const [],
     List<TransactionDraft> transactions = const [],
   }) => planSummaries(
     month: november,
+    archived: archived,
     categories: allCategories,
     plans: plans,
     transactions: transactions,
@@ -252,15 +254,21 @@ void main() {
       );
     });
 
-    test('an archived category with a plan this month is shown', () {
-      final gifts = rowFor(summarize(plans: [plan(giftsId, 200000)]), giftsId);
+    test('an archived category with a plan is shown in the archive', () {
+      final gifts = rowFor(
+        summarize(archived: true, plans: [plan(giftsId, 200000)]),
+        giftsId,
+      );
 
       expect(gifts.target, php(200000));
     });
 
-    test('an archived category with spending this month is shown', () {
+    test('archived category spending is available in the archive', () {
       final gifts = rowFor(
-        summarize(transactions: [spending(amount: 5000, category: giftsId)]),
+        summarize(
+          archived: true,
+          transactions: [spending(amount: 5000, category: giftsId)],
+        ),
         giftsId,
       );
 

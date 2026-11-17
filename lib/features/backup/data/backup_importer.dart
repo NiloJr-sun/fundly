@@ -111,7 +111,7 @@ final class BackupSnapshot {
   );
 }
 
-/// Restores a backup written by [BackupExporter] (format 1 to 4),
+/// Restores a backup written by [BackupExporter] (format 1 to 5),
 /// replacing all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
@@ -212,7 +212,8 @@ class _Parser {
 
   /// Format 1 has no category `planGroup`; those categories restore into
   /// the default group. Formats 1 and 2 have no `isBudgetAccount`; they
-  /// restore with no budget account.
+  /// restore with no budget account. Formats 1–4 have no independent Plans
+  /// archive flag, which defaults to false.
   final int formatVersion;
 
   bool _hasBudgetAccount = false;
@@ -408,6 +409,11 @@ class _Parser {
     }
     final kind = reader.enumValue('kind', CategoryKind.values);
     final isArchived = reader.boolean('isArchived');
+    final isPlanArchived =
+        formatVersion >= 5 && reader.boolean('isPlanArchived');
+    if (isPlanArchived && kind != CategoryKind.spending) {
+      reader.fail('isPlanArchived', 'only spending categories have Plans rows');
+    }
     final planGroup = formatVersion < 2
         ? PlanGroup.spending
         : reader.enumValue('planGroup', PlanGroup.values);
@@ -436,6 +442,7 @@ class _Parser {
       name: name,
       kind: kind,
       isArchived: isArchived,
+      isPlanArchived: isPlanArchived,
       planGroup: planGroup,
       linkedAccountId: linkedAccountId,
     );
@@ -444,6 +451,7 @@ class _Parser {
       name: name,
       kind: kind,
       isArchived: Value(isArchived),
+      isPlanArchived: Value(isPlanArchived),
       planGroup: Value(planGroup),
       linkedAccountId: Value(linkedAccountId),
     );

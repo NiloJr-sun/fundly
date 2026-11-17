@@ -2,6 +2,7 @@ import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/plans/data/plan_repository.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/domain/plan_validation_exception.dart';
 
 /// Records calls for widget tests, which cannot await a real drift database
 /// under the fake test clock. Repository behaviour itself is covered by
@@ -12,6 +13,19 @@ class FakePlanRepository implements PlanRepository {
   >
   saved = [];
   final List<({CalendarMonth month, int categoryId})> cleared = [];
+
+  final List<({int categoryId, bool archived})> archivedChanges = [];
+  PlanArchiveBlocked? archiveBlocked;
+  bool failArchive = false;
+  void Function(int categoryId, bool archived)? onArchive;
+
+  @override
+  Future<void> setArchived(int categoryId, {required bool archived}) async {
+    if (archiveBlocked case final failure?) throw failure;
+    if (failArchive) throw StateError('Archive failed');
+    archivedChanges.add((categoryId: categoryId, archived: archived));
+    onArchive?.call(categoryId, archived);
+  }
 
   @override
   Stream<List<MonthlyPlan>> watchForMonth(CalendarMonth month) =>

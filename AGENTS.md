@@ -7,7 +7,7 @@ you**, even where it says "Claude".
 | File | What it is |
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | Product direction, accounting rules (§4), engineering standards (§7), workflow (§8), definition of done (§9), status (§10) and the **Product Decisions Log (§11)**. §11 is the source of truth for confirmed behaviour. |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Delivery history: phases 0–4, post-MVP refinements (R.1–R.14), Phase 5 (backup), backup format notes. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Delivery history: phases 0–4, post-MVP refinements (R.1–R.15), Phase 5 (backup), backup format notes. |
 | [README.md](README.md) | Setup, run, project structure, conventions. |
 
 Last updated: 2026-11-17.
@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 737 tests passing as of 2026-11-17
+flutter test                      # 780 tests passing as of 2026-11-17
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -66,14 +66,15 @@ simulator build for anything that changes app code. macOS has no
 
 ## 3. Current state (2026-11-17)
 
-- **Database:** drift (SQLite), **schema v10**. Tables: `accounts`
+- **Database:** drift (SQLite), **schema v11**. Tables: `accounts`
   (`custom_type_id`, `is_budget_account`), `custom_account_types`,
-  `categories` (`kind`, `is_archived`, `plan_group`, `linked_account_id`),
+  `categories` (`kind`, `is_archived`, `is_plan_archived`, `plan_group`,
+  `linked_account_id`),
   `transactions`,
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
-- **Backup format 4** (JSON export and replace-all restore from the Account
-  tab ⋮ menu). Restore accepts formats 1–4.
+- **Backup format 5** (JSON export and replace-all restore from the Account
+  tab ⋮ menu). Restore accepts formats 1–5.
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one
@@ -83,6 +84,9 @@ simulator build for anything that changes app code. macOS has no
   **Ready to assign** (current budget-account balance minus the selected
   month’s remaining allocations). Credit/Loan accounts automatically get a
   linked Liability Plans row; Activity counts payments into that account.
+  Plans rows can be archived independently across all months, only when current
+  and future remaining allocations are zero. Archived plans keeps history and
+  supports unarchive; parent categories/accounts must be active first.
 - **Nothing further is approved.** The remaining Phase 5 proposal is CSV
   export of transactions (5.3).
 

@@ -41,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +114,10 @@ class AppDatabase extends _$AppDatabase {
         );
         await addCurrentDefaultCategories(this);
         await syncLiabilityPlanCategories(this);
+      },
+      // v11: Plans rows can be archived independently across all months.
+      from10To11: (m, schema) async {
+        await m.addColumn(schema.categories, schema.categories.isPlanArchived);
       },
     ),
     beforeOpen: (details) async {

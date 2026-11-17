@@ -11,7 +11,7 @@ import 'plan_editor_dialog.dart';
 /// status.
 ///
 /// [onEdit] edits the whole plan (`field` null) or one amount, and is `null`
-/// when the plan cannot be edited (an archived category without a plan).
+/// when showing read-only archived history.
 /// [onActivityTap] shows the transactions behind the activity amount.
 /// Available is derived, so it is not editable.
 class PlanRow extends StatelessWidget {
@@ -20,11 +20,13 @@ class PlanRow extends StatelessWidget {
     required this.summary,
     required this.onEdit,
     required this.onActivityTap,
+    this.onArchive,
   });
 
   final CategoryPlanSummary summary;
   final void Function(PlanAmountField? field)? onEdit;
   final VoidCallback onActivityTap;
+  final VoidCallback? onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -48,13 +50,24 @@ class PlanRow extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    category.isArchived
+                    category.isArchivedInPlans
                         ? '${category.name} (archived)'
                         : category.name,
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
                 if (status != null) PlanStatusChip(status: status),
+                if (onArchive != null)
+                  PopupMenuButton<String>(
+                    tooltip: '${category.name} plan actions',
+                    onSelected: (_) => onArchive!(),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'archive',
+                        child: Text('Archive plan'),
+                      ),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: Spacing.xs),

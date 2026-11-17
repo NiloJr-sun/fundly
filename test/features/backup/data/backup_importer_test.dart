@@ -266,6 +266,72 @@ void main() {
     );
   });
 
+  test('plan archive flags survive a round trip independently of accounts and categories', () async {
+    final rows = await source.select(source.categories).get();
+    final normal = rows.first;
+    final debt = rows.singleWhere((c) => c.linkedAccountId != null);
+    final repository = PlanRepository(source, clock: () => now);
+    await repository.setArchived(normal.id, archived: true);
+    await repository.setArchived(debt.id, archived: true);
+    final original = await exportJson(source);
+    final importer = BackupImporter(target);
+    await importer.replaceAll(importer.parse(original));
+    expect(await exportJson(target), original);
+    final archived = (await target.select(target.categories).get()).where(
+      (c) => c.isPlanArchived,
+    );
+    expect(archived.map((c) => c.id).toSet(), {normal.id, debt.id});
+    expect(archived.every((c) => !c.isArchived), isTrue);
+    expect(
+      (await target.select(target.accounts).get())
+          .singleWhere((a) => a.id == debt.linkedAccountId)
+          .isArchived,
+      isFalse,
+    );
+  });
+
+  test('format 4 restores with no independent plan archive flags', () async {
+    final backup = await sourceBackup();
+    backup['formatVersion'] = 4;
+    for (final row in backup['categories']! as List) {
+      (row as Map).remove('isPlanArchived');
+    }
+    final importer = BackupImporter(target);
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+    final rows = await target.select(target.categories).get();
+    expect(rows.every((c) => !c.isPlanArchived), isTrue);
+    expect(rows.where((c) => c.linkedAccountId != null), hasLength(1));
+  });
+
+  for (final invalid in ['true', 1, null]) {
+    test(
+      'restore rejects invalid plan archive flag $invalid without changing data',
+      () async {
+        final before = await exportJson(target);
+        final backup = await sourceBackup();
+        ((backup['categories']! as List).first as Map)['isPlanArchived'] =
+            invalid;
+        expect(
+          () => parseBackup(jsonEncode(backup)),
+          throwsProblem(BackupImportProblem.invalidData, 'isPlanArchived'),
+        );
+        expect(await exportJson(target), before);
+      },
+    );
+  }
+
+  test('restore rejects a plan archive flag on an inflow category', () async {
+    final backup = await sourceBackup();
+    final row = (backup['categories']! as List)
+        .cast<Map<String, Object?>>()
+        .firstWhere((c) => c['kind'] == 'inflow');
+    row['isPlanArchived'] = true;
+    expect(
+      () => parseBackup(jsonEncode(backup)),
+      throwsProblem(BackupImportProblem.invalidData, 'isPlanArchived'),
+    );
+  });
+
   test('the budget account survives a round trip', () async {
     final importer = BackupImporter(target);
 

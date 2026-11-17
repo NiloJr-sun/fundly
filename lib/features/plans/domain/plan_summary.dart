@@ -85,8 +85,8 @@ final class CategoryPlanSummary {
 /// - Regular category Activity counts Spending only. Linked liability rows
 ///   count transfers and card payments into their account. Neither changes
 ///   spending/inflow totals; card purchases remain Spending in their category.
-/// - Rows cover active spending categories, plus any archived spending
-///   category with a plan or spending this month, so no history is hidden.
+/// - Main rows exclude archived plans and categories. With [archived], all
+///   archived spending rows are returned, including those without history.
 /// - Inflow categories never appear: plans are for spending only.
 /// - Plans for other months in [plans] are ignored.
 List<CategoryPlanSummary> planSummaries({
@@ -95,6 +95,7 @@ List<CategoryPlanSummary> planSummaries({
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
   String currencyCode = Account.defaultCurrency,
+  bool archived = false,
 }) {
   final planByCategory = {
     for (final plan in plans)
@@ -117,9 +118,7 @@ List<CategoryPlanSummary> planSummaries({
   return [
     for (final category in categories)
       if (category.kind == CategoryKind.spending &&
-          (!category.isArchived ||
-              planByCategory.containsKey(category.id) ||
-              activityByCategory.containsKey(category.id)))
+          category.isArchivedInPlans == archived)
         CategoryPlanSummary(
           category: category,
           target: planByCategory[category.id]?.target,
@@ -189,40 +188,54 @@ ReadyToAssign readyToAssign({
 }) {
   final entries = transactions.toList();
   final zero = Money.zero(budgetAccount.openingBalance.currencyCode);
-  final spent = <int, Money>{};
-  final debtCategories = {
-    for (final category in categories)
-      if (category.linkedAccountId != null)
-        category.linkedAccountId!: category.id,
+  final linkedAccountByCategory = {
+    for (final category in categories) category.id: category.linkedAccountId,
   };
-  for (final transaction in entries) {
-    final paymentCategory = debtCategories[transaction.destinationAccountId];
-    final category = transaction.type == TransactionType.spending
-        ? transaction.categoryId
-        : paymentCategory;
-    final eligible =
-        transaction.type == TransactionType.spending ||
-        (paymentCategory != null &&
-            (transaction.type == TransactionType.transfer ||
-                transaction.type == TransactionType.creditCardPayment));
-    if (eligible &&
-        transaction.sourceAccountId == budgetAccount.id &&
-        month.dateRange.contains(transaction.date) &&
-        category != null) {
-      spent[category] = (spent[category] ?? zero) + transaction.amount;
-    }
-  }
   var assigned = zero;
   var remaining = zero;
   for (final plan in plans) {
     if (plan.month != month) continue;
     assigned += plan.assigned;
-    final unspent = plan.assigned - (spent[plan.categoryId] ?? zero);
-    if (!unspent.isNegative) remaining += unspent;
+    remaining += remainingPlanAllocation(
+      plan: plan,
+      budgetAccountId: budgetAccount.id,
+      linkedAccountId: linkedAccountByCategory[plan.categoryId],
+      transactions: entries,
+    );
   }
   return ReadyToAssign(
     balance: currentBalance(budgetAccount, entries),
     assigned: assigned,
     remaining: remaining,
   );
+}
+
+/// Unspent allocation reserved in the budget account for this plan. This is
+/// shared by Ready to assign and the archive guard so their rules stay equal.
+Money remainingPlanAllocation({
+  required MonthlyPlan plan,
+  required int? budgetAccountId,
+  required Iterable<TransactionDraft> transactions,
+  int? linkedAccountId,
+}) {
+  var spent = Money.zero(plan.assigned.currencyCode);
+  if (budgetAccountId != null) {
+    for (final transaction in transactions) {
+      final eligible = linkedAccountId == null
+          ? transaction.type == TransactionType.spending &&
+                transaction.categoryId == plan.categoryId
+          : (transaction.type == TransactionType.transfer ||
+                    transaction.type == TransactionType.creditCardPayment) &&
+                transaction.destinationAccountId == linkedAccountId;
+      if (eligible &&
+          transaction.sourceAccountId == budgetAccountId &&
+          plan.month.dateRange.contains(transaction.date)) {
+        spent += transaction.amount;
+      }
+    }
+  }
+  final remaining = plan.assigned - spent;
+  return remaining.isNegative
+      ? Money.zero(plan.assigned.currencyCode)
+      : remaining;
 }

@@ -20,6 +20,7 @@ final class Category {
     required this.name,
     required this.kind,
     this.isArchived = false,
+    this.isPlanArchived = false,
     this.planGroup = PlanGroup.spending,
     this.linkedAccountId,
   });
@@ -35,6 +36,11 @@ final class Category {
   /// transactions.
   final bool isArchived;
 
+  /// Archives the Plans row across months, without disabling the category.
+  final bool isPlanArchived;
+
+  bool get isArchivedInPlans => isArchived || isPlanArchived;
+
   /// Where a spending category appears on the Plans page. Inflow categories
   /// are not planned, so theirs is always [PlanGroup.spending] and unused.
   final PlanGroup planGroup;
@@ -46,12 +52,20 @@ final class Category {
       other.name == name &&
       other.kind == kind &&
       other.isArchived == isArchived &&
+      other.isPlanArchived == isPlanArchived &&
       other.planGroup == planGroup &&
       other.linkedAccountId == linkedAccountId;
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, kind, isArchived, planGroup, linkedAccountId);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    kind,
+    isArchived,
+    isPlanArchived,
+    planGroup,
+    linkedAccountId,
+  );
 
   @override
   String toString() =>

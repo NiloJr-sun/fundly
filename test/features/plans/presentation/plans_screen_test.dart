@@ -264,7 +264,7 @@ void main() {
       expect(amount(tester, 'Food', 'Activity'), '₱1,000.00');
     });
 
-    testWidgets('an archived category with spending is shown, read-only', (
+    testWidgets('an archived category with spending moves to the archive', (
       tester,
     ) async {
       await pumpScreen(
@@ -272,8 +272,12 @@ void main() {
         transactions: [saved(spending(amount: 5000, category: giftsId))],
       );
 
+      expect(row('Gifts (archived)'), findsNothing);
+      await tester.tap(find.byTooltip('Archived plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gifts'));
+      await tester.pumpAndSettle();
       expect(row('Gifts (archived)'), findsOneWidget);
-
       await tester.tap(find.text('Gifts (archived)'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
@@ -302,10 +306,7 @@ void main() {
     ) async {
       await pumpScreen(tester, withCategories: [categories[salaryId]!]);
 
-      expect(
-        find.textContaining('No spending categories yet.'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('No active plans.'), findsOneWidget);
     });
   });
 
@@ -761,17 +762,27 @@ void main() {
         transactions: [saved(spending(amount: 5000, category: giftsId))],
       );
 
+      await tester.tap(find.byTooltip('Archived plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gifts'));
+      await tester.pumpAndSettle();
       expect(find.byTooltip('Edit Gifts target'), findsNothing);
       expect(find.byTooltip('Edit Gifts assigned'), findsNothing);
       expect(find.byTooltip('Show Gifts transactions'), findsOneWidget);
     });
 
-    testWidgets('an archived category keeps an editable plan', (tester) async {
+    testWidgets('an archived category keeps its plan as read-only history', (
+      tester,
+    ) async {
       await pumpScreen(tester, plans: [plan(giftsId, 200000)]);
 
-      await openDialog(tester, 'Gifts (archived)');
-
-      expect(find.byType(AlertDialog), findsOneWidget);
+      await tester.tap(find.byTooltip('Archived plans'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gifts'));
+      await tester.pumpAndSettle();
+      expect(amount(tester, 'Gifts (archived)', 'Assigned'), '₱2,000.00');
+      expect(find.byTooltip('Edit Gifts assigned'), findsNothing);
+      expect(find.text('Unarchive plan'), findsOneWidget);
     });
   });
 }

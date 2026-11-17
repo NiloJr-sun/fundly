@@ -9,10 +9,11 @@ import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/presentation/categories_screen.dart';
 import '../../categories/presentation/category_display.dart';
-import '../../transactions/domain/transaction_filter.dart';
-import '../../transactions/presentation/all_transactions_screen.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
+import 'archive_plan.dart';
+import 'archived_plans_screen.dart';
+import 'plan_activity.dart';
 import 'plan_editor_dialog.dart';
 import 'plan_month_bar.dart';
 import 'plan_row.dart';
@@ -35,6 +36,15 @@ class PlansScreen extends ConsumerWidget {
         title: const Text('Plans'),
         actions: [
           IconButton(
+            tooltip: 'Archived plans',
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ArchivedPlansScreen(),
+              ),
+            ),
+          ),
+          IconButton(
             tooltip: 'Categories',
             icon: const Icon(Icons.category_outlined),
             onPressed: () => Navigator.of(context).push(
@@ -48,11 +58,6 @@ class PlansScreen extends ConsumerWidget {
           const PlanMonthBar(),
           Expanded(
             child: switch (summaries) {
-              AsyncData(value: final rows) when rows.isEmpty =>
-                const CenteredMessage(
-                  'No spending categories yet.\nAdd one from Categories '
-                  '(top right).',
-                ),
               AsyncData(value: final rows) => _PlanList(
                 month: month,
                 rows: rows,
@@ -112,28 +117,15 @@ class _PlanList extends ConsumerWidget {
     }
   }
 
-  /// Opens All transactions filtered to this category and month.
-  void _showActivity(BuildContext context, CategoryPlanSummary summary) =>
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => AllTransactionsScreen(
-            initialFilter: TransactionFilter(
-              dateRange: month.dateRange,
-              categoryId: summary.category.linkedAccountId == null
-                  ? summary.category.id
-                  : null,
-              accountId: summary.category.linkedAccountId,
-              paymentAccountId: summary.category.linkedAccountId,
-            ),
-          ),
-        ),
-      );
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       children: [
         ReadyToAssignCard(month: month),
+        if (rows.isEmpty)
+          const CenteredMessage(
+            'No active plans.\nAdd a category or unarchive a plan.',
+          ),
         // One section per group that has rows, in [PlanGroup] order.
         for (final group in PlanGroup.values)
           if (rows.any((row) => row.category.planGroup == group)) ...[
@@ -142,12 +134,10 @@ class _PlanList extends ConsumerWidget {
               if (summary.category.planGroup == group)
                 PlanRow(
                   summary: summary,
-                  // A new plan cannot use an archived category; an existing
-                  // one can still be changed or cleared.
-                  onEdit: summary.category.isArchived && !summary.hasPlan
-                      ? null
-                      : (field) => _edit(context, ref, summary, field),
-                  onActivityTap: () => _showActivity(context, summary),
+                  onEdit: (field) => _edit(context, ref, summary, field),
+                  onActivityTap: () =>
+                      showPlanActivity(context, month, summary.category),
+                  onArchive: () => archivePlan(context, ref, summary.category),
                 ),
           ],
       ],

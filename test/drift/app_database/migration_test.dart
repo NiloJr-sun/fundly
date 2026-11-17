@@ -8,6 +8,7 @@ import 'package:fundly/core/database/app_database.dart';
 import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
+import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -882,6 +883,94 @@ void main() {
                 .single,
             'ok',
           );
+          expect(
+            await db.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
+  test(
+    'v10 to v11 preserves category/account archives, links and plans',
+    () async {
+      const categoryRows = [
+        v10.CategoriesData(
+          id: 1,
+          name: 'Food',
+          kind: 'spending',
+          isArchived: 0,
+          planGroup: 'spending',
+        ),
+        v10.CategoriesData(
+          id: 2,
+          name: 'Old category',
+          kind: 'spending',
+          isArchived: 1,
+          planGroup: 'savings',
+        ),
+        v10.CategoriesData(
+          id: 3,
+          name: 'Card',
+          kind: 'spending',
+          isArchived: 0,
+          planGroup: 'liability',
+          linkedAccountId: 2,
+        ),
+      ];
+      const plan = v10.MonthlyPlansData(
+        id: 1,
+        month: '2026-11',
+        categoryId: 1,
+        targetAmountMinor: 20000,
+        assignedAmountMinor: 10000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        updatedAt: '2026-11-17T00:00:00.000Z',
+      );
+      await verifier.testWithDataIntegrity(
+        oldVersion: 10,
+        newVersion: 11,
+        createOld: v10.DatabaseAtV10.new,
+        createNew: v11.DatabaseAtV11.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, db) => batch
+          ..insertAll(db.accounts, const [
+            v10.AccountsData(
+              id: 1,
+              name: 'Cash',
+              type: 'savingsCash',
+              openingBalanceMinor: 100000,
+              currencyCode: 'PHP',
+              createdAt: '2026-11-17T00:00:00.000Z',
+              isArchived: 0,
+              isBudgetAccount: 1,
+            ),
+            v10.AccountsData(
+              id: 2,
+              name: 'Card',
+              type: 'credit',
+              openingBalanceMinor: -10000,
+              currencyCode: 'PHP',
+              createdAt: '2026-11-17T00:00:00.000Z',
+              isArchived: 0,
+              isBudgetAccount: 0,
+            ),
+          ])
+          ..insertAll(db.categories, categoryRows)
+          ..insert(db.monthlyPlans, plan),
+        validateItems: (db) async {
+          final categories = await (db.select(
+            db.categories,
+          )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+          expect(categories.map((c) => c.toJson()).toList(), [
+            for (final c in categoryRows) {...c.toJson(), 'isPlanArchived': 0},
+          ]);
+          expect(
+            (await db.select(db.monthlyPlans).get()).single.toJson(),
+            plan.toJson(),
+          );
+          expect((await db.select(db.accounts).get()).length, 2);
           expect(
             await db.customSelect('PRAGMA foreign_key_check').get(),
             isEmpty,

@@ -20,6 +20,10 @@ class Categories extends Table {
 
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
 
+  /// Hides only the Plans row, independently of category/account archiving.
+  BoolColumn get isPlanArchived =>
+      boolean().withDefault(const Constant(false))();
+
   /// The Plans page section, stored by enum name. Inflow categories keep the
   /// default; the repository only lets spending categories change it.
   TextColumn get planGroup => textEnum<PlanGroup>()

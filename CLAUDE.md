@@ -513,10 +513,10 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements (R.1–R.14 in the roadmap, ending with Plans groups and the
-budget account behind Ready to assign) and Phase 5 tasks 5.1 and 5.2
+refinements (R.1–R.15 in the roadmap, including automatic liability rows
+and Plans archiving) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
-v10 and backups at format 4. [AGENTS.md](AGENTS.md) summarises the current
+v11 and backups at format 5. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
@@ -725,13 +725,13 @@ suggestions as approved decisions.
                           category deletes its    
                           plans (task 4.2)        
 
-  2026-11-16              Plan actual counts      Confirmed
-                          Spending only; archived 
-                          categories appear only  
-                          with a plan or spending 
-                          that month; no whole-   
-                          month totals yet (tasks 
-                          4.3, 4.4)               
+  2026-11-17              Plan Activity counts    Confirmed
+                          Spending for ordinary
+                          categories and payments
+                          for linked debt rows.
+                          Archived rows appear in
+                          Archived plans, keeping
+                          their monthly history.
 
   2026-11-17              Spending tab list: This Confirmed
                           month shows the 10      
@@ -954,5 +954,30 @@ suggestions as approved decisions.
                           adds linkedAccountId;
                           formats 1–3 restore and
                           create missing rows.
+
+  2026-11-17              Plans archive (v11):    Confirmed
+                          isPlanArchived hides a
+                          row in every month,
+                          independently of its
+                          category/account. Block
+                          archive when current or
+                          future remaining budget
+                          allocations exceed zero
+                          using actual local month
+                          and Ready to assign
+                          rules. Past assignments
+                          do not block. Keep all
+                          history and reservations
+                          in Ready to assign, even
+                          if transaction edits
+                          later reintroduce money.
+                          Archived plans lists all
+                          archived rows; history
+                          is read-only. Unarchive
+                          to edit. Archived parent
+                          category/account must be
+                          restored first. Backup
+                          format 5 adds the flag;
+                          formats 1–4 use false.
 
   -----------------------------------------------------------------------

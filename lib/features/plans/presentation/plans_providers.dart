@@ -45,37 +45,49 @@ final monthPlansProvider =
 /// Target, assigned, activity, available and status per spending category
 /// for one month.
 final planSummariesProvider =
-    Provider.family<AsyncValue<List<CategoryPlanSummary>>, CalendarMonth>((
-      ref,
-      month,
-    ) {
-      final categories = ref.watch(allCategoriesProvider);
-      final plans = ref.watch(monthPlansProvider(month));
-      final transactions = ref.watch(allTransactionsProvider);
-      return switch ((categories, plans, transactions)) {
-        (
-          AsyncData(value: final c),
-          AsyncData(value: final p),
-          AsyncData(value: final t),
-        ) =>
-          AsyncData(
-            planSummaries(
-              month: month,
-              categories: c,
-              plans: p,
-              transactions: t,
-            ),
-          ),
-        (AsyncError(:final error, :final stackTrace), _, _) ||
-        (_, AsyncError(:final error, :final stackTrace), _) ||
-        (
-          _,
-          _,
-          AsyncError(:final error, :final stackTrace),
-        ) => AsyncError(error, stackTrace),
-        _ => const AsyncLoading(),
-      };
-    });
+    Provider.family<AsyncValue<List<CategoryPlanSummary>>, CalendarMonth>(
+      (ref, month) => _summaries(ref, month, archived: false),
+    );
+
+/// All archived rows, even those without a saved plan in the selected month.
+final archivedPlanSummariesProvider =
+    Provider.family<AsyncValue<List<CategoryPlanSummary>>, CalendarMonth>(
+      (ref, month) => _summaries(ref, month, archived: true),
+    );
+
+AsyncValue<List<CategoryPlanSummary>> _summaries(
+  Ref ref,
+  CalendarMonth month, {
+  required bool archived,
+}) {
+  final categories = ref.watch(allCategoriesProvider);
+  final plans = ref.watch(monthPlansProvider(month));
+  final transactions = ref.watch(allTransactionsProvider);
+  return switch ((categories, plans, transactions)) {
+    (
+      AsyncData(value: final c),
+      AsyncData(value: final p),
+      AsyncData(value: final t),
+    ) =>
+      AsyncData(
+        planSummaries(
+          month: month,
+          categories: c,
+          plans: p,
+          transactions: t,
+          archived: archived,
+        ),
+      ),
+    (AsyncError(:final error, :final stackTrace), _, _) ||
+    (_, AsyncError(:final error, :final stackTrace), _) ||
+    (
+      _,
+      _,
+      AsyncError(:final error, :final stackTrace),
+    ) => AsyncError(error, stackTrace),
+    _ => const AsyncLoading(),
+  };
+}
 
 /// Current budget-account balance minus remaining allocations in [month]; see
 /// [readyToAssign]. `null` (as data) when no budget account is chosen.

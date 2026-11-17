@@ -51,6 +51,13 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   counts payments into it. Payments from the budget account reduce its remaining
   allocation once. Renaming or archiving the account updates its row; history
   stays available. Account rows are managed through accounts rather than Categories.
+  Use a row’s ⋮ menu to archive it across all months. Archiving is blocked
+  while any current or future month has remaining allocation; the message lists
+  amounts to release. Past assignments do not block archiving. Archived rows
+  disappear from Plans. Open Archived plans (top right) to browse monthly history
+  and unarchive a row. This leaves its category/account active; if its parent is
+  archived, restore that category/account first. History and budget reservations
+  are retained, including after later transaction edits.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
   is plain text, so keep it private. ⋮ → Restore from backup picks a backup
@@ -161,10 +168,10 @@ lib/
       presentation/         # Plans tab, Ready to assign card
     backup/
       data/                 # BackupExporter and BackupImporter: JSON backup
-                            # format (version 4), checks, replace-all restore
+                            # format (version 5), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v10)
+drift_schemas/              # schema snapshot per version (currently v11)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

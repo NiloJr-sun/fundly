@@ -35,6 +35,7 @@ List<Override> fakeAccounts(
   List<Account> archived = const [],
   List<Transaction> transactions = const [],
   List<Category> categories = const [],
+  Stream<List<Category>>? categoryStream,
   FakeAccountRepository? repository,
   FakeCategoryRepository? categoryRepository,
   List<MonthlyPlan> plans = const [],
@@ -72,7 +73,9 @@ List<Override> fakeAccounts(
       repository ?? FakeAccountRepository(),
     ),
     ...fakeCustomAccountTypes(customTypes, repository: customTypeRepository),
-    allCategoriesProvider.overrideWith((ref) => Stream.value(categories)),
+    allCategoriesProvider.overrideWith(
+      (ref) => categoryStream ?? Stream.value(categories),
+    ),
     categoryRepositoryProvider.overrideWithValue(
       categoryRepository ?? FakeCategoryRepository(),
     ),

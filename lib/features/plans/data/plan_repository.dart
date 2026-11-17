@@ -6,7 +6,9 @@ import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
+import '../../transactions/domain/transaction.dart';
 import '../domain/monthly_plan.dart';
+import '../domain/plan_summary.dart';
 import '../domain/plan_validation_exception.dart';
 
 /// Reads and writes [MonthlyPlan]s, enforcing the plan rules before anything
@@ -49,10 +51,6 @@ class PlanRepository {
     if ((target?.isNegative ?? false) || assigned.isNegative) {
       throw const PlanValidationException(PlanValidationError.amountNegative);
     }
-    if (target == null && assigned.isZero) {
-      await clear(month: month, categoryId: categoryId);
-      return null;
-    }
     return _database.transaction(() async {
       final category = await (_database.select(
         _database.categories,
@@ -66,6 +64,14 @@ class PlanRepository {
         throw const PlanValidationException(
           PlanValidationError.categoryNotSpending,
         );
+      }
+
+      if (category.isPlanArchived) {
+        throw const PlanValidationException(PlanValidationError.planArchived);
+      }
+      if (target == null && assigned.isZero) {
+        await clear(month: month, categoryId: categoryId);
+        return null;
       }
 
       final existing = await _find(month, categoryId);
@@ -105,6 +111,85 @@ class PlanRepository {
       return _toDomain(row);
     });
   }
+
+  /// Archives the row across months, independently of its category/account.
+  /// Current/future remaining allocations must be zero. Historical assignments
+  /// remain intact. Transaction edits after archiving still count in Ready to
+  /// assign, so archiving never silently releases money.
+  Future<void> setArchived(
+    int categoryId, {
+    required bool archived,
+  }) => _database.transaction(() async {
+    final category = await (_database.select(
+      _database.categories,
+    )..where((c) => c.id.equals(categoryId))).getSingleOrNull();
+    if (category == null) {
+      throw const PlanValidationException(PlanValidationError.categoryNotFound);
+    }
+    if (category.kind != CategoryKind.spending) {
+      throw const PlanValidationException(
+        PlanValidationError.categoryNotSpending,
+      );
+    }
+    if (!archived && category.isArchived) {
+      throw const PlanValidationException(PlanValidationError.categoryArchived);
+    }
+    if (archived && !category.isPlanArchived) {
+      final today = _now().toLocal();
+      final currentMonth = CalendarMonth(today.year, today.month);
+      final plans =
+          await (_database.select(_plans)
+                ..where(
+                  (p) =>
+                      p.categoryId.equals(categoryId) &
+                      p.month.isBiggerOrEqualValue(currentMonth.toIsoString()),
+                )
+                ..orderBy([(p) => OrderingTerm(expression: p.month)]))
+              .get();
+      final budget = await (_database.select(
+        _database.accounts,
+      )..where((a) => a.isBudgetAccount.equals(true))).getSingleOrNull();
+      final entries = budget == null
+          ? <TransactionDraft>[]
+          : [
+              for (final row
+                  in await (_database.select(_database.transactions)..where(
+                        (t) =>
+                            t.sourceAccountId.equals(budget.id) &
+                            t.date.isBiggerOrEqualValue(
+                              currentMonth.dateRange.start.toIsoString(),
+                            ),
+                      ))
+                      .get())
+                TransactionDraft(
+                  type: row.type,
+                  date: row.date,
+                  amount: Money(
+                    minorUnits: row.amountMinor,
+                    currencyCode: row.currencyCode,
+                  ),
+                  categoryId: row.categoryId,
+                  sourceAccountId: row.sourceAccountId,
+                  destinationAccountId: row.destinationAccountId,
+                ),
+            ];
+      final remaining = <CalendarMonth, Money>{};
+      for (final row in plans) {
+        final plan = _toDomain(row);
+        final allocation = remainingPlanAllocation(
+          plan: plan,
+          budgetAccountId: budget?.id,
+          linkedAccountId: category.linkedAccountId,
+          transactions: entries,
+        );
+        if (!allocation.isZero) remaining[plan.month] = allocation;
+      }
+      if (remaining.isNotEmpty) throw PlanArchiveBlocked(remaining);
+    }
+    await (_database.update(_database.categories)
+          ..where((c) => c.id.equals(categoryId)))
+        .write(CategoriesCompanion(isPlanArchived: Value(archived)));
+  });
 
   /// Removes the plan for [categoryId] in [month]: no target and nothing
   /// assigned.
