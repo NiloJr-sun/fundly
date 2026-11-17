@@ -59,6 +59,7 @@ void main() {
     List<MonthlyPlan> plans = const [],
     List<Transaction> transactions = const [],
     bool bdoIsBudgetAccount = false,
+    int? budgetOpeningBalance,
   }) async {
     final bdo = accounts[bdoId]!;
     final withBudget = [
@@ -68,7 +69,9 @@ void main() {
             id: bdo.id,
             name: bdo.name,
             type: bdo.type,
-            openingBalance: bdo.openingBalance,
+            openingBalance: budgetOpeningBalance == null
+                ? bdo.openingBalance
+                : php(budgetOpeningBalance),
             createdAt: bdo.createdAt,
             isBudgetAccount: true,
           )
@@ -420,39 +423,72 @@ void main() {
       expect(tile.onTap, isNull);
     });
 
-    testWidgets(
-      'shows money into the budget account minus assigned, in green',
-      (tester) async {
-        await pumpScreen(
-          tester,
-          bdoIsBudgetAccount: true,
-          plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
-          transactions: [
-            saved(inflow(amount: 4000000), id: 1),
-            // Sending money on to another account does not count twice.
-            saved(transferToWallet(500000), id: 2),
-          ],
-        );
+    testWidgets('shows current balance minus remaining allocations, in green', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
+        transactions: [
+          saved(inflow(amount: 4000000), id: 1),
+          // Transfers out reduce the live balance.
+          saved(transferToWallet(500000), id: 2),
+        ],
+      );
 
-        expect(
-          find.descendant(
-            of: card(),
-            matching: find.text(
-              'Into BDO Savings ₱40,000.00 − Assigned ₱5,000.00',
-            ),
+      expect(
+        find.descendant(
+          of: card(),
+          matching: find.text(
+            'BDO Savings balance ₱35,000.00\nAssigned ₱5,000.00'
+            ' · Remaining ₱5,000.00',
           ),
-          findsOneWidget,
-        );
-        final amount = amountText(tester);
-        expect(amount.data, '₱35,000.00');
-        final context = tester.element(card());
-        expect(amount.style?.color, AppColors.of(context).positive);
-        expect(
-          tester.getTopLeft(card()).dy,
-          lessThan(tester.getTopLeft(find.text('Spending')).dy),
-        );
-      },
-    );
+        ),
+        findsOneWidget,
+      );
+      final amount = amountText(tester);
+      expect(amount.data, '₱30,000.00');
+      final context = tester.element(card());
+      expect(amount.style?.color, AppColors.of(context).positive);
+      expect(
+        tester.getTopLeft(card()).dy,
+        lessThan(tester.getTopLeft(find.text('Spending')).dy),
+      );
+    });
+
+    testWidgets('opening balance is available without incoming transactions', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        budgetOpeningBalance: 1000000,
+        plans: [plan(foodId, 400000)],
+      );
+      expect(amountText(tester).data, '₱6,000.00');
+      expect(
+        find.textContaining('BDO Savings balance ₱10,000.00'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('spending releases only the budget account allocation', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        plans: [plan(foodId, 400000)],
+        transactions: [
+          saved(inflow(amount: 1000000), id: 1),
+          saved(spending(amount: 100000), id: 2),
+          saved(spending(amount: 200000, from: rcbcCardId), id: 3),
+        ],
+      );
+      expect(amountText(tester).data, '₱6,000.00');
+      expect(find.textContaining('Remaining ₱3,000.00'), findsOneWidget);
+    });
 
     testWidgets('is red when more was assigned than came in', (tester) async {
       await pumpScreen(
@@ -463,6 +499,7 @@ void main() {
 
       final amount = amountText(tester);
       expect(amount.data, '-₱5,000.00');
+      expect(find.textContaining('Overallocated by ₱5,000.00'), findsOneWidget);
       final context = tester.element(card());
       expect(amount.style?.color, Theme.of(context).colorScheme.error);
     });
@@ -490,7 +527,7 @@ void main() {
       await tester.tap(find.byTooltip('Previous month'));
       await tester.pumpAndSettle();
 
-      expect(amountText(tester).data, '-₱1,000.00');
+      expect(amountText(tester).data, '₱39,000.00');
     });
 
     testWidgets("tapping it opens the budget account's month", (tester) async {

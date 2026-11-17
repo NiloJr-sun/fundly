@@ -10,10 +10,8 @@ import '../../transactions/domain/transaction_filter.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import 'plans_providers.dart';
 
-/// Money into the budget account this month minus everything assigned, at
-/// the top of Plans. Green when money is left to assign, red when more was
-/// assigned than came in. Tap to see the budget account's transactions that
-/// month. Without a budget account, says how to choose one.
+/// Live budget-account balance minus the selected month's remaining allocations.
+/// Negative amounts warn of overallocation without preventing plan edits.
 class ReadyToAssignCard extends ConsumerWidget {
   const ReadyToAssignCard({super.key, required this.month});
 
@@ -40,8 +38,10 @@ class ReadyToAssignCard extends ConsumerWidget {
           ),
         );
         details = Text(
-          'Into ${budgetAccount.name} ${MoneyFormatter.format(value.moneyIn)}'
-          ' − Assigned ${MoneyFormatter.format(value.assigned)}',
+          '${budgetAccount.name} balance: ${MoneyFormatter.format(value.balance)}'
+          '\nAssigned: ${MoneyFormatter.format(value.assigned)}'
+          '\nRemaining: ${MoneyFormatter.format(value.remaining)}'
+          '${money.isNegative ? '\nOverallocated by: ${MoneyFormatter.format(value.remaining - value.balance)}' : ''}',
         );
       case AsyncData():
         amount = null;

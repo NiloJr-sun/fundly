@@ -45,7 +45,7 @@ class Accounts extends Table {
     onDelete: KeyAction.restrict,
   )();
 
-  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Whether this account’s current balance funds Ready to assign on Plans.
   /// Only one account, of type Savings/Cash, can be the budget account.
   BoolColumn get isBudgetAccount => boolean()
       .withDefault(const Constant(false))

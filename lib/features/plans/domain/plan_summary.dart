@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show immutable;
 import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
+import '../../accounts/domain/account_balance.dart';
 import '../../categories/domain/category.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
@@ -131,67 +132,70 @@ List<CategoryPlanSummary> planSummaries({
   ];
 }
 
-/// Money that came into the budget account in a month, set against what has
-/// been assigned to categories that month.
+/// Current budget-account balance and the selected month's allocations.
 @immutable
 final class ReadyToAssign {
-  const ReadyToAssign({required this.moneyIn, required this.assigned});
+  const ReadyToAssign({
+    required this.balance,
+    required this.assigned,
+    required this.remaining,
+  });
 
-  /// Inflows and transfers into the budget account dated in the month.
-  final Money moneyIn;
-
-  /// Every category's assigned amount for the month.
+  final Money balance;
   final Money assigned;
 
-  /// `moneyIn - assigned`; negative when more was assigned than came in.
-  Money get amount => moneyIn - assigned;
+  /// Assigned money still reserved, after eligible spending per category.
+  final Money remaining;
+
+  Money get amount => balance - remaining;
 
   @override
   bool operator ==(Object other) =>
       other is ReadyToAssign &&
-      other.moneyIn == moneyIn &&
-      other.assigned == assigned;
+      other.balance == balance &&
+      other.assigned == assigned &&
+      other.remaining == remaining;
 
   @override
-  int get hashCode => Object.hash(moneyIn, assigned);
-
-  @override
-  String toString() => 'ReadyToAssign(moneyIn: $moneyIn, assigned: $assigned)';
+  int get hashCode => Object.hash(balance, assigned, remaining);
 }
 
-/// How much of the money that came into the budget account in [month] is
-/// not yet assigned (CLAUDE.md §11).
-///
-/// - Money in is every Inflow and every Transfer into [budgetAccountId]
-///   dated in the month. Money leaving it (transfers out, spending) does not
-///   count, so sending budgeted money to other accounts never counts twice.
-///   Income into other accounts does not count.
-/// - Assigned is the total of every plan's assigned amount for the month,
-///   archived categories included.
-/// - Nothing carries over between months: the balance from before the month
-///   is not included.
+/// Current balance (including opening money and all recorded transactions)
+/// minus the selected month's remaining allocations. This is a live balance,
+/// even when viewing another month; monthly allocations do not carry over.
+/// Only Spending from the budget account in that month releases an allocation.
+/// Each category's remaining allocation is floored at zero so overspending
+/// cannot release money reserved for other categories. Transfers and card
+/// payments affect the balance but never release category allocations.
 ReadyToAssign readyToAssign({
   required CalendarMonth month,
-  required int budgetAccountId,
+  required Account budgetAccount,
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
-  String currencyCode = Account.defaultCurrency,
 }) {
-  final range = month.dateRange;
-  var moneyIn = Money.zero(currencyCode);
-  for (final transaction in transactions) {
-    final fundsBudget =
-        transaction.type == TransactionType.inflow ||
-        transaction.type == TransactionType.transfer;
-    if (fundsBudget &&
-        transaction.destinationAccountId == budgetAccountId &&
-        range.contains(transaction.date)) {
-      moneyIn += transaction.amount;
+  final entries = transactions.toList();
+  final zero = Money.zero(budgetAccount.openingBalance.currencyCode);
+  final spent = <int, Money>{};
+  for (final transaction in entries) {
+    final category = transaction.categoryId;
+    if (transaction.type == TransactionType.spending &&
+        transaction.sourceAccountId == budgetAccount.id &&
+        month.dateRange.contains(transaction.date) &&
+        category != null) {
+      spent[category] = (spent[category] ?? zero) + transaction.amount;
     }
   }
-  var assigned = Money.zero(currencyCode);
+  var assigned = zero;
+  var remaining = zero;
   for (final plan in plans) {
-    if (plan.month == month) assigned += plan.assigned;
+    if (plan.month != month) continue;
+    assigned += plan.assigned;
+    final unspent = plan.assigned - (spent[plan.categoryId] ?? zero);
+    if (!unspent.isNegative) remaining += unspent;
   }
-  return ReadyToAssign(moneyIn: moneyIn, assigned: assigned);
+  return ReadyToAssign(
+    balance: currentBalance(budgetAccount, entries),
+    assigned: assigned,
+    remaining: remaining,
+  );
 }

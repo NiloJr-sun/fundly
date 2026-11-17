@@ -428,7 +428,7 @@ void main() {
       expect(
         find.text(
           'Make BPI Savings your budget account instead of BDO Savings? '
-          'Ready to assign on Plans will count money coming into BPI '
+          'Ready to assign on Plans will use the current balance of BPI '
           'Savings.',
         ),
         findsOneWidget,

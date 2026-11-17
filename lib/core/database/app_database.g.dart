@@ -599,7 +599,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// repository enforces this, because SQLite checks cannot see other tables.
   final int? customTypeId;
 
-  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Whether this account’s current balance funds Ready to assign on Plans.
   /// Only one account, of type Savings/Cash, can be the budget account.
   final bool isBudgetAccount;
   const AccountRow({

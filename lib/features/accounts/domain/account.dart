@@ -42,7 +42,7 @@ final class Account {
   /// accounting rule keeps using [type].
   final int? customTypeId;
 
-  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Whether this account’s current balance funds Ready to assign on Plans.
   /// At most one account is the budget account, and it is Savings/Cash.
   final bool isBudgetAccount;
 

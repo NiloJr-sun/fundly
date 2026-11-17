@@ -231,7 +231,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.9 | Account types screen: rename, change class while unused, delete when unused | — | Repository and widget tests |
 | R.10 | Archived accounts with no transactions can be deleted permanently (button below Unarchive account) | — | Repository and widget tests |
 | R.11 | Plans groups: each spending category is in Spending, Savings or Liability (fixed list), set in the category form; Plans shows a section per group. Backup format 2 adds `planGroup` | v8 | Migration, repository, backup and widget tests |
-| R.12 | Ready to assign on Plans: money into the budget account that month (Inflows and Transfers into it) minus the total Assigned that month; transfers out never count; no carry-over; red when negative | — | Calculator and widget tests |
+| R.12 | Ready to assign on Plans: live budget-account balance including opening money minus the selected month’s remaining allocations; each category reserves max(Assigned − that month’s Spending from the budget account, 0); other-account spending does not release allocations; no allocation carry-over; red warning when overallocated, saving allowed | — | Calculator and widget tests |
 | R.13 | Budget account: one active Savings/Cash account (custom asset types included) can be tagged in the account form; moving the tag asks first; archiving removes it. Backup format 3 adds `isBudgetAccount` | v9 | Migration, repository, backup and widget tests |
 
 ### Phase 5 — After the MVP (one item approved)

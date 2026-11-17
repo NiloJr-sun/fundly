@@ -146,7 +146,7 @@ class AccountRepository {
     if (changed == 0) throw StateError('Account $id does not exist.');
   }
 
-  /// Makes account [id] the budget account, whose incoming money funds Ready
+  /// Makes account [id] the budget account, whose current balance funds Ready
   /// to assign on Plans. Any previous budget account stops being one, in the
   /// same transaction.
   ///

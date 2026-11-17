@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 684 tests passing as of 2026-11-17
+flutter test                      # 690 tests passing as of 2026-11-17
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -79,8 +79,8 @@ simulator build for anything that changes app code. macOS has no
   **budget account**; four transaction types; Spending tab with period
   totals and filters; categories with Plans groups (Spending, Savings,
   Liability); Plans with Target, Assigned, Activity, Available, Status and
-  **Ready to assign** (money into the budget account that month minus total
-  Assigned).
+  **Ready to assign** (current budget-account balance minus the selected
+  month’s remaining allocations).
 - **Nothing further is approved.** The remaining Phase 5 proposal is CSV
   export of transactions (5.3).
 
@@ -159,8 +159,11 @@ Rules that matter everywhere:
 
 ## 6. Known limitations (agreed, not bugs)
 
-- Ready to assign has no carry-over and counts only Inflows and Transfers
-  into the budget account in the selected month.
+- Ready to assign uses the live budget-account balance for every selected
+  month, including opening money. Remaining allocations are calculated per
+  category as max(Assigned minus that month’s Spending from the budget account,
+  0). Other-account spending does not release allocations. Monthly allocations
+  do not carry over; overallocation warns but does not block saving.
 - Restore replaces all data; there is no merge and no encryption. Backups
   are plain text.
 - Accounts with transactions can only be archived, never deleted (G7).

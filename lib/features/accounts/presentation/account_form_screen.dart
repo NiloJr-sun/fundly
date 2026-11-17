@@ -173,7 +173,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
         title: const Text('Change budget account?'),
         content: Text(
           'Make $name your budget account instead of ${current.name}? '
-          'Ready to assign on Plans will count money coming into $name.',
+          'Ready to assign on Plans will use the current balance of $name.',
         ),
         actions: [
           TextButton(
@@ -268,7 +268,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Use as budget account'),
                 subtitle: const Text(
-                  'Money coming into it funds Ready to assign on Plans. '
+                  'Its current balance funds Ready to assign on Plans. '
                   'Only one account can be the budget account.',
                 ),
                 value: _isBudgetAccount,

@@ -326,9 +326,9 @@ them:
 -   Currency conversion.
 -   Full YNAB-style envelope budgeting and automatic money allocation.
     (Approved 2026-11-17: a manual Assigned amount per category per month,
-    and a Ready to assign figure: money into the one budget account that
-    month minus the total Assigned. Automatic allocation and carry-over
-    between months remain out of scope.)
+    and a Ready to assign figure: the budget account’s current balance
+    minus the selected month’s remaining allocations. Automatic allocation
+    and allocation carry-over between months remain out of scope.)
 
 Keep future extension in mind, but do not build abstractions for
 hypothetical requirements.
@@ -891,22 +891,24 @@ suggestions as approved decisions.
                           still restores          
 
   2026-11-17              Ready to assign on      Confirmed
-                          Plans (reprioritised    
-                          from §6): money into    
-                          the budget account      
-                          that month (Inflows +   
-                          Transfers into it)      
-                          minus the total         
-                          Assigned that month     
-                          (incl. archived         
-                          categories). Transfers  
-                          out never count; no     
-                          carry-over; red when    
-                          negative; tap opens     
-                          the budget account's    
-                          month. Replaces the     
-                          earlier all-income      
-                          rule                    
+                          Plans: live budget
+                          account balance incl.
+                          opening money, minus
+                          remaining allocations
+                          for the selected month.
+                          Remaining per category
+                          is Assigned minus that
+                          month’s Spending from
+                          the budget account,
+                          floored at zero. Other
+                          accounts/card purchases
+                          do not release money.
+                          All transactions affect
+                          the live balance; plans
+                          do not carry over. Red
+                          when overallocated;
+                          saving is allowed. Tap
+                          opens account/month.
 
   2026-11-17              Budget account (schema  Confirmed
                           v9): exactly one or no  

@@ -77,7 +77,7 @@ final planSummariesProvider =
       };
     });
 
-/// Money into the budget account in [month] minus everything assigned; see
+/// Current budget-account balance minus remaining allocations in [month]; see
 /// [readyToAssign]. `null` (as data) when no budget account is chosen.
 final readyToAssignProvider =
     Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {
@@ -94,7 +94,7 @@ final readyToAssignProvider =
             final budget when budget.isEmpty => null,
             final budget => readyToAssign(
               month: month,
-              budgetAccountId: budget.first.id,
+              budgetAccount: budget.first,
               plans: p,
               transactions: t,
             ),
