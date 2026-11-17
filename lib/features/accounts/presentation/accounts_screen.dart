@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/centered_message.dart';
+import '../../backup/presentation/export_backup.dart';
 import 'account_form_screen.dart';
 import 'account_list.dart';
 import 'account_types_screen.dart';
@@ -37,6 +38,7 @@ class AccountsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const _MoreMenu(),
         ],
       ),
       body: switch (accounts) {
@@ -58,5 +60,43 @@ class AccountsScreen extends ConsumerWidget {
         label: const Text('Add account'),
       ),
     );
+  }
+}
+
+enum _MoreAction { exportBackup }
+
+/// The ⋮ menu for app-level actions, such as exporting a backup.
+class _MoreMenu extends ConsumerWidget {
+  const _MoreMenu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<_MoreAction>(
+      tooltip: 'More',
+      onSelected: (action) => switch (action) {
+        _MoreAction.exportBackup => exportBackup(
+          context,
+          ref,
+          origin: _originOf(context),
+        ),
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: _MoreAction.exportBackup,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.ios_share),
+            title: Text('Export backup'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Where this menu button is on screen, for the iPad share sheet.
+  static Rect? _originOf(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 }

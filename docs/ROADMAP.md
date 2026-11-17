@@ -14,9 +14,9 @@ Last updated: 2026-11-17
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5 is a proposal, not approved |
+| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 JSON backup export done**; the rest is a proposal, not approved |
 | Platforms | iOS (primary), Android best-effort |
-| Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl; dev: drift_dev, build_runner, flutter_lints |
+| Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl, share_plus (share sheet for backups); dev: drift_dev, build_runner, flutter_lints |
 | Database | Schema **v7**: accounts, custom_account_types, categories, transactions, monthly_plans; migration tests for every step |
 | Git | One commit per task on `main` |
 | Tests | Domain, repository, migration and widget tests; all passing |
@@ -28,7 +28,7 @@ Last updated: 2026-11-17
 These needed a decision before the phase that depended on them. **All are
 resolved:** G1 and G4–G9 follow the proposed resolutions and are logged in
 CLAUDE.md §11; G2 and G3 were settled by D1 and D2; G11 was done in task 0.1.
-G10 remains open (see Phase 5).
+G10 is partly addressed: backups can be exported (5.1); restoring is not built yet.
 
 | # | Issue | Affects | Proposed resolution |
 |---|---|---|---|
@@ -41,7 +41,7 @@ G10 remains open (see Phase 5).
 | G7 | Behaviour of archived accounts is not defined. | Phase 1 | Archived accounts can't receive new transactions, are hidden from pickers and the summary, and keep their history. **Accounts that have transactions are never hard-deleted.** Archived accounts with no transactions can be deleted permanently (2026-11-17). |
 | G8 | Can a transaction's **type** change when it is edited? | Phase 2 | MVP: **no**. To change the type, delete the transaction and create a new one. This keeps validation simple. |
 | G9 | The transaction **date** and the created/updated **timestamps** are mixed together. | Phase 2 | The transaction date is a **local calendar date** (no time). Audit timestamps are UTC instants. |
-| G10 | The app stores data on the device only, so uninstalling or losing the phone **loses all data**. | Long-term | Not in scope yet. Suggest a JSON export/backup as the first item after the MVP (see Phase 5). |
+| G10 | The app stores data on the device only, so uninstalling or losing the phone **loses all data**. | Long-term | JSON backup export done (5.1, 2026-11-17). Import/restore is next if approved (see Phase 5). |
 | G11 | There is no git repo, so you can't review AI changes as diffs. | Phase 0 | Run `git init` first. Make one commit per task. |
 
 ---
@@ -231,10 +231,21 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.9 | Account types screen: rename, change class while unused, delete when unused | — | Repository and widget tests |
 | R.10 | Archived accounts with no transactions can be deleted permanently (button below Unarchive account) | — | Repository and widget tests |
 
-### Phase 5 — Proposed for after the MVP (not approved)
+### Phase 5 — After the MVP (one item approved)
 
-- JSON export/import for backup (addresses G10). **Recommended first.**
-- CSV export of transactions.
+| ID | Task | Status |
+|---|---|---|
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (format 1) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.2 | JSON import/restore (addresses the rest of G10). Needs decisions first: replace vs merge, validation, format and schema version checks | Proposed, **recommended next** |
+| 5.3 | CSV export of transactions | Proposed |
+
+Backup format 1: a header (`app`, `formatVersion`, `schemaVersion`,
+`exportedAt`) and arrays `customAccountTypes`, `accounts`, `categories`,
+`transactions` and `monthlyPlans`. Money is integer minor units, dates
+`YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
+derived balances are left out. Field names are mapped explicitly in
+`BackupExporter`, so a schema change does not change the format by itself;
+bump `formatVersion` when the format changes.
 
 ---
 
@@ -255,7 +266,7 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 
 | Risk | Mitigation |
 |---|---|
-| Data loss (data is only on the device) | Migration tests from the first schema; do Phase 5 backup early |
+| Data loss (data is only on the device) | Migration tests from the first schema; JSON backup export (5.1); restore (5.2) still to do |
 | Balance drift between screens | One balance function (2.4); screens never do arithmetic |
 | Scope creep from the AI | One task per prompt; CLAUDE.md §8 "Stop" rule; one commit per task |
 | Schema churn | Schema changes are always called out in the task plan before you approve it |
@@ -265,7 +276,7 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 
 ## 6. Next step
 
-The MVP roadmap and the post-MVP refinements are delivered. Nothing further
-is approved. The product owner
-decides what comes next; the recommended candidate is the JSON backup/export
-in Phase 5 (G10). Plan it like any other task: propose, approve, then build.
+The MVP roadmap, the post-MVP refinements and JSON backup export (5.1) are
+delivered. Nothing further is approved. The product owner decides what comes
+next; the recommended candidate is JSON import/restore (5.2), which completes
+G10. Plan it like any other task: propose, approve, then build.

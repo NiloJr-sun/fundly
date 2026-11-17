@@ -511,17 +511,18 @@ correct screen is not sufficient.
 
 ## 10. Current Status
 
-Phases 0–4 are complete: the MVP roadmap is delivered. Nothing beyond
-it is approved yet. Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a
-proposal only (JSON backup/export recommended first); the product owner
-must approve any next step before work starts.
+Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
+refinements and Phase 5 task 5.1 (JSON backup export) are also done.
+The rest of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal
+only (import/restore recommended next); the product owner must approve any
+next step before work starts.
 
 Every schema change must bump `schemaVersion`, run
 `dart run drift_dev make-migrations`, and ship with a data-integrity
 migration test.
 
 Work one roadmap task at a time and stop after each. Do not implement
-authentication, cloud sync, Phase 5 items, or anything in §6 until
+authentication, cloud sync, unapproved Phase 5 items, or anything in §6 until
 explicitly requested.
 
 ------------------------------------------------------------------------
@@ -835,4 +836,18 @@ suggestions as approved decisions.
                           to edit both, and       
                           Activity to open that   
                           month's transactions    
+
+  2026-11-17              JSON backup export      Confirmed
+                          (Phase 5 task 5.1):     
+                          Account tab ⋮ menu →    
+                          Export backup opens the 
+                          system share sheet      
+                          (share_plus added).     
+                          Versioned format 1 of   
+                          every record; money in  
+                          minor units, UTC        
+                          timestamps, IDs kept,   
+                          no derived balances.    
+                          Export only; import     
+                          is a separate task      
   -----------------------------------------------------------------------

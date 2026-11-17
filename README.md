@@ -6,9 +6,9 @@ spending. It works offline and keeps all data on the device.
 - Product direction and engineering rules: [CLAUDE.md](CLAUDE.md)
 - Delivery plan and open decisions: [docs/ROADMAP.md](docs/ROADMAP.md)
 
-**Status:** Phases 0–4 are complete, so the MVP is delivered. Nothing beyond
-it is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md) for the Phase 5
-proposal.
+**Status:** Phases 0–4 are complete, so the MVP is delivered, along with
+post-MVP refinements and the first Phase 5 item, JSON backup export. Nothing
+else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Features
 
@@ -33,6 +33,10 @@ proposal.
   Available (Assigned − Activity) and a Funded / Underfunded status. Tap
   Target or Assigned to edit just that amount. Categories can be added,
   renamed, archived and deleted when unused.
+- **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
+  records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
+  is plain text, so keep it private. Restoring from a backup is not built
+  yet.
 
 ## Requirements
 
@@ -135,6 +139,9 @@ lib/
       data/                 # monthly_plans table, repository
       domain/               # MonthlyPlan, plan summaries
       presentation/         # Plans tab
+    backup/
+      data/                 # BackupExporter: JSON backup format (version 1)
+      presentation/         # Export backup action and share sheet
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
 drift_schemas/              # schema snapshot per version (currently v7)
 ```
