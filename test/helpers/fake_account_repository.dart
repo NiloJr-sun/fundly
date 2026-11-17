@@ -16,8 +16,9 @@ class FakeAccountRepository implements AccountRepository {
   final List<({int id, String? name, Money? entered, ({int? id})? customType})>
   updated = [];
   final List<({int id, bool archived})> archivedChanges = [];
+  final List<int> deleted = [];
 
-  /// When set, the next create/update throws this instead of saving.
+  /// When set, the next create/update/delete throws this instead.
   AccountValidationError? failWith;
 
   @override
@@ -71,6 +72,12 @@ class FakeAccountRepository implements AccountRepository {
   @override
   Future<void> setArchived(int id, {required bool archived}) async {
     archivedChanges.add((id: id, archived: archived));
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    _maybeFail();
+    deleted.add(id);
   }
 
   void _maybeFail() {

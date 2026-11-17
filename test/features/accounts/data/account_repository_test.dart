@@ -1,13 +1,17 @@
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
+import 'package:fundly/features/transactions/data/transaction_repository.dart';
+import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
 
@@ -281,6 +285,57 @@ void main() {
 
     test('throws for an unknown id', () {
       expect(repository.setArchived(999, archived: true), throwsStateError);
+    });
+  });
+
+  group('delete', () {
+    test('removes an archived account no transaction uses', () async {
+      final account = await create('Old Wallet');
+      await repository.setArchived(account.id, archived: true);
+
+      await repository.delete(account.id);
+
+      expect(await repository.watchById(account.id).first, isNull);
+      expect(await repository.watchAll(includeArchived: true).first, isEmpty);
+    });
+
+    test('refuses an account used by a transaction on either side', () async {
+      final bdo = await create('BDO Savings', entered: 500000);
+      final wallet = await create('Cash Wallet');
+      await TransactionRepository(database).create(
+        TransactionDraft(
+          type: TransactionType.transfer,
+          amount: php(20000),
+          date: CalendarDate(2026, 11, 16),
+          sourceAccountId: bdo.id,
+          destinationAccountId: wallet.id,
+        ),
+      );
+      await repository.setArchived(bdo.id, archived: true);
+      await repository.setArchived(wallet.id, archived: true);
+
+      for (final account in [bdo, wallet]) {
+        await expectLater(
+          repository.delete(account.id),
+          throwsValidation(AccountValidationError.hasTransactions),
+          reason: account.name,
+        );
+      }
+      expect(
+        await repository.watchAll(includeArchived: true).first,
+        hasLength(2),
+      );
+    });
+
+    test('refuses an active account', () async {
+      final account = await create('BDO Savings');
+
+      await expectLater(repository.delete(account.id), throwsStateError);
+      expect(await repository.watchById(account.id).first, isNotNull);
+    });
+
+    test('throws StateError for a missing account', () async {
+      await expectLater(repository.delete(42), throwsStateError);
     });
   });
 

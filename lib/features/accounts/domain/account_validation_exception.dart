@@ -1,4 +1,4 @@
-/// Why an account could not be created or updated.
+/// Why an account could not be created, updated or deleted.
 enum AccountValidationError {
   nameEmpty,
   nameTooLong,
@@ -7,6 +7,10 @@ enum AccountValidationError {
   /// case).
   nameTaken,
   negativeOpeningBalance,
+
+  /// A transaction uses the account, so it cannot be deleted (G7). It can
+  /// only stay archived.
+  hasTransactions,
 }
 
 class AccountValidationException implements Exception {

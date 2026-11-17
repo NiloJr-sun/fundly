@@ -3,14 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
+import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 import '../../../helpers/fake_account_repository.dart';
 import '../../../helpers/provider_overrides.dart';
+import '../../transactions/domain/transaction_fixtures.dart' show saved;
 
 Account account({
   int id = 1,
@@ -205,6 +210,110 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
       expect(repository.archivedChanges, [(id: 1, archived: false)]);
       expect(find.text('BDO Savings restored'), findsOneWidget);
+    });
+  });
+
+  group('deleting', () {
+    final archived = account(isArchived: true);
+    final other = account(id: 2, name: 'Cash Wallet');
+
+    Future<void> openArchived(
+      WidgetTester tester, {
+      List<Transaction> transactions = const [],
+    }) => openDetail(
+      tester,
+      fakeAccounts(
+        [other],
+        archived: [archived],
+        transactions: transactions,
+        repository: repository,
+      ),
+    );
+
+    OutlinedButton deleteButton(WidgetTester tester) =>
+        tester.widget<OutlinedButton>(
+          find.ancestor(
+            of: find.text('Delete permanently'),
+            matching: find.byWidgetPredicate((w) => w is OutlinedButton),
+          ),
+        );
+
+    testWidgets('an active account has no delete button', (tester) async {
+      await openDetail(tester, fakeAccounts([account()]));
+
+      expect(find.text('Delete permanently'), findsNothing);
+    });
+
+    testWidgets('sits right below Unarchive account', (tester) async {
+      await openArchived(tester);
+
+      final unarchive = tester.getBottomLeft(find.text('Unarchive account'));
+      final delete = tester.getTopLeft(find.text('Delete permanently'));
+      expect(delete.dy, greaterThan(unarchive.dy));
+      expect(deleteButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('deletes after confirming and closes', (tester) async {
+      await openArchived(tester);
+
+      await tapButton(tester, 'Delete permanently');
+      expect(find.text('Delete BDO Savings?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, [archived.id]);
+      expect(find.byType(AccountDetailScreen), findsNothing);
+      expect(find.text('BDO Savings deleted'), findsOneWidget);
+    });
+
+    testWidgets('Cancel keeps the account', (tester) async {
+      await openArchived(tester);
+
+      await tapButton(tester, 'Delete permanently');
+      await tapButton(tester, 'Cancel');
+
+      expect(repository.deleted, isEmpty);
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('is disabled with a reason when transactions use it (G7)', (
+      tester,
+    ) async {
+      await openArchived(
+        tester,
+        transactions: [
+          saved(
+            TransactionDraft(
+              type: TransactionType.transfer,
+              amount: const Money(minorUnits: 20000, currencyCode: 'PHP'),
+              date: CalendarDate(2026, 11, 10),
+              sourceAccountId: other.id,
+              destinationAccountId: archived.id,
+            ),
+          ),
+        ],
+      );
+
+      expect(deleteButton(tester).onPressed, isNull);
+      expect(
+        find.text('It has transactions, so it can only stay archived.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows a delete refused by the repository', (tester) async {
+      await openArchived(tester);
+      repository.failWith = AccountValidationError.hasTransactions;
+
+      await tapButton(tester, 'Delete permanently');
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('It has transactions, so it can only stay archived.'),
+        findsOneWidget,
+      );
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
     });
   });
 }

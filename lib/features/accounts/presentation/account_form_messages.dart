@@ -22,7 +22,7 @@ String moneyParseErrorText(MoneyParseError error, String currencyCode) =>
       MoneyParseError.tooLarge => 'That amount is too large.',
     };
 
-/// Message for an error reported by the repository on save.
+/// Message for an error reported by the repository on save or delete.
 String accountValidationErrorText(AccountValidationError error) =>
     switch (error) {
       AccountValidationError.nameEmpty => 'Enter a name.',
@@ -32,6 +32,8 @@ String accountValidationErrorText(AccountValidationError error) =>
         'You already have an account with this name.',
       AccountValidationError.negativeOpeningBalance =>
         'Enter the amount without a minus sign.',
+      AccountValidationError.hasTransactions =>
+        'It has transactions, so it can only stay archived.',
     };
 
 /// Label for the opening balance field, which means "money owed" for

@@ -10,7 +10,9 @@ import '../../transactions/presentation/transactions_providers.dart';
 import '../data/account_repository.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
+import '../domain/account_validation_exception.dart';
 import 'account_display.dart';
+import 'account_form_messages.dart';
 import 'account_form_screen.dart';
 import 'accounts_providers.dart';
 
@@ -99,6 +101,10 @@ class _AccountDetails extends ConsumerWidget {
         // Archiving needs the balance to decide whether to confirm.
         if (balance case final known?)
           _ArchiveButton(account: account, balance: known),
+        if (account.isArchived) ...[
+          const SizedBox(height: Spacing.sm),
+          _DeleteButton(account: account),
+        ],
         const Divider(height: Spacing.xl),
         Text('Transactions', style: textTheme.titleMedium),
         const SizedBox(height: Spacing.sm),
@@ -203,6 +209,96 @@ class _ArchiveButton extends ConsumerWidget {
         ),
       ),
     );
+    navigator.pop();
+  }
+}
+
+/// Permanently deletes an archived account, only when no transaction uses it
+/// (G7). Shown below "Unarchive account".
+class _DeleteButton extends ConsumerWidget {
+  const _DeleteButton({required this.account});
+
+  final Account account;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final transactions = ref.watch(transactionsForAccountProvider(account.id));
+    // Unknown while loading: keep the button disabled until it is safe.
+    final canDelete = transactions.value?.isEmpty ?? false;
+    final reason = switch (transactions) {
+      AsyncData(value: final list) when list.isNotEmpty =>
+        accountValidationErrorText(AccountValidationError.hasTransactions),
+      AsyncError() => 'Its transactions could not be checked.',
+      _ => null,
+    };
+    final error = theme.colorScheme.error;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: error,
+            side: canDelete ? BorderSide(color: error) : null,
+          ),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('Delete permanently'),
+          onPressed: canDelete ? () => _delete(context, ref) : null,
+        ),
+        if (reason != null) ...[
+          const SizedBox(height: Spacing.xs),
+          Text(
+            reason,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${account.name}?'),
+        content: const Text(
+          "This permanently deletes the account. It can't be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(accountRepositoryProvider).delete(account.id);
+    } on AccountValidationException catch (exception) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(accountValidationErrorText(exception.error))),
+      );
+      return;
+    } on Object {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('The account could not be deleted.')),
+      );
+      return;
+    }
+    messenger.showSnackBar(SnackBar(content: Text('${account.name} deleted')));
     navigator.pop();
   }
 }

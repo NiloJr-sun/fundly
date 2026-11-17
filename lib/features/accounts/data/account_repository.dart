@@ -136,6 +136,43 @@ class AccountRepository {
     if (changed == 0) throw StateError('Account $id does not exist.');
   }
 
+  /// Permanently deletes archived account [id]. Only an account no
+  /// transaction uses can be deleted (G7): its history and the balances of
+  /// the accounts it traded with stay intact.
+  ///
+  /// Throws [AccountValidationException] with
+  /// [AccountValidationError.hasTransactions] if a transaction uses it, or
+  /// [StateError] if the account does not exist or is not archived.
+  Future<void> delete(int id) => _database.transaction(() async {
+    final existing = await (_database.select(
+      _accounts,
+    )..where((account) => account.id.equals(id))).getSingleOrNull();
+    if (existing == null) throw StateError('Account $id does not exist.');
+    if (!existing.isArchived) {
+      throw StateError('Account $id must be archived before deleting.');
+    }
+
+    final transactions = _database.transactions;
+    final usage = transactions.id.count();
+    final count =
+        await (_database.selectOnly(transactions)
+              ..addColumns([usage])
+              ..where(
+                transactions.sourceAccountId.equals(id) |
+                    transactions.destinationAccountId.equals(id),
+              ))
+            .map((row) => row.read(usage)!)
+            .getSingle();
+    if (count > 0) {
+      throw const AccountValidationException(
+        AccountValidationError.hasTransactions,
+      );
+    }
+    await (_database.delete(
+      _accounts,
+    )..where((account) => account.id.equals(id))).go();
+  });
+
   /// Returns the trimmed name, or throws if it is invalid or already used.
   Future<String> _validName(String name, {int? excludingId}) async {
     switch (validateAccountName(name)) {
