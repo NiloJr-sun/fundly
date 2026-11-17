@@ -3,6 +3,317 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $CustomAccountTypesTable extends CustomAccountTypes
+    with TableInfo<$CustomAccountTypesTable, CustomAccountTypeRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomAccountTypesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE COLLATE NOCASE',
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AccountType, String> baseType =
+      GeneratedColumn<String>(
+        'base_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AccountType>($CustomAccountTypesTable.$converterbaseType);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, baseType, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_account_types';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomAccountTypeRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomAccountTypeRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomAccountTypeRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      baseType: $CustomAccountTypesTable.$converterbaseType.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}base_type'],
+        )!,
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CustomAccountTypesTable createAlias(String alias) {
+    return $CustomAccountTypesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<AccountType, String, String> $converterbaseType =
+      const EnumNameConverter<AccountType>(AccountType.values);
+}
+
+class CustomAccountTypeRow extends DataClass
+    implements Insertable<CustomAccountTypeRow> {
+  final int id;
+  final String name;
+
+  /// The built-in type whose rules accounts of this type follow. Stored by
+  /// enum name, like `accounts.type`.
+  final AccountType baseType;
+
+  /// UTC instant.
+  final DateTime createdAt;
+  const CustomAccountTypeRow({
+    required this.id,
+    required this.name,
+    required this.baseType,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    {
+      map['base_type'] = Variable<String>(
+        $CustomAccountTypesTable.$converterbaseType.toSql(baseType),
+      );
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CustomAccountTypesCompanion toCompanion(bool nullToAbsent) {
+    return CustomAccountTypesCompanion(
+      id: Value(id),
+      name: Value(name),
+      baseType: Value(baseType),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CustomAccountTypeRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomAccountTypeRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      baseType: $CustomAccountTypesTable.$converterbaseType.fromJson(
+        serializer.fromJson<String>(json['baseType']),
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'baseType': serializer.toJson<String>(
+        $CustomAccountTypesTable.$converterbaseType.toJson(baseType),
+      ),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CustomAccountTypeRow copyWith({
+    int? id,
+    String? name,
+    AccountType? baseType,
+    DateTime? createdAt,
+  }) => CustomAccountTypeRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    baseType: baseType ?? this.baseType,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CustomAccountTypeRow copyWithCompanion(CustomAccountTypesCompanion data) {
+    return CustomAccountTypeRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      baseType: data.baseType.present ? data.baseType.value : this.baseType,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomAccountTypeRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('baseType: $baseType, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, baseType, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomAccountTypeRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.baseType == this.baseType &&
+          other.createdAt == this.createdAt);
+}
+
+class CustomAccountTypesCompanion
+    extends UpdateCompanion<CustomAccountTypeRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<AccountType> baseType;
+  final Value<DateTime> createdAt;
+  const CustomAccountTypesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.baseType = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CustomAccountTypesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required AccountType baseType,
+    required DateTime createdAt,
+  }) : name = Value(name),
+       baseType = Value(baseType),
+       createdAt = Value(createdAt);
+  static Insertable<CustomAccountTypeRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? baseType,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (baseType != null) 'base_type': baseType,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CustomAccountTypesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<AccountType>? baseType,
+    Value<DateTime>? createdAt,
+  }) {
+    return CustomAccountTypesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      baseType: baseType ?? this.baseType,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (baseType.present) {
+      map['base_type'] = Variable<String>(
+        $CustomAccountTypesTable.$converterbaseType.toSql(baseType.value),
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomAccountTypesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('baseType: $baseType, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AccountsTable extends Accounts
     with TableInfo<$AccountsTable, AccountRow> {
   @override
@@ -89,6 +400,20 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _customTypeIdMeta = const VerificationMeta(
+    'customTypeId',
+  );
+  @override
+  late final GeneratedColumn<int> customTypeId = GeneratedColumn<int>(
+    'custom_type_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES custom_account_types (id) ON DELETE RESTRICT',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -98,6 +423,7 @@ class $AccountsTable extends Accounts
     currencyCode,
     createdAt,
     isArchived,
+    customTypeId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -156,6 +482,15 @@ class $AccountsTable extends Accounts
         isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
       );
     }
+    if (data.containsKey('custom_type_id')) {
+      context.handle(
+        _customTypeIdMeta,
+        customTypeId.isAcceptableOrUnknown(
+          data['custom_type_id']!,
+          _customTypeIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -195,6 +530,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}is_archived'],
       )!,
+      customTypeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}custom_type_id'],
+      ),
     );
   }
 
@@ -222,6 +561,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// UTC instant.
   final DateTime createdAt;
   final bool isArchived;
+
+  /// The custom type the account is shown under, or null for its built-in
+  /// [type]. When set, [type] equals that custom type's base type; the
+  /// repository enforces this, because SQLite checks cannot see other tables.
+  final int? customTypeId;
   const AccountRow({
     required this.id,
     required this.name,
@@ -230,6 +574,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.currencyCode,
     required this.createdAt,
     required this.isArchived,
+    this.customTypeId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -243,6 +588,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['currency_code'] = Variable<String>(currencyCode);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_archived'] = Variable<bool>(isArchived);
+    if (!nullToAbsent || customTypeId != null) {
+      map['custom_type_id'] = Variable<int>(customTypeId);
+    }
     return map;
   }
 
@@ -255,6 +603,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       currencyCode: Value(currencyCode),
       createdAt: Value(createdAt),
       isArchived: Value(isArchived),
+      customTypeId: customTypeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customTypeId),
     );
   }
 
@@ -275,6 +626,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
+      customTypeId: serializer.fromJson<int?>(json['customTypeId']),
     );
   }
   @override
@@ -290,6 +642,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'currencyCode': serializer.toJson<String>(currencyCode),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isArchived': serializer.toJson<bool>(isArchived),
+      'customTypeId': serializer.toJson<int?>(customTypeId),
     };
   }
 
@@ -301,6 +654,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? currencyCode,
     DateTime? createdAt,
     bool? isArchived,
+    Value<int?> customTypeId = const Value.absent(),
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -309,6 +663,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     currencyCode: currencyCode ?? this.currencyCode,
     createdAt: createdAt ?? this.createdAt,
     isArchived: isArchived ?? this.isArchived,
+    customTypeId: customTypeId.present ? customTypeId.value : this.customTypeId,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -325,6 +680,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       isArchived: data.isArchived.present
           ? data.isArchived.value
           : this.isArchived,
+      customTypeId: data.customTypeId.present
+          ? data.customTypeId.value
+          : this.customTypeId,
     );
   }
 
@@ -337,7 +695,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('openingBalanceMinor: $openingBalanceMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isArchived: $isArchived')
+          ..write('isArchived: $isArchived, ')
+          ..write('customTypeId: $customTypeId')
           ..write(')'))
         .toString();
   }
@@ -351,6 +710,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     currencyCode,
     createdAt,
     isArchived,
+    customTypeId,
   );
   @override
   bool operator ==(Object other) =>
@@ -362,7 +722,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.openingBalanceMinor == this.openingBalanceMinor &&
           other.currencyCode == this.currencyCode &&
           other.createdAt == this.createdAt &&
-          other.isArchived == this.isArchived);
+          other.isArchived == this.isArchived &&
+          other.customTypeId == this.customTypeId);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -373,6 +734,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> currencyCode;
   final Value<DateTime> createdAt;
   final Value<bool> isArchived;
+  final Value<int?> customTypeId;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -381,6 +743,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.currencyCode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.customTypeId = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -390,6 +753,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.currencyCode = const Value.absent(),
     required DateTime createdAt,
     this.isArchived = const Value.absent(),
+    this.customTypeId = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        openingBalanceMinor = Value(openingBalanceMinor),
@@ -402,6 +766,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? currencyCode,
     Expression<DateTime>? createdAt,
     Expression<bool>? isArchived,
+    Expression<int>? customTypeId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -412,6 +777,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (currencyCode != null) 'currency_code': currencyCode,
       if (createdAt != null) 'created_at': createdAt,
       if (isArchived != null) 'is_archived': isArchived,
+      if (customTypeId != null) 'custom_type_id': customTypeId,
     });
   }
 
@@ -423,6 +789,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? currencyCode,
     Value<DateTime>? createdAt,
     Value<bool>? isArchived,
+    Value<int?>? customTypeId,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -432,6 +799,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       currencyCode: currencyCode ?? this.currencyCode,
       createdAt: createdAt ?? this.createdAt,
       isArchived: isArchived ?? this.isArchived,
+      customTypeId: customTypeId ?? this.customTypeId,
     );
   }
 
@@ -461,6 +829,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (isArchived.present) {
       map['is_archived'] = Variable<bool>(isArchived.value);
     }
+    if (customTypeId.present) {
+      map['custom_type_id'] = Variable<int>(customTypeId.value);
+    }
     return map;
   }
 
@@ -473,7 +844,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('openingBalanceMinor: $openingBalanceMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
-          ..write('isArchived: $isArchived')
+          ..write('isArchived: $isArchived, ')
+          ..write('customTypeId: $customTypeId')
           ..write(')'))
         .toString();
   }
@@ -2073,6 +2445,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $CustomAccountTypesTable customAccountTypes =
+      $CustomAccountTypesTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
@@ -2094,6 +2468,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    customAccountTypes,
     accounts,
     categories,
     transactions,
@@ -2117,6 +2492,300 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 }
 
+typedef $$CustomAccountTypesTableCreateCompanionBuilder =
+    CustomAccountTypesCompanion Function({
+      Value<int> id,
+      required String name,
+      required AccountType baseType,
+      required DateTime createdAt,
+    });
+typedef $$CustomAccountTypesTableUpdateCompanionBuilder =
+    CustomAccountTypesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<AccountType> baseType,
+      Value<DateTime> createdAt,
+    });
+
+final class $$CustomAccountTypesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CustomAccountTypesTable,
+          CustomAccountTypeRow
+        > {
+  $$CustomAccountTypesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$AccountsTable, List<AccountRow>>
+  _accountsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.accounts,
+    aliasName: 'custom_account_types__id__accounts__custom_type_id',
+  );
+
+  $$AccountsTableProcessedTableManager get accountsRefs {
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.customTypeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_accountsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CustomAccountTypesTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomAccountTypesTable> {
+  $$CustomAccountTypesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AccountType, AccountType, String>
+  get baseType => $composableBuilder(
+    column: $table.baseType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> accountsRefs(
+    Expression<bool> Function($$AccountsTableFilterComposer f) f,
+  ) {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.customTypeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CustomAccountTypesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomAccountTypesTable> {
+  $$CustomAccountTypesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseType => $composableBuilder(
+    column: $table.baseType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomAccountTypesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomAccountTypesTable> {
+  $$CustomAccountTypesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AccountType, String> get baseType =>
+      $composableBuilder(column: $table.baseType, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> accountsRefs<T extends Object>(
+    Expression<T> Function($$AccountsTableAnnotationComposer a) f,
+  ) {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.customTypeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CustomAccountTypesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomAccountTypesTable,
+          CustomAccountTypeRow,
+          $$CustomAccountTypesTableFilterComposer,
+          $$CustomAccountTypesTableOrderingComposer,
+          $$CustomAccountTypesTableAnnotationComposer,
+          $$CustomAccountTypesTableCreateCompanionBuilder,
+          $$CustomAccountTypesTableUpdateCompanionBuilder,
+          (CustomAccountTypeRow, $$CustomAccountTypesTableReferences),
+          CustomAccountTypeRow,
+          PrefetchHooks Function({bool accountsRefs})
+        > {
+  $$CustomAccountTypesTableTableManager(
+    _$AppDatabase db,
+    $CustomAccountTypesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomAccountTypesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomAccountTypesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CustomAccountTypesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<AccountType> baseType = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CustomAccountTypesCompanion(
+                id: id,
+                name: name,
+                baseType: baseType,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required AccountType baseType,
+                required DateTime createdAt,
+              }) => CustomAccountTypesCompanion.insert(
+                id: id,
+                name: name,
+                baseType: baseType,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CustomAccountTypesTable, CustomAccountTypeRow>(
+                    table,
+                  ),
+                  $$CustomAccountTypesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({accountsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (accountsRefs) db.accounts],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (accountsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      CustomAccountTypeRow,
+                      $CustomAccountTypesTable,
+                      AccountRow,
+                      $AccountsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CustomAccountTypesTableReferences
+                          ._accountsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CustomAccountTypesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).accountsRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'custom_type_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CustomAccountTypesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomAccountTypesTable,
+      CustomAccountTypeRow,
+      $$CustomAccountTypesTableFilterComposer,
+      $$CustomAccountTypesTableOrderingComposer,
+      $$CustomAccountTypesTableAnnotationComposer,
+      $$CustomAccountTypesTableCreateCompanionBuilder,
+      $$CustomAccountTypesTableUpdateCompanionBuilder,
+      (CustomAccountTypeRow, $$CustomAccountTypesTableReferences),
+      CustomAccountTypeRow,
+      PrefetchHooks Function({bool accountsRefs})
+    >;
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
   required String name,
@@ -2125,6 +2794,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<String> currencyCode,
   required DateTime createdAt,
   Value<bool> isArchived,
+  Value<int?> customTypeId,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
@@ -2134,7 +2804,31 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> currencyCode,
   Value<DateTime> createdAt,
   Value<bool> isArchived,
+  Value<int?> customTypeId,
 });
+
+final class $$AccountsTableReferences
+    extends BaseReferences<_$AppDatabase, $AccountsTable, AccountRow> {
+  $$AccountsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CustomAccountTypesTable _customTypeIdTable(_$AppDatabase db) => db
+      .customAccountTypes
+      .createAlias('accounts__custom_type_id__custom_account_types__id');
+
+  $$CustomAccountTypesTableProcessedTableManager? get customTypeId {
+    final $_column = $_itemColumn<int>('custom_type_id');
+    if ($_column == null) return null;
+    final manager = $$CustomAccountTypesTableTableManager(
+      $_db,
+      $_db.customAccountTypes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_customTypeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$AccountsTableFilterComposer
     extends Composer<_$AppDatabase, $AccountsTable> {
@@ -2180,6 +2874,29 @@ class $$AccountsTableFilterComposer
     column: $table.isArchived,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$CustomAccountTypesTableFilterComposer get customTypeId {
+    final $$CustomAccountTypesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customTypeId,
+      referencedTable: $db.customAccountTypes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomAccountTypesTableFilterComposer(
+            $db: $db,
+            $table: $db.customAccountTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$AccountsTableOrderingComposer
@@ -2225,6 +2942,29 @@ class $$AccountsTableOrderingComposer
     column: $table.isArchived,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$CustomAccountTypesTableOrderingComposer get customTypeId {
+    final $$CustomAccountTypesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customTypeId,
+      referencedTable: $db.customAccountTypes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomAccountTypesTableOrderingComposer(
+            $db: $db,
+            $table: $db.customAccountTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$AccountsTableAnnotationComposer
@@ -2262,6 +3002,30 @@ class $$AccountsTableAnnotationComposer
     column: $table.isArchived,
     builder: (column) => column,
   );
+
+  $$CustomAccountTypesTableAnnotationComposer get customTypeId {
+    final $$CustomAccountTypesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.customTypeId,
+          referencedTable: $db.customAccountTypes,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CustomAccountTypesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.customAccountTypes,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$AccountsTableTableManager
@@ -2275,12 +3039,9 @@ class $$AccountsTableTableManager
           $$AccountsTableAnnotationComposer,
           $$AccountsTableCreateCompanionBuilder,
           $$AccountsTableUpdateCompanionBuilder,
-          (
-            AccountRow,
-            BaseReferences<_$AppDatabase, $AccountsTable, AccountRow>,
-          ),
+          (AccountRow, $$AccountsTableReferences),
           AccountRow,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool customTypeId})
         > {
   $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
     : super(
@@ -2302,6 +3063,7 @@ class $$AccountsTableTableManager
                 Value<String> currencyCode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<int?> customTypeId = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -2310,6 +3072,7 @@ class $$AccountsTableTableManager
                 currencyCode: currencyCode,
                 createdAt: createdAt,
                 isArchived: isArchived,
+                customTypeId: customTypeId,
               ),
           createCompanionCallback:
               ({
@@ -2320,6 +3083,7 @@ class $$AccountsTableTableManager
                 Value<String> currencyCode = const Value.absent(),
                 required DateTime createdAt,
                 Value<bool> isArchived = const Value.absent(),
+                Value<int?> customTypeId = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -2328,20 +3092,55 @@ class $$AccountsTableTableManager
                 currencyCode: currencyCode,
                 createdAt: createdAt,
                 isArchived: isArchived,
+                customTypeId: customTypeId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable<$AccountsTable, AccountRow>(table),
-                  BaseReferences<_$AppDatabase, $AccountsTable, AccountRow>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  $$AccountsTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({customTypeId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (customTypeId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.customTypeId,
+                        referencedTable: $$AccountsTableReferences
+                            ._customTypeIdTable(db),
+                        referencedColumn: $$AccountsTableReferences
+                            ._customTypeIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -2356,9 +3155,9 @@ typedef $$AccountsTableProcessedTableManager =
       $$AccountsTableAnnotationComposer,
       $$AccountsTableCreateCompanionBuilder,
       $$AccountsTableUpdateCompanionBuilder,
-      (AccountRow, BaseReferences<_$AppDatabase, $AccountsTable, AccountRow>),
+      (AccountRow, $$AccountsTableReferences),
       AccountRow,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool customTypeId})
     >;
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
@@ -3739,6 +4538,8 @@ typedef $$MonthlyPlansTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$CustomAccountTypesTableTableManager get customAccountTypes =>
+      $$CustomAccountTypesTableTableManager(_db, _db.customAccountTypes);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
   $$CategoriesTableTableManager get categories =>

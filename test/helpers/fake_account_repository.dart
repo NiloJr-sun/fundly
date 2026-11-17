@@ -21,6 +21,7 @@ class FakeAccountRepository implements AccountRepository {
     required String name,
     required AccountType type,
     required Money enteredOpeningAmount,
+    int? customTypeId,
   }) async {
     _maybeFail();
     created.add((name: name, type: type, entered: enteredOpeningAmount));
@@ -38,6 +39,7 @@ class FakeAccountRepository implements AccountRepository {
     int id, {
     String? name,
     Money? enteredOpeningAmount,
+    ({int? id})? customType,
   }) async {
     _maybeFail();
     updated.add((id: id, name: name, entered: enteredOpeningAmount));

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
+import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
@@ -286,6 +287,139 @@ void main() {
   group('watchById', () {
     test('emits null for a missing account', () async {
       expect(await repository.watchById(42).first, isNull);
+    });
+  });
+
+  group('custom types', () {
+    late CustomAccountTypeRepository types;
+
+    setUp(() => types = CustomAccountTypeRepository(database));
+
+    test('new accounts have no custom type by default', () async {
+      expect((await create('BDO Savings')).customTypeId, isNull);
+    });
+
+    test('create stores a custom type with the same base type', () async {
+      final eWallet = await types.create(
+        name: 'E-wallet',
+        baseType: AccountType.savingsCash,
+      );
+
+      final account = await repository.create(
+        name: 'GCash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(120000),
+        customTypeId: eWallet.id,
+      );
+
+      expect(account.customTypeId, eWallet.id);
+      expect(account.openingBalance, php(120000));
+      expect(await repository.watchById(account.id).first, account);
+    });
+
+    test('a liability custom type keeps the liability sign (D1)', () async {
+      final payLater = await types.create(
+        name: 'Pay later',
+        baseType: AccountType.credit,
+      );
+
+      final account = await repository.create(
+        name: 'SPayLater',
+        type: AccountType.credit,
+        enteredOpeningAmount: php(50000),
+        customTypeId: payLater.id,
+      );
+
+      expect(account.openingBalance, php(-50000));
+    });
+
+    test('create rejects a custom type with another base type', () async {
+      final payLater = await types.create(
+        name: 'Pay later',
+        baseType: AccountType.credit,
+      );
+
+      await expectLater(
+        repository.create(
+          name: 'GCash',
+          type: AccountType.savingsCash,
+          enteredOpeningAmount: php(0),
+          customTypeId: payLater.id,
+        ),
+        throwsArgumentError,
+      );
+      expect(await repository.watchAll().first, isEmpty);
+    });
+
+    test('create rejects a missing custom type', () async {
+      await expectLater(
+        repository.create(
+          name: 'GCash',
+          type: AccountType.savingsCash,
+          enteredOpeningAmount: php(0),
+          customTypeId: 99,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('update moves between types with the same base type', () async {
+      final eWallet = await types.create(
+        name: 'E-wallet',
+        baseType: AccountType.savingsCash,
+      );
+      final account = await create('GCash');
+
+      final moved = await repository.update(
+        account.id,
+        customType: (id: eWallet.id),
+      );
+      expect(moved.customTypeId, eWallet.id);
+
+      final renamed = await repository.update(account.id, name: 'Maya');
+      expect(renamed.customTypeId, eWallet.id, reason: 'kept when omitted');
+
+      final back = await repository.update(account.id, customType: (id: null));
+      expect(back.customTypeId, isNull);
+      expect(back.type, AccountType.savingsCash);
+    });
+
+    test('update rejects a custom type with another base type', () async {
+      final loanLike = await types.create(
+        name: 'Personal debt',
+        baseType: AccountType.loan,
+      );
+      final card = await create(
+        'RCBC Credit',
+        type: AccountType.credit,
+        entered: 300000,
+      );
+
+      await expectLater(
+        repository.update(card.id, customType: (id: loanLike.id)),
+        throwsArgumentError,
+      );
+      expect((await repository.watchById(card.id).first)!.customTypeId, isNull);
+    });
+
+    test('the database refuses to delete a custom type in use', () async {
+      final eWallet = await types.create(
+        name: 'E-wallet',
+        baseType: AccountType.savingsCash,
+      );
+      await repository.create(
+        name: 'GCash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(0),
+        customTypeId: eWallet.id,
+      );
+
+      await expectLater(
+        (database.delete(
+          database.customAccountTypes,
+        )..where((type) => type.id.equals(eWallet.id))).go(),
+        throwsA(isA<Exception>()),
+      );
     });
   });
 

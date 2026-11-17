@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/accounts/data/accounts_table.dart';
+import '../../features/accounts/data/custom_account_types_table.dart';
 import '../../features/accounts/domain/account_type.dart';
 import '../../features/categories/data/categories_table.dart';
 import '../../features/categories/data/default_categories.dart';
@@ -24,14 +25,22 @@ part 'app_database.g.dart';
 /// `dart run drift_dev make-migrations` to snapshot the schema and generate a
 /// migration test. Call out every schema change before making it (CLAUDE.md
 /// §8).
-@DriftDatabase(tables: [Accounts, Categories, Transactions, MonthlyPlans])
+@DriftDatabase(
+  tables: [
+    CustomAccountTypes,
+    Accounts,
+    Categories,
+    Transactions,
+    MonthlyPlans,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   /// Opens the on-device database, or [executor] if given (e.g. in tests).
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,6 +85,12 @@ class AppDatabase extends _$AppDatabase {
             },
           ),
         );
+      },
+      // v7: user-created account types. Existing accounts keep their
+      // built-in type (no custom type).
+      from6To7: (m, schema) async {
+        await m.createTable(schema.customAccountTypes);
+        await m.addColumn(schema.accounts, schema.accounts.customTypeId);
       },
     ),
     beforeOpen: (details) async {

@@ -12,6 +12,7 @@ import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
+import 'generated/schema_v7.dart' as v7;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -437,5 +438,118 @@ void main() {
         },
       );
     });
+  });
+
+  test('v6 to v7 keeps every account with no custom type', () async {
+    const accounts = [
+      v6.AccountsData(
+        id: 1,
+        name: 'BDO Savings',
+        type: 'savingsCash',
+        openingBalanceMinor: 1500000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:30:00.000Z',
+        isArchived: 0,
+      ),
+      v6.AccountsData(
+        id: 2,
+        name: 'RCBC Credit',
+        type: 'credit',
+        openingBalanceMinor: -300000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:31:00.000Z',
+        isArchived: 1,
+      ),
+    ];
+    const category = v6.CategoriesData(
+      id: 1,
+      name: 'Food',
+      kind: 'spending',
+      isArchived: 0,
+    );
+    const transaction = v6.TransactionsData(
+      id: 1,
+      type: 'spending',
+      amountMinor: 50000,
+      currencyCode: 'PHP',
+      date: '2026-11-16',
+      payee: 'SM Supermarket',
+      categoryId: 1,
+      sourceAccountId: 2,
+      note: '',
+      createdAt: '2026-11-16T10:00:00.000Z',
+      updatedAt: '2026-11-16T10:00:00.000Z',
+    );
+    const plan = v6.MonthlyPlansData(
+      id: 1,
+      month: '2026-11',
+      categoryId: 1,
+      targetAmountMinor: 500000,
+      assignedAmountMinor: 250000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:00:00.000Z',
+      updatedAt: '2026-11-16T09:00:00.000Z',
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 6,
+      newVersion: 7,
+      createOld: v6.DatabaseAtV6.new,
+      createNew: v7.DatabaseAtV7.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insertAll(oldDb.accounts, accounts)
+          ..insert(oldDb.categories, category)
+          ..insert(oldDb.transactions, transaction)
+          ..insert(oldDb.monthlyPlans, plan);
+      },
+      validateItems: (newDb) async {
+        final migrated = await (newDb.select(
+          newDb.accounts,
+        )..orderBy([(a) => OrderingTerm(expression: a.id)])).get();
+        expect(migrated, [
+          for (final account in accounts)
+            v7.AccountsData(
+              id: account.id,
+              name: account.name,
+              type: account.type,
+              openingBalanceMinor: account.openingBalanceMinor,
+              currencyCode: account.currencyCode,
+              createdAt: account.createdAt,
+              isArchived: account.isArchived,
+            ),
+        ]);
+        expect(await newDb.select(newDb.customAccountTypes).get(), isEmpty);
+        expect(
+          (await newDb.select(newDb.categories).get()).map((r) => r.toJson()),
+          [category.toJson()],
+        );
+        expect(
+          (await newDb.select(newDb.transactions).get()).map((r) => r.toJson()),
+          [transaction.toJson()],
+        );
+        expect(
+          (await newDb.select(newDb.monthlyPlans).get()).map((r) => r.toJson()),
+          [plan.toJson()],
+        );
+
+        // The new column links to an existing custom type only.
+        await newDb.customStatement('PRAGMA foreign_keys = ON');
+        await expectLater(
+          newDb.customStatement(
+            'UPDATE accounts SET custom_type_id = 99 WHERE id = 1',
+          ),
+          throwsA(isA<Exception>()),
+        );
+        await newDb.customStatement(
+          'INSERT INTO custom_account_types (id, name, base_type, created_at) '
+          "VALUES (1, 'E-wallet', 'savingsCash', '2026-11-17T08:00:00.000Z')",
+        );
+        await newDb.customStatement(
+          'UPDATE accounts SET custom_type_id = 1 WHERE id = 1',
+        );
+      },
+    );
   });
 }

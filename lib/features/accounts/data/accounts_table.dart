@@ -1,8 +1,9 @@
 import 'package:drift/drift.dart';
 
 import '../domain/account_type.dart';
+import 'custom_account_types_table.dart';
 
-/// SQLite table for [Account]s (schema v1).
+/// SQLite table for [Account]s (schema v1; `custom_type_id` in v7).
 ///
 /// The database enforces the integrity rules too, so a bug in Dart code cannot
 /// store an invalid account:
@@ -28,6 +29,15 @@ class Accounts extends Table {
   DateTimeColumn get createdAt => dateTime()();
 
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+
+  /// The custom type the account is shown under, or null for its built-in
+  /// [type]. When set, [type] equals that custom type's base type; the
+  /// repository enforces this, because SQLite checks cannot see other tables.
+  IntColumn get customTypeId => integer().nullable().references(
+    CustomAccountTypes,
+    #id,
+    onDelete: KeyAction.restrict,
+  )();
 
   @override
   List<String> get customConstraints => [

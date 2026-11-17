@@ -18,6 +18,7 @@ final class Account {
     required this.openingBalance,
     required this.createdAt,
     this.isArchived = false,
+    this.customTypeId,
   });
 
   /// Currency for every account in the MVP (CLAUDE.md §11, G6).
@@ -35,10 +36,15 @@ final class Account {
   final DateTime createdAt;
   final bool isArchived;
 
+  /// The custom type the account is shown under, or `null` for the built-in
+  /// [type]. A custom type always has [type] as its base type, so every
+  /// accounting rule keeps using [type].
+  final int? customTypeId;
+
   String get currencyCode => openingBalance.currencyCode;
 
   /// Returns a copy with the editable fields replaced. [id], [type] and
-  /// [createdAt] cannot change after creation.
+  /// [createdAt] cannot change after creation; [customTypeId] is kept.
   Account copyWith({String? name, Money? openingBalance, bool? isArchived}) {
     return Account(
       id: id,
@@ -47,6 +53,7 @@ final class Account {
       openingBalance: openingBalance ?? this.openingBalance,
       createdAt: createdAt,
       isArchived: isArchived ?? this.isArchived,
+      customTypeId: customTypeId,
     );
   }
 
@@ -58,14 +65,24 @@ final class Account {
       other.type == type &&
       other.openingBalance == openingBalance &&
       other.createdAt == createdAt &&
-      other.isArchived == isArchived;
+      other.isArchived == isArchived &&
+      other.customTypeId == customTypeId;
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, type, openingBalance, createdAt, isArchived);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    openingBalance,
+    createdAt,
+    isArchived,
+    customTypeId,
+  );
 
   @override
   String toString() =>
-      'Account($id, "$name", ${type.name}, $openingBalance'
+      'Account($id, "$name", ${type.name}'
+      '${customTypeId == null ? '' : ' (custom type $customTypeId)'}, '
+      '$openingBalance'
       '${isArchived ? ', archived' : ''})';
 }

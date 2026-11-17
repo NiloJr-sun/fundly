@@ -41,17 +41,23 @@ class AccountRepository {
   }
 
   /// Creates an account. [enteredOpeningAmount] is the zero or positive amount
-  /// the user typed; its sign is set from [type] (D1).
+  /// the user typed; its sign is set from [type] (D1). With [customTypeId],
+  /// the account is shown under that custom type, whose base type must be
+  /// [type].
   ///
-  /// Throws [AccountValidationException] when a rule is broken.
+  /// Throws [AccountValidationException] when a rule is broken, or
+  /// [ArgumentError] if the custom type does not exist or has another base
+  /// type.
   Future<Account> create({
     required String name,
     required AccountType type,
     required Money enteredOpeningAmount,
+    int? customTypeId,
   }) async {
     final trimmedName = await _validName(name);
     _requireSupportedCurrency(enteredOpeningAmount);
     final openingBalance = _openingBalance(type, enteredOpeningAmount);
+    await _requireMatchingCustomType(customTypeId, type);
 
     final row = await _database
         .into(_accounts)
@@ -62,6 +68,7 @@ class AccountRepository {
             openingBalanceMinor: openingBalance.minorUnits,
             currencyCode: Value(openingBalance.currencyCode),
             createdAt: _now().toUtc(),
+            customTypeId: Value(customTypeId),
           ),
         );
     return row.toDomain();
@@ -69,12 +76,18 @@ class AccountRepository {
 
   /// Updates the editable fields of account [id]. The type cannot change.
   ///
-  /// Throws [AccountValidationException] when a rule is broken, or
-  /// [StateError] if the account does not exist.
+  /// [customType] moves the account to another custom type with the same base
+  /// type, or back to its built-in type with `(id: null)`; leave it `null` to
+  /// keep the current one.
+  ///
+  /// Throws [AccountValidationException] when a rule is broken,
+  /// [ArgumentError] if the custom type does not exist or has another base
+  /// type, or [StateError] if the account does not exist.
   Future<Account> update(
     int id, {
     String? name,
     Money? enteredOpeningAmount,
+    ({int? id})? customType,
   }) async {
     final existing = await (_database.select(
       _accounts,
@@ -90,6 +103,9 @@ class AccountRepository {
       _requireSupportedCurrency(enteredOpeningAmount);
       openingBalance = _openingBalance(type, enteredOpeningAmount);
     }
+    if (customType != null) {
+      await _requireMatchingCustomType(customType.id, type);
+    }
 
     final rows =
         await (_database.update(
@@ -98,6 +114,9 @@ class AccountRepository {
           AccountsCompanion(
             name: Value.absentIfNull(trimmedName),
             openingBalanceMinor: Value.absentIfNull(openingBalance?.minorUnits),
+            customTypeId: customType == null
+                ? const Value.absent()
+                : Value(customType.id),
           ),
         );
     return rows.single.toDomain();
@@ -145,6 +164,34 @@ class AccountRepository {
       throw const AccountValidationException(AccountValidationError.nameTaken);
     }
     return trimmed;
+  }
+
+  /// An account can only use a custom type based on its own [type], so every
+  /// accounting rule can keep reading [Account.type]. The UI only offers
+  /// matching types, so a mismatch is a programming error.
+  Future<void> _requireMatchingCustomType(
+    int? customTypeId,
+    AccountType type,
+  ) async {
+    if (customTypeId == null) return;
+    final customType = await (_database.select(
+      _database.customAccountTypes,
+    )..where((custom) => custom.id.equals(customTypeId))).getSingleOrNull();
+    if (customType == null) {
+      throw ArgumentError.value(
+        customTypeId,
+        'customTypeId',
+        'No such account type.',
+      );
+    }
+    if (customType.baseType != type) {
+      throw ArgumentError.value(
+        customTypeId,
+        'customTypeId',
+        'Account type "${customType.name}" is based on '
+            '${customType.baseType.name}, not ${type.name}.',
+      );
+    }
   }
 
   Money _openingBalance(AccountType type, Money enteredAmount) {
