@@ -21,8 +21,9 @@ proposal.
   spending totals for this month, last month or a custom range (transfers and
   card payments excluded); the 10 latest transactions; an All transactions
   list filtered by date, account and category.
-- **Plans:** a planned amount per spending category per month, compared with
-  actual spending and what is left. Categories can be added, renamed, archived
+- **Plans:** per spending category per month, a Target and an Assigned
+  amount, the month's Activity (spending; tap to see the transactions),
+  Available (Assigned − Activity) and a Funded / Underfunded status. Categories can be added, renamed, archived
   and deleted when unused.
 
 ## Requirements
@@ -126,7 +127,7 @@ lib/
       domain/               # MonthlyPlan, plan summaries
       presentation/         # Plans tab
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v5)
+drift_schemas/              # schema snapshot per version (currently v6)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

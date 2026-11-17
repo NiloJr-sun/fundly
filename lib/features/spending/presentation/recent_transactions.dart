@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
+import '../../transactions/domain/transaction_filter.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_tile.dart';
 import 'spending_providers.dart';
@@ -43,8 +44,9 @@ class RecentTransactions extends ConsumerWidget {
             TextButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) =>
-                      AllTransactionsScreen(initialDateRange: range),
+                  builder: (_) => AllTransactionsScreen(
+                    initialFilter: TransactionFilter(dateRange: range),
+                  ),
                 ),
               ),
               child: const Text('See all'),

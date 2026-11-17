@@ -193,5 +193,30 @@ void main() {
       expect(updated.entered, php(450025));
       expect(find.byType(AccountFormScreen), findsNothing);
     });
+
+    testWidgets('a zero opening balance starts empty with a 0.00 hint', (
+      tester,
+    ) async {
+      final wallet = Account(
+        id: 8,
+        name: 'Cash Wallet',
+        type: AccountType.savingsCash,
+        openingBalance: php(0),
+        createdAt: DateTime.utc(2026, 11, 16),
+      );
+      await openForm(tester, account: wallet);
+
+      final amount = tester.widget<TextField>(
+        find.descendant(
+          of: field('Opening balance'),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(amount.controller!.text, isEmpty);
+      expect(amount.decoration!.hintText, '0.00');
+
+      await tapSave(tester, 'Save changes');
+      expect(repository.updated.single.entered, php(0));
+    });
   });
 }

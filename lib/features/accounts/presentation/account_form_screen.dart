@@ -47,10 +47,13 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     final account = widget.account;
     _type = account?.type ?? AccountType.savingsCash;
     _nameController = TextEditingController(text: account?.name ?? '');
+    // A zero opening balance starts empty, showing 0.00 only as a hint;
+    // an empty field saves as zero.
+    final opening = account == null ? null : enteredAmountFor(account);
     _amountController = TextEditingController(
-      text: account == null
+      text: opening == null || opening.isZero
           ? ''
-          : MoneyFormatter.formatForInput(enteredAmountFor(account)),
+          : MoneyFormatter.formatForInput(opening),
     );
   }
 

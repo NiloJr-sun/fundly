@@ -325,6 +325,9 @@ them:
 -   Notifications.
 -   Currency conversion.
 -   Full YNAB-style envelope budgeting and automatic money allocation.
+    (Approved 2026-11-17: a manual Assigned amount per category per month.
+    A "ready to assign" income pool, automatic allocation and carry-over
+    between months remain out of scope.)
 
 Keep future extension in mind, but do not build abstractions for
 hypothetical requirements.
@@ -735,4 +738,28 @@ suggestions as approved decisions.
                           filtered to that period 
                           (unfiltered for This    
                           month)                  
+
+  2026-11-17              Plans show Target,      Confirmed
+                          Assigned, Activity,     
+                          Available and Status    
+                          per category per month  
+                          (schema v6). Target is  
+                          optional and set per    
+                          month; Assigned is one  
+                          edited total, not       
+                          checked against income. 
+                          Activity counts         
+                          Spending only and opens 
+                          that month's            
+                          transactions. Available 
+                          = Assigned - Activity,  
+                          no carry-over, negative 
+                          when overspent (also    
+                          with nothing assigned). 
+                          Funded when Assigned >= 
+                          Target, Underfunded     
+                          below; no status        
+                          without a Target.       
+                          Existing plans became   
+                          Target = Assigned       
   -----------------------------------------------------------------------

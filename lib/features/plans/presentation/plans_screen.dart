@@ -6,15 +6,18 @@ import '../../../core/time/calendar_month.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/presentation/categories_screen.dart';
+import '../../transactions/domain/transaction_filter.dart';
+import '../../transactions/presentation/all_transactions_screen.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
+import 'plan_editor_dialog.dart';
 import 'plan_month_bar.dart';
 import 'plan_row.dart';
-import 'planned_amount_dialog.dart';
 import 'plans_providers.dart';
 
-/// The Plans tab: planned vs actual spending per category for one month.
-/// Tap a row to set or clear its planned amount.
+/// The Plans tab: target, assigned, activity, available and status per
+/// spending category for one month. Tap a row to edit its target and
+/// assigned amount, or tap either amount to edit just that one; tap Activity to see its transactions.
 class PlansScreen extends ConsumerWidget {
   const PlansScreen({super.key});
 
@@ -71,33 +74,30 @@ class _PlanList extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CategoryPlanSummary summary,
+    PlanAmountField? field,
   ) async {
-    final choice = await showPlannedAmountDialog(
+    final amounts = await showPlanEditorDialog(
       context,
       categoryName: summary.category.name,
       monthLabel: DateFormatter.monthYear(month.year, month.month),
-      current: summary.target,
+      target: summary.target,
+      assigned: summary.assigned,
+      hasPlan: summary.hasPlan,
       currencyCode: Account.defaultCurrency,
+      only: field,
     );
-    if (choice == null || !context.mounted) return;
+    if (amounts == null || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
-    final repository = ref.read(planRepositoryProvider);
-    final categoryId = summary.category.id;
     try {
-      switch (choice) {
-        case SetPlannedAmount(:final amount):
-          // Until the screen shows assigned amounts, the planned amount is
-          // also what is assigned, as v6 did for existing plans.
-          await repository.save(
+      await ref
+          .read(planRepositoryProvider)
+          .save(
             month: month,
-            categoryId: categoryId,
-            target: amount,
-            assigned: amount,
+            categoryId: summary.category.id,
+            target: amounts.target,
+            assigned: amounts.assigned,
           );
-        case ClearPlannedAmount():
-          await repository.clear(month: month, categoryId: categoryId);
-      }
     } on Object {
       // The dialog already rejects invalid amounts; anything else (such as
       // the category being archived meanwhile) is reported generically.
@@ -106,6 +106,19 @@ class _PlanList extends ConsumerWidget {
       );
     }
   }
+
+  /// Opens All transactions filtered to this category and month.
+  void _showActivity(BuildContext context, CategoryPlanSummary summary) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AllTransactionsScreen(
+            initialFilter: TransactionFilter(
+              dateRange: month.dateRange,
+              categoryId: summary.category.id,
+            ),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -116,9 +129,10 @@ class _PlanList extends ConsumerWidget {
             summary: summary,
             // A new plan cannot use an archived category; an existing one
             // can still be changed or cleared.
-            onTap: summary.category.isArchived && !summary.hasPlan
+            onEdit: summary.category.isArchived && !summary.hasPlan
                 ? null
-                : () => _edit(context, ref, summary),
+                : (field) => _edit(context, ref, summary, field),
+            onActivityTap: () => _showActivity(context, summary),
           ),
       ],
     );

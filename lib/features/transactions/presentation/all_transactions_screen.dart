@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/time/date_range.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../domain/transaction_filter.dart';
 import 'transaction_filter_bar.dart';
@@ -10,14 +9,17 @@ import 'transactions_providers.dart';
 
 /// Every transaction, newest first, with date, account and category filters.
 class AllTransactionsScreen extends ConsumerWidget {
-  const AllTransactionsScreen({super.key, this.initialDateRange});
+  const AllTransactionsScreen({
+    super.key,
+    this.initialFilter = TransactionFilter.none,
+  });
 
-  /// Pre-sets the date filter when the list opens. The user can clear it.
-  final DateRange? initialDateRange;
+  /// The filters the list opens with. The user can change or clear them.
+  final TransactionFilter initialFilter;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final initial = TransactionFilter(dateRange: initialDateRange);
+    final initial = initialFilter;
     final transactions = ref.watch(filteredTransactionsProvider(initial));
     final filtered = !ref.watch(transactionFilterProvider(initial)).isEmpty;
     return Scaffold(
