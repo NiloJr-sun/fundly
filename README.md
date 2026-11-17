@@ -5,6 +5,7 @@ spending. It works offline and keeps all data on the device.
 
 - Product direction and engineering rules: [CLAUDE.md](CLAUDE.md)
 - Delivery plan and open decisions: [docs/ROADMAP.md](docs/ROADMAP.md)
+- Guide for AI coding agents (Codex and others): [AGENTS.md](AGENTS.md)
 
 **Status:** Phases 0–4 are complete, so the MVP is delivered, along with
 post-MVP refinements and Phase 5's JSON backup export and restore. Nothing

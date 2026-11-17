@@ -513,8 +513,11 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements and Phase 5 tasks 5.1 and 5.2 (JSON backup export and
-restore) are also done. The rest of Phase 5 in
+refinements (R.1–R.13 in the roadmap, ending with Plans groups and the
+budget account behind Ready to assign) and Phase 5 tasks 5.1 and 5.2
+(JSON backup export and restore) are also done. The database is at schema
+v9 and backups at format 3. [AGENTS.md](AGENTS.md) summarises the current
+state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
 
