@@ -1,0 +1,51 @@
+# Local-only development configuration. Tooling: Supabase CLI 3.2.0.
+# Run database commands from the repository root; do not pass --remote.
+# Docs: https://supabase.com/docs/guides/local-development/cli/config
+project_id = "fundly-schema-dev"
+
+[api]
+enabled = true
+port = 55321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 55322
+shadow_port = 55320
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+sql_paths = []
+
+# S2.1 only needs `supabase db start`; these services can be configured in the
+# relevant auth/client integration tasks. No Google OAuth credentials live here.
+[studio]
+enabled = false
+port = 55323
+
+[local_smtp]
+enabled = false
+port = 55324
+
+[storage]
+enabled = false
+
+[realtime]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:7357"
+additional_redirect_urls = []
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
