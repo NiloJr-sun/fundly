@@ -42,6 +42,12 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   account, with a minimum of zero. Spending from other accounts does not
   release allocations. Overallocated amounts appear in red; saving remains
   allowed. The balance is live for every month; allocations do not carry over.
+  “Carry over from last month” shows the opening balance plus transactions
+  dated before the selected month. It is already included in the account
+  balance and creates no extra income or transfer. Plans refreshes at local
+  midnight while open, and catches up on the next open or resume if closed.
+  Earlier transaction or opening-balance edits recalculate it; it is not a
+  frozen month-end snapshot. A month you deliberately browse stays selected.
   Categories can be added, renamed, archived and deleted when unused.
   New installations start with Rent, Utilities, Internet, Subscriptions,
   Food & Groceries, Fuel and Miscellaneous; upgrades add missing defaults

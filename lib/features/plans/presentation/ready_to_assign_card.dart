@@ -39,6 +39,7 @@ class ReadyToAssignCard extends ConsumerWidget {
         );
         details = Text(
           '${budgetAccount.name} balance: ${MoneyFormatter.format(value.balance)}'
+          '\nCarry over from last month: ${MoneyFormatter.format(value.carryOver)}'
           '\nAssigned: ${MoneyFormatter.format(value.assigned)}'
           '\nRemaining: ${MoneyFormatter.format(value.remaining)}'
           '${money.isNegative ? '\nOverallocated by: ${MoneyFormatter.format(value.remaining - value.balance)}' : ''}',

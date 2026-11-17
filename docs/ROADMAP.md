@@ -235,6 +235,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.13 | Budget account: one active Savings/Cash account (custom asset types included) can be tagged in the account form; moving the tag asks first; archiving removes it. Backup format 3 adds `isBudgetAccount` | v9 | Migration, repository, backup and widget tests |
 | R.14 | New default spending categories; keep existing data and add missing defaults on upgrade. Auto-create linked Liability Plans rows for Credit/Loan accounts, synchronize names/archive status, count payments as Activity, release remaining allocations only for payments from the budget account. Backup format 4 adds linkedAccountId; older formats remain restorable | v10 | Migration, repository, calculator, backup and widget tests |
 | R.15 | Archive Plans rows independently across all months, hide archived rows from Plans, and browse read-only history/unarchive from Archived plans. Block archive when any current/future month has remaining budget allocation. Backup format 5 adds isPlanArchived; earlier formats default false | v11 | Migration, repository, archive guard, backup and widget tests |
+| R.16 | Automatic budget-money carry-over: show the previous closing ledger balance in Plans without adding a transaction or duplicating money. Refresh at local midnight and on resume/open; catch up missed months while preserving browsed months. Category allocations stay monthly; edits recalculate carry-over | — | Calculator, month-boundary and lifecycle widget tests |
 
 ### Phase 5 — After the MVP (one item approved)
 

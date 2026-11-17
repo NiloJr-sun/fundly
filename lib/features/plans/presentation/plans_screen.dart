@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../../core/time/calendar_month.dart';
+import '../../../core/time/clock_provider.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/presentation/categories_screen.dart';
 import '../../categories/presentation/category_display.dart';
+import '../../spending/presentation/spending_providers.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
 import 'archive_plan.dart';
@@ -24,11 +28,56 @@ import 'ready_to_assign_card.dart';
 /// spending category for one month, in Spending, Savings and Liability
 /// sections, below the month's Ready to assign. Tap a row to edit its target and assigned amount, or tap either
 /// amount to edit just that one; tap Activity to see its transactions.
-class PlansScreen extends ConsumerWidget {
+class PlansScreen extends ConsumerStatefulWidget {
   const PlansScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlansScreen> createState() => _PlansScreenState();
+}
+
+class _PlansScreenState extends ConsumerState<PlansScreen>
+    with WidgetsBindingObserver {
+  Timer? _midnightTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleMidnight();
+  }
+
+  void _scheduleMidnight() {
+    _midnightTimer?.cancel();
+    final now = ref.read(clockProvider)().toLocal();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTimer = Timer(midnight.difference(now), _refreshDate);
+  }
+
+  void _refreshDate() {
+    if (!mounted) return;
+    ref.invalidate(todayProvider);
+    ref.read(selectedPlanMonthProvider.notifier).refreshCurrentMonth();
+    _scheduleMidnight();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshDate();
+    } else {
+      _midnightTimer?.cancel();
+    }
+  }
+
+  @override
+  void dispose() {
+    _midnightTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final month = ref.watch(selectedPlanMonthProvider);
     final summaries = ref.watch(planSummariesProvider(month));
     return Scaffold(

@@ -19,7 +19,7 @@ enum PlanStatus {
 }
 
 /// One category's target, assigned, activity and available amounts in one
-/// month. Nothing carries over between months.
+/// month. Category targets and assignments do not carry over between months.
 @immutable
 final class CategoryPlanSummary {
   const CategoryPlanSummary({
@@ -148,11 +148,16 @@ bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
 final class ReadyToAssign {
   const ReadyToAssign({
     required this.balance,
+    required this.carryOver,
     required this.assigned,
     required this.remaining,
   });
 
   final Money balance;
+
+  /// Opening balance plus transactions before the selected month's first day.
+  /// Already included in [balance]; never add it again as income or a transfer.
+  final Money carryOver;
   final Money assigned;
 
   /// Assigned money still reserved, after eligible spending per category.
@@ -164,11 +169,12 @@ final class ReadyToAssign {
   bool operator ==(Object other) =>
       other is ReadyToAssign &&
       other.balance == balance &&
+      other.carryOver == carryOver &&
       other.assigned == assigned &&
       other.remaining == remaining;
 
   @override
-  int get hashCode => Object.hash(balance, assigned, remaining);
+  int get hashCode => Object.hash(balance, carryOver, assigned, remaining);
 }
 
 /// Current balance (including opening money and all recorded transactions)
@@ -205,6 +211,12 @@ ReadyToAssign readyToAssign({
   }
   return ReadyToAssign(
     balance: currentBalance(budgetAccount, entries),
+    carryOver: currentBalance(
+      budgetAccount,
+      entries.where(
+        (transaction) => transaction.date.isBefore(month.dateRange.start),
+      ),
+    ),
     assigned: assigned,
     remaining: remaining,
   );

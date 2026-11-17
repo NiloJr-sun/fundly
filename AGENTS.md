@@ -7,7 +7,7 @@ you**, even where it says "Claude".
 | File | What it is |
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | Product direction, accounting rules (§4), engineering standards (§7), workflow (§8), definition of done (§9), status (§10) and the **Product Decisions Log (§11)**. §11 is the source of truth for confirmed behaviour. |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Delivery history: phases 0–4, post-MVP refinements (R.1–R.15), Phase 5 (backup), backup format notes. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Delivery history: phases 0–4, post-MVP refinements (R.1–R.16), Phase 5 (backup), backup format notes. |
 | [README.md](README.md) | Setup, run, project structure, conventions. |
 
 Last updated: 2026-11-17.
@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 780 tests passing as of 2026-11-17
+flutter test                      # 797 tests passing as of 2026-11-17
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -87,6 +87,10 @@ simulator build for anything that changes app code. macOS has no
   Plans rows can be archived independently across all months, only when current
   and future remaining allocations are zero. Archived plans keeps history and
   supports unarchive; parent categories/accounts must be active first.
+  Plans shows reconstructed money carry-over (opening balance + transactions
+  before the selected month), already included in the live balance. It refreshes
+  at local midnight while open and catches up on open/resume; category
+  allocations do not roll forward.
 - **Nothing further is approved.** The remaining Phase 5 proposal is CSV
   export of transactions (5.3).
 

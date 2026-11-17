@@ -442,7 +442,8 @@ void main() {
         find.descendant(
           of: card(),
           matching: find.text(
-            'BDO Savings balance: ₱35,000.00\nAssigned: ₱5,000.00'
+            'BDO Savings balance: ₱35,000.00'
+            '\nCarry over from last month: ₱0.00\nAssigned: ₱5,000.00'
             '\nRemaining: ₱5,000.00',
           ),
         ),

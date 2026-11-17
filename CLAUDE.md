@@ -513,8 +513,8 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements (R.1–R.15 in the roadmap, including automatic liability rows
-and Plans archiving) and Phase 5 tasks 5.1 and 5.2
+refinements (R.1–R.16 in the roadmap, including automatic liability rows,
+Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
 v11 and backups at format 5. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
@@ -720,8 +720,8 @@ suggestions as approved decisions.
                           differs from no plan;   
                           no new plans for        
                           archived categories; no 
-                          carry-over between      
-                          months; deleting a      
+                          allocation carry-over;
+                          deleting a
                           category deletes its    
                           plans (task 4.2)        
 
@@ -761,9 +761,10 @@ suggestions as approved decisions.
                           that month's            
                           transactions. Available 
                           = Assigned - Activity,  
-                          no carry-over, negative 
-                          when overspent (also    
-                          with nothing assigned). 
+                          allocations do not carry
+                          over. Negative when
+                          overspent (also when
+                          unassigned).
                           Funded when Assigned >= 
                           Target, Underfunded     
                           below; no status        
@@ -979,5 +980,30 @@ suggestions as approved decisions.
                           restored first. Backup
                           format 5 adds the flag;
                           formats 1–4 use false.
+
+  2026-11-17              Budget money carry-over:Confirmed
+                          Plans shows Carry over
+                          from last month: opening
+                          balance plus all account
+                          transactions before the
+                          selected month. Already
+                          included in live balance
+                          so no extra transfer,
+                          income or balance added.
+                          Reconstructed from the
+                          current budget account
+                          ledger, not a snapshot.
+                          Prior edits recalculate.
+                          Opening money is an
+                          undated ledger baseline.
+                          Category allocations do
+                          not roll forward. Local
+                          midnight refreshes Plans
+                          while open; next open or
+                          resume catches up missed
+                          months. Current-month
+                          view advances; browsed
+                          months stay selected. No
+                          schema or backup change.
 
   -----------------------------------------------------------------------

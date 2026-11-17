@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/calendar_date.dart';
+import '../../../core/time/clock_provider.dart';
 import '../../../core/time/date_range.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../transactions/domain/transaction.dart';
@@ -10,7 +11,9 @@ import '../../transactions/presentation/transactions_providers.dart';
 import '../domain/period_summary.dart';
 
 /// Today's local date. Override in tests to fix the date.
-final todayProvider = Provider<CalendarDate>((ref) => CalendarDate.today());
+final todayProvider = Provider<CalendarDate>(
+  (ref) => CalendarDate.today(clock: ref.watch(clockProvider)),
+);
 
 /// Which kind of period the user picked.
 enum PeriodPreset { thisMonth, lastMonth, custom }

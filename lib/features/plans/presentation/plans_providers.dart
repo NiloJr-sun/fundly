@@ -12,14 +12,27 @@ import '../domain/plan_summary.dart';
 /// The month the Plans tab shows. Starts at the current month each time the
 /// app starts.
 class SelectedPlanMonthNotifier extends Notifier<CalendarMonth> {
+  late CalendarMonth _lastCurrentMonth;
+
   @override
-  CalendarMonth build() => _currentMonth();
+  CalendarMonth build() => _lastCurrentMonth = _currentMonth();
 
   void previous() => state = state.previous;
 
   void next() => state = state.next;
 
-  void thisMonth() => state = _currentMonth();
+  void thisMonth() {
+    _lastCurrentMonth = _currentMonth();
+    state = _lastCurrentMonth;
+  }
+
+  /// Follow the current month across midnight or missed months, while keeping
+  /// a month the user explicitly browsed to selected.
+  void refreshCurrentMonth() {
+    final current = _currentMonth();
+    if (state == _lastCurrentMonth) state = current;
+    _lastCurrentMonth = current;
+  }
 
   CalendarMonth _currentMonth() => CalendarMonth.of(ref.read(todayProvider));
 }
