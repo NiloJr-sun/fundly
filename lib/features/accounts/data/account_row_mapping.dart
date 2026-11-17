@@ -15,6 +15,7 @@ extension AccountRowMapping on AccountRow {
     createdAt: createdAt.toUtc(),
     isArchived: isArchived,
     customTypeId: customTypeId,
+    isBudgetAccount: isBudgetAccount,
   );
 }
 

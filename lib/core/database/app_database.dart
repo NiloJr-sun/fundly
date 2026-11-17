@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -96,6 +96,12 @@ class AppDatabase extends _$AppDatabase {
       // join the default Spending group.
       from7To8: (m, schema) async {
         await m.addColumn(schema.categories, schema.categories.planGroup);
+      },
+      // v9: one asset account can be the budget account that funds Ready to
+      // assign. No account is one until the user chooses.
+      from8To9: (m, schema) async {
+        await m.addColumn(schema.accounts, schema.accounts.isBudgetAccount);
+        await m.createIndex(schema.accountsOneBudgetAccount);
       },
     ),
     beforeOpen: (details) async {

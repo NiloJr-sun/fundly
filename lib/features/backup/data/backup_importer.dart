@@ -110,8 +110,8 @@ final class BackupSnapshot {
   );
 }
 
-/// Restores a backup written by [BackupExporter] (format 1 or 2), replacing
-/// all data.
+/// Restores a backup written by [BackupExporter] (format 1 to 3),
+/// replacing all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
 /// every field's type, enum values, dates, currency, references between
@@ -209,8 +209,11 @@ class _Parser {
   final _Reader header;
 
   /// Format 1 has no category `planGroup`; those categories restore into
-  /// the default group.
+  /// the default group. Formats 1 and 2 have no `isBudgetAccount`; they
+  /// restore with no budget account.
   final int formatVersion;
+
+  bool _hasBudgetAccount = false;
 
   final _customTypes = <int, AccountType>{};
   final _customTypeNames = <String>{};
@@ -311,6 +314,20 @@ class _Parser {
     }
     final createdAt = reader.timestamp('createdAt');
     final isArchived = reader.boolean('isArchived');
+    final isBudgetAccount =
+        formatVersion >= 3 && reader.boolean('isBudgetAccount');
+    if (isBudgetAccount) {
+      if (_hasBudgetAccount) {
+        reader.fail('isBudgetAccount', 'only one budget account is allowed');
+      }
+      if (type != AccountType.savingsCash || isArchived) {
+        reader.fail(
+          'isBudgetAccount',
+          'must be an active Savings/Cash account',
+        );
+      }
+      _hasBudgetAccount = true;
+    }
     _accounts[id] = Account(
       id: id,
       name: name,
@@ -319,6 +336,7 @@ class _Parser {
       createdAt: createdAt,
       isArchived: isArchived,
       customTypeId: customTypeId,
+      isBudgetAccount: isBudgetAccount,
     );
     return AccountsCompanion.insert(
       id: Value(id),
@@ -329,6 +347,7 @@ class _Parser {
       createdAt: createdAt,
       isArchived: Value(isArchived),
       customTypeId: Value(customTypeId),
+      isBudgetAccount: Value(isBudgetAccount),
     );
   }
 

@@ -18,6 +18,9 @@ class FakeAccountRepository implements AccountRepository {
   final List<({int id, bool archived})> archivedChanges = [];
   final List<int> deleted = [];
 
+  /// Calls to [setBudgetAccount] (the id) and [clearBudgetAccount] (`null`).
+  final List<int?> budgetAccountChanges = [];
+
   /// When set, the next create/update/delete throws this instead.
   AccountValidationError? failWith;
 
@@ -72,6 +75,26 @@ class FakeAccountRepository implements AccountRepository {
   @override
   Future<void> setArchived(int id, {required bool archived}) async {
     archivedChanges.add((id: id, archived: archived));
+  }
+
+  @override
+  Future<Account> setBudgetAccount(int id) async {
+    _maybeFail();
+    budgetAccountChanges.add(id);
+    return Account(
+      id: id,
+      name: '',
+      type: AccountType.savingsCash,
+      openingBalance: const Money.zero(Account.defaultCurrency),
+      createdAt: DateTime.utc(2026, 11, 16),
+      isBudgetAccount: true,
+    );
+  }
+
+  @override
+  Future<void> clearBudgetAccount() async {
+    _maybeFail();
+    budgetAccountChanges.add(null);
   }
 
   @override

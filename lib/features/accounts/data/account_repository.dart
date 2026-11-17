@@ -128,13 +128,62 @@ class AccountRepository {
   /// Whether the user must confirm first is a UI decision; see
   /// `needsArchiveConfirmation`. Throws [StateError] if the account does not
   /// exist.
+  ///
+  /// Archiving the budget account also stops it being the budget account:
+  /// archived accounts are left out of summaries (G7).
   Future<void> setArchived(int id, {required bool archived}) async {
     final changed =
-        await (_database.update(_accounts)
-              ..where((account) => account.id.equals(id)))
-            .write(AccountsCompanion(isArchived: Value(archived)));
+        await (_database.update(
+          _accounts,
+        )..where((account) => account.id.equals(id))).write(
+          AccountsCompanion(
+            isArchived: Value(archived),
+            isBudgetAccount: archived
+                ? const Value(false)
+                : const Value.absent(),
+          ),
+        );
     if (changed == 0) throw StateError('Account $id does not exist.');
   }
+
+  /// Makes account [id] the budget account, whose incoming money funds Ready
+  /// to assign on Plans. Any previous budget account stops being one, in the
+  /// same transaction.
+  ///
+  /// Throws [ArgumentError] unless it is a Savings/Cash account (custom asset
+  /// types included), or [StateError] if it does not exist or is archived.
+  /// The UI only offers active asset accounts, so these are programming
+  /// errors.
+  Future<Account> setBudgetAccount(int id) => _database.transaction(() async {
+    final existing = await (_database.select(
+      _accounts,
+    )..where((account) => account.id.equals(id))).getSingleOrNull();
+    if (existing == null) throw StateError('Account $id does not exist.');
+    if (existing.isArchived) {
+      throw StateError('An archived account cannot be the budget account.');
+    }
+    if (existing.type != AccountType.savingsCash) {
+      throw ArgumentError.value(
+        id,
+        'id',
+        'Only a Savings/Cash account can be the budget account.',
+      );
+    }
+    await clearBudgetAccount();
+    final rows =
+        await (_database.update(
+          _accounts,
+        )..where((account) => account.id.equals(id))).writeReturning(
+          const AccountsCompanion(isBudgetAccount: Value(true)),
+        );
+    return rows.single.toDomain();
+  });
+
+  /// Leaves the app without a budget account.
+  Future<void> clearBudgetAccount() =>
+      (_database.update(_accounts)
+            ..where((account) => account.isBudgetAccount.equals(true)))
+          .write(const AccountsCompanion(isBudgetAccount: Value(false)));
 
   /// Permanently deletes archived account [id]. Only an account no
   /// transaction uses can be deleted (G7): its history and the balances of

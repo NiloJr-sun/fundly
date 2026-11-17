@@ -36,7 +36,7 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 2);
+      expect(backup['formatVersion'], 3);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
@@ -106,6 +106,7 @@ void main() {
       ),
     );
     await accounts.setArchived(gcash.id, archived: true);
+    await accounts.setBudgetAccount(bdo.id);
     await PlanRepository(database, clock: () => createdAt).save(
       month: CalendarMonth(2026, 11),
       categoryId: gifts.id,
@@ -133,6 +134,7 @@ void main() {
         'currencyCode': 'PHP',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
+        'isBudgetAccount': true,
       },
       {
         'id': gcash.id,
@@ -143,6 +145,7 @@ void main() {
         'currencyCode': 'PHP',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': true,
+        'isBudgetAccount': false,
       },
       {
         'id': card.id,
@@ -154,6 +157,7 @@ void main() {
         'currencyCode': 'PHP',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
+        'isBudgetAccount': false,
       },
     ]);
     expect((backup['categories']! as List).last, {

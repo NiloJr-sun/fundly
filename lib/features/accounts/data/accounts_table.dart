@@ -3,13 +3,19 @@ import 'package:drift/drift.dart';
 import '../domain/account_type.dart';
 import 'custom_account_types_table.dart';
 
-/// SQLite table for [Account]s (schema v1; `custom_type_id` in v7).
+/// SQLite table for [Account]s (schema v1; `custom_type_id` in v7;
+/// `is_budget_account` in v9).
 ///
 /// The database enforces the integrity rules too, so a bug in Dart code cannot
 /// store an invalid account:
 /// - names are unique ignoring ASCII case and 1-40 characters long;
-/// - the opening balance sign matches the account type (CLAUDE.md §11, D1).
+/// - the opening balance sign matches the account type (CLAUDE.md §11, D1);
+/// - at most one account is the budget account, and it is Savings/Cash.
 @DataClassName('AccountRow')
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX accounts_one_budget_account ON accounts '
+  '(is_budget_account) WHERE is_budget_account = 1',
+)
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -38,6 +44,17 @@ class Accounts extends Table {
     #id,
     onDelete: KeyAction.restrict,
   )();
+
+  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Only one account, of type Savings/Cash, can be the budget account.
+  BoolColumn get isBudgetAccount => boolean()
+      .withDefault(const Constant(false))
+      // The check refers to the column itself, which is drift's documented
+      // way to write a column CHECK; the generated code does not recurse.
+      .check(
+        // ignore: recursive_getters
+        isBudgetAccount.not() | type.equals('savingsCash'),
+      )();
 
   @override
   List<String> get customConstraints => [

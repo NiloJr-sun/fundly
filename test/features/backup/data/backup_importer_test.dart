@@ -89,6 +89,7 @@ void main() {
     // Archived records with history must restore too.
     await accounts.setArchived(gcash.id, archived: true);
     await categories.setArchived(gifts.id, archived: true);
+    await accounts.setBudgetAccount(bdo.id);
   }
 
   late AppDatabase source;
@@ -139,6 +140,36 @@ void main() {
     final restored = await target.select(target.categories).get();
     expect(restored, hasLength(10));
     expect(restored.map((c) => c.planGroup).toSet(), {PlanGroup.spending});
+  });
+
+  test('a format 2 backup restores with no budget account', () async {
+    final backup = await sourceBackup();
+    backup['formatVersion'] = 2;
+    for (final account in backup['accounts']! as List) {
+      (account as Map<String, Object?>).remove('isBudgetAccount');
+    }
+    final importer = BackupImporter(target);
+
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+    final restored = await target.select(target.accounts).get();
+    expect(restored, hasLength(3));
+    expect(restored.where((a) => a.isBudgetAccount), isEmpty);
+  });
+
+  test('the budget account survives a round trip', () async {
+    final importer = BackupImporter(target);
+
+    await importer.replaceAll(importer.parse(await exportJson(source)));
+
+    final restored = await target.select(target.accounts).get();
+    expect(
+      [
+        for (final a in restored)
+          if (a.isBudgetAccount) a.name,
+      ],
+      ['BDO Savings'],
+    );
   });
 
   test('parse reports when the backup was made and what it holds', () async {
@@ -418,6 +449,43 @@ void main() {
       await expectLater(
         restore(json: backup),
         throwsProblem(BackupImportProblem.invalidData, 'have no group'),
+      );
+      await expectUnchanged();
+    });
+
+    test('two budget accounts', () async {
+      final backup = await withRecord(
+        'accounts',
+        1, // GCash, archived in the source; made active here
+        (a) => a
+          ..['isArchived'] = false
+          ..['isBudgetAccount'] = true,
+      );
+
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(BackupImportProblem.invalidData, 'only one budget'),
+      );
+      await expectUnchanged();
+    });
+
+    test('a Credit or archived budget account', () async {
+      final backup = await sourceBackup();
+      final accounts = backup['accounts']! as List;
+      (accounts[0] as Map<String, Object?>)['isBudgetAccount'] = false;
+      (accounts[2] as Map<String, Object?>)['isBudgetAccount'] = true;
+
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(BackupImportProblem.invalidData, 'active Savings/Cash'),
+      );
+
+      (accounts[2] as Map<String, Object?>)['isBudgetAccount'] = false;
+      // GCash is archived in the source.
+      (accounts[1] as Map<String, Object?>)['isBudgetAccount'] = true;
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(BackupImportProblem.invalidData, 'active Savings/Cash'),
       );
       await expectUnchanged();
     });

@@ -19,6 +19,7 @@ final class Account {
     required this.createdAt,
     this.isArchived = false,
     this.customTypeId,
+    this.isBudgetAccount = false,
   });
 
   /// Currency for every account in the MVP (CLAUDE.md §11, G6).
@@ -41,6 +42,10 @@ final class Account {
   /// accounting rule keeps using [type].
   final int? customTypeId;
 
+  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// At most one account is the budget account, and it is Savings/Cash.
+  final bool isBudgetAccount;
+
   String get currencyCode => openingBalance.currencyCode;
 
   /// Returns a copy with the editable fields replaced. [id], [type] and
@@ -54,6 +59,7 @@ final class Account {
       createdAt: createdAt,
       isArchived: isArchived ?? this.isArchived,
       customTypeId: customTypeId,
+      isBudgetAccount: isBudgetAccount,
     );
   }
 
@@ -66,7 +72,8 @@ final class Account {
       other.openingBalance == openingBalance &&
       other.createdAt == createdAt &&
       other.isArchived == isArchived &&
-      other.customTypeId == customTypeId;
+      other.customTypeId == customTypeId &&
+      other.isBudgetAccount == isBudgetAccount;
 
   @override
   int get hashCode => Object.hash(
@@ -77,6 +84,7 @@ final class Account {
     createdAt,
     isArchived,
     customTypeId,
+    isBudgetAccount,
   );
 
   @override
@@ -84,5 +92,6 @@ final class Account {
       'Account($id, "$name", ${type.name}'
       '${customTypeId == null ? '' : ' (custom type $customTypeId)'}, '
       '$openingBalance'
+      '${isBudgetAccount ? ', budget account' : ''}'
       '${isArchived ? ', archived' : ''})';
 }

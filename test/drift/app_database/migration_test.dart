@@ -14,6 +14,7 @@ import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
 import 'generated/schema_v8.dart' as v8;
+import 'generated/schema_v9.dart' as v9;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -642,6 +643,93 @@ void main() {
         );
         await newDb.customStatement(
           "UPDATE categories SET plan_group = 'savings' WHERE id = 1",
+        );
+      },
+    );
+  });
+
+  test('v8 to v9 keeps every account, none the budget account', () async {
+    const accounts = [
+      v8.AccountsData(
+        id: 1,
+        name: 'BDO Savings',
+        type: 'savingsCash',
+        openingBalanceMinor: 1500000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:30:00.000Z',
+        isArchived: 0,
+      ),
+      v8.AccountsData(
+        id: 2,
+        name: 'RCBC Credit',
+        type: 'credit',
+        openingBalanceMinor: -300000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:31:00.000Z',
+        isArchived: 1,
+      ),
+    ];
+    const category = v8.CategoriesData(
+      id: 1,
+      name: 'Food',
+      kind: 'spending',
+      isArchived: 0,
+      planGroup: 'savings',
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 8,
+      newVersion: 9,
+      createOld: v8.DatabaseAtV8.new,
+      createNew: v9.DatabaseAtV9.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insertAll(oldDb.accounts, accounts)
+          ..insert(oldDb.categories, category);
+      },
+      validateItems: (newDb) async {
+        final migrated = await (newDb.select(
+          newDb.accounts,
+        )..orderBy([(a) => OrderingTerm(expression: a.id)])).get();
+        expect(migrated, [
+          for (final account in accounts)
+            v9.AccountsData(
+              id: account.id,
+              name: account.name,
+              type: account.type,
+              openingBalanceMinor: account.openingBalanceMinor,
+              currencyCode: account.currencyCode,
+              createdAt: account.createdAt,
+              isArchived: account.isArchived,
+              isBudgetAccount: 0,
+            ),
+        ]);
+        expect(
+          (await newDb.select(newDb.categories).get()).map((r) => r.toJson()),
+          [category.toJson()],
+        );
+
+        // Only a Savings/Cash account can be tagged, and only one.
+        await expectLater(
+          newDb.customStatement(
+            'UPDATE accounts SET is_budget_account = 1 WHERE id = 2',
+          ),
+          throwsA(isA<Exception>()),
+        );
+        await newDb.customStatement(
+          'UPDATE accounts SET is_budget_account = 1 WHERE id = 1',
+        );
+        await newDb.customStatement(
+          'INSERT INTO accounts (name, type, opening_balance_minor, '
+          "currency_code, created_at) VALUES ('BPI', 'savingsCash', 0, "
+          "'PHP', '2026-11-17T08:00:00.000Z')",
+        );
+        await expectLater(
+          newDb.customStatement(
+            "UPDATE accounts SET is_budget_account = 1 WHERE name = 'BPI'",
+          ),
+          throwsA(isA<Exception>()),
         );
       },
     );

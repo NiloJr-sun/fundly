@@ -414,6 +414,24 @@ class $AccountsTable extends Accounts
       'REFERENCES custom_account_types (id) ON DELETE RESTRICT',
     ),
   );
+  static const VerificationMeta _isBudgetAccountMeta = const VerificationMeta(
+    'isBudgetAccount',
+  );
+  @override
+  late final GeneratedColumn<bool> isBudgetAccount = GeneratedColumn<bool>(
+    'is_budget_account',
+    aliasedName,
+    false,
+    check: () =>
+        BooleanExpressionOperators(isBudgetAccount).not() |
+        type.equals('savingsCash'),
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_budget_account" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -424,6 +442,7 @@ class $AccountsTable extends Accounts
     createdAt,
     isArchived,
     customTypeId,
+    isBudgetAccount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -491,6 +510,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('is_budget_account')) {
+      context.handle(
+        _isBudgetAccountMeta,
+        isBudgetAccount.isAcceptableOrUnknown(
+          data['is_budget_account']!,
+          _isBudgetAccountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -534,6 +562,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.int,
         data['${effectivePrefix}custom_type_id'],
       ),
+      isBudgetAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_budget_account'],
+      )!,
     );
   }
 
@@ -566,6 +598,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// [type]. When set, [type] equals that custom type's base type; the
   /// repository enforces this, because SQLite checks cannot see other tables.
   final int? customTypeId;
+
+  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Only one account, of type Savings/Cash, can be the budget account.
+  final bool isBudgetAccount;
   const AccountRow({
     required this.id,
     required this.name,
@@ -575,6 +611,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.createdAt,
     required this.isArchived,
     this.customTypeId,
+    required this.isBudgetAccount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -591,6 +628,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || customTypeId != null) {
       map['custom_type_id'] = Variable<int>(customTypeId);
     }
+    map['is_budget_account'] = Variable<bool>(isBudgetAccount);
     return map;
   }
 
@@ -606,6 +644,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       customTypeId: customTypeId == null && nullToAbsent
           ? const Value.absent()
           : Value(customTypeId),
+      isBudgetAccount: Value(isBudgetAccount),
     );
   }
 
@@ -627,6 +666,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       customTypeId: serializer.fromJson<int?>(json['customTypeId']),
+      isBudgetAccount: serializer.fromJson<bool>(json['isBudgetAccount']),
     );
   }
   @override
@@ -643,6 +683,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isArchived': serializer.toJson<bool>(isArchived),
       'customTypeId': serializer.toJson<int?>(customTypeId),
+      'isBudgetAccount': serializer.toJson<bool>(isBudgetAccount),
     };
   }
 
@@ -655,6 +696,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     DateTime? createdAt,
     bool? isArchived,
     Value<int?> customTypeId = const Value.absent(),
+    bool? isBudgetAccount,
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -664,6 +706,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt: createdAt ?? this.createdAt,
     isArchived: isArchived ?? this.isArchived,
     customTypeId: customTypeId.present ? customTypeId.value : this.customTypeId,
+    isBudgetAccount: isBudgetAccount ?? this.isBudgetAccount,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -683,6 +726,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       customTypeId: data.customTypeId.present
           ? data.customTypeId.value
           : this.customTypeId,
+      isBudgetAccount: data.isBudgetAccount.present
+          ? data.isBudgetAccount.value
+          : this.isBudgetAccount,
     );
   }
 
@@ -696,7 +742,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('isArchived: $isArchived, ')
-          ..write('customTypeId: $customTypeId')
+          ..write('customTypeId: $customTypeId, ')
+          ..write('isBudgetAccount: $isBudgetAccount')
           ..write(')'))
         .toString();
   }
@@ -711,6 +758,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     createdAt,
     isArchived,
     customTypeId,
+    isBudgetAccount,
   );
   @override
   bool operator ==(Object other) =>
@@ -723,7 +771,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.currencyCode == this.currencyCode &&
           other.createdAt == this.createdAt &&
           other.isArchived == this.isArchived &&
-          other.customTypeId == this.customTypeId);
+          other.customTypeId == this.customTypeId &&
+          other.isBudgetAccount == this.isBudgetAccount);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -735,6 +784,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<DateTime> createdAt;
   final Value<bool> isArchived;
   final Value<int?> customTypeId;
+  final Value<bool> isBudgetAccount;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -744,6 +794,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.createdAt = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.customTypeId = const Value.absent(),
+    this.isBudgetAccount = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -754,6 +805,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required DateTime createdAt,
     this.isArchived = const Value.absent(),
     this.customTypeId = const Value.absent(),
+    this.isBudgetAccount = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        openingBalanceMinor = Value(openingBalanceMinor),
@@ -767,6 +819,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<DateTime>? createdAt,
     Expression<bool>? isArchived,
     Expression<int>? customTypeId,
+    Expression<bool>? isBudgetAccount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -778,6 +831,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (isArchived != null) 'is_archived': isArchived,
       if (customTypeId != null) 'custom_type_id': customTypeId,
+      if (isBudgetAccount != null) 'is_budget_account': isBudgetAccount,
     });
   }
 
@@ -790,6 +844,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<DateTime>? createdAt,
     Value<bool>? isArchived,
     Value<int?>? customTypeId,
+    Value<bool>? isBudgetAccount,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -800,6 +855,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       createdAt: createdAt ?? this.createdAt,
       isArchived: isArchived ?? this.isArchived,
       customTypeId: customTypeId ?? this.customTypeId,
+      isBudgetAccount: isBudgetAccount ?? this.isBudgetAccount,
     );
   }
 
@@ -832,6 +888,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (customTypeId.present) {
       map['custom_type_id'] = Variable<int>(customTypeId.value);
     }
+    if (isBudgetAccount.present) {
+      map['is_budget_account'] = Variable<bool>(isBudgetAccount.value);
+    }
     return map;
   }
 
@@ -845,7 +904,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('isArchived: $isArchived, ')
-          ..write('customTypeId: $customTypeId')
+          ..write('customTypeId: $customTypeId, ')
+          ..write('isBudgetAccount: $isBudgetAccount')
           ..write(')'))
         .toString();
   }
@@ -2505,6 +2565,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $MonthlyPlansTable monthlyPlans = $MonthlyPlansTable(this);
+  late final Index accountsOneBudgetAccount = Index(
+    'accounts_one_budget_account',
+    'CREATE UNIQUE INDEX accounts_one_budget_account ON accounts (is_budget_account) WHERE is_budget_account = 1',
+  );
   late final Index transactionsDate = Index(
     'transactions_date',
     'CREATE INDEX transactions_date ON transactions (date)',
@@ -2527,6 +2591,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categories,
     transactions,
     monthlyPlans,
+    accountsOneBudgetAccount,
     transactionsDate,
     transactionsSourceAccount,
     transactionsDestinationAccount,
@@ -2849,6 +2914,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   required DateTime createdAt,
   Value<bool> isArchived,
   Value<int?> customTypeId,
+  Value<bool> isBudgetAccount,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
@@ -2859,6 +2925,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<DateTime> createdAt,
   Value<bool> isArchived,
   Value<int?> customTypeId,
+  Value<bool> isBudgetAccount,
 });
 
 final class $$AccountsTableReferences
@@ -2926,6 +2993,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get isArchived => $composableBuilder(
     column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBudgetAccount => $composableBuilder(
+    column: $table.isBudgetAccount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2997,6 +3069,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isBudgetAccount => $composableBuilder(
+    column: $table.isBudgetAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomAccountTypesTableOrderingComposer get customTypeId {
     final $$CustomAccountTypesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3054,6 +3131,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get isArchived => $composableBuilder(
     column: $table.isArchived,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isBudgetAccount => $composableBuilder(
+    column: $table.isBudgetAccount,
     builder: (column) => column,
   );
 
@@ -3118,6 +3200,7 @@ class $$AccountsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<int?> customTypeId = const Value.absent(),
+                Value<bool> isBudgetAccount = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -3127,6 +3210,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 isArchived: isArchived,
                 customTypeId: customTypeId,
+                isBudgetAccount: isBudgetAccount,
               ),
           createCompanionCallback:
               ({
@@ -3138,6 +3222,7 @@ class $$AccountsTableTableManager
                 required DateTime createdAt,
                 Value<bool> isArchived = const Value.absent(),
                 Value<int?> customTypeId = const Value.absent(),
+                Value<bool> isBudgetAccount = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -3147,6 +3232,7 @@ class $$AccountsTableTableManager
                 createdAt: createdAt,
                 isArchived: isArchived,
                 customTypeId: customTypeId,
+                isBudgetAccount: isBudgetAccount,
               ),
           withReferenceMapper: (p0) => p0
               .map(

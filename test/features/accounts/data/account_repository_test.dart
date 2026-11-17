@@ -288,6 +288,130 @@ void main() {
     });
   });
 
+  group('budget account', () {
+    Future<List<String>> budgetAccountNames() async => [
+      for (final account
+          in await repository.watchAll(includeArchived: true).first)
+        if (account.isBudgetAccount) account.name,
+    ];
+
+    test('no account is the budget account at first', () async {
+      expect((await create('BDO Savings')).isBudgetAccount, isFalse);
+      expect(await budgetAccountNames(), isEmpty);
+    });
+
+    test('setBudgetAccount tags a Savings/Cash account', () async {
+      final bdo = await create('BDO Savings');
+
+      final tagged = await repository.setBudgetAccount(bdo.id);
+
+      expect(tagged.isBudgetAccount, isTrue);
+      expect(await repository.watchById(bdo.id).first, tagged);
+    });
+
+    test('a custom asset type can be the budget account', () async {
+      final eWallet = await CustomAccountTypeRepository(database)
+          .create(name: 'E-wallet', baseType: AccountType.savingsCash);
+      final gcash = await repository.create(
+        name: 'GCash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(0),
+        customTypeId: eWallet.id,
+      );
+
+      expect(
+        (await repository.setBudgetAccount(gcash.id)).isBudgetAccount,
+        isTrue,
+      );
+    });
+
+    test('tagging another account moves the tag', () async {
+      final bdo = await create('BDO Savings');
+      final bpi = await create('BPI Savings');
+      await repository.setBudgetAccount(bdo.id);
+
+      await repository.setBudgetAccount(bpi.id);
+
+      expect(await budgetAccountNames(), ['BPI Savings']);
+    });
+
+    test('tagging the budget account again keeps it', () async {
+      final bdo = await create('BDO Savings');
+      await repository.setBudgetAccount(bdo.id);
+
+      await repository.setBudgetAccount(bdo.id);
+
+      expect(await budgetAccountNames(), ['BDO Savings']);
+    });
+
+    test('clearBudgetAccount leaves none', () async {
+      final bdo = await create('BDO Savings');
+      await repository.setBudgetAccount(bdo.id);
+
+      await repository.clearBudgetAccount();
+
+      expect(await budgetAccountNames(), isEmpty);
+    });
+
+    test('archiving the budget account removes the tag for good', () async {
+      final bdo = await create('BDO Savings');
+      await repository.setBudgetAccount(bdo.id);
+
+      await repository.setArchived(bdo.id, archived: true);
+      expect(await budgetAccountNames(), isEmpty);
+
+      await repository.setArchived(bdo.id, archived: false);
+      expect(await budgetAccountNames(), isEmpty, reason: 'not restored');
+    });
+
+    test('archiving another account keeps the budget account', () async {
+      final bdo = await create('BDO Savings');
+      final wallet = await create('Cash Wallet');
+      await repository.setBudgetAccount(bdo.id);
+
+      await repository.setArchived(wallet.id, archived: true);
+
+      expect(await budgetAccountNames(), ['BDO Savings']);
+    });
+
+    test('refuses Credit and Loan accounts', () async {
+      final card = await create(
+        'RCBC Credit',
+        type: AccountType.credit,
+        entered: 100,
+      );
+      final loan = await create(
+        'Car Loan',
+        type: AccountType.loan,
+        entered: 100,
+      );
+
+      await expectLater(
+        repository.setBudgetAccount(card.id),
+        throwsArgumentError,
+      );
+      await expectLater(
+        repository.setBudgetAccount(loan.id),
+        throwsArgumentError,
+      );
+      expect(await budgetAccountNames(), isEmpty);
+    });
+
+    test('refuses an archived account and keeps the current one', () async {
+      final bdo = await create('BDO Savings');
+      final old = await create('Old Wallet');
+      await repository.setBudgetAccount(bdo.id);
+      await repository.setArchived(old.id, archived: true);
+
+      await expectLater(repository.setBudgetAccount(old.id), throwsStateError);
+      expect(await budgetAccountNames(), ['BDO Savings']);
+    });
+
+    test('throws StateError for a missing account', () async {
+      await expectLater(repository.setBudgetAccount(42), throwsStateError);
+    });
+  });
+
   group('delete', () {
     test('removes an archived account no transaction uses', () async {
       final account = await create('Old Wallet');
@@ -518,6 +642,33 @@ void main() {
     test('rejects empty and over-long names', () {
       expect(insertRaw(name: ''), throwsA(isA<Exception>()));
       expect(insertRaw(name: 'a' * 41), throwsA(isA<Exception>()));
+    });
+
+    test('allows only one budget account', () async {
+      await database.customStatement(
+        'INSERT INTO accounts (name, type, opening_balance_minor, created_at, '
+        "is_budget_account) VALUES ('A', 'savingsCash', 0, '2026', 1)",
+      );
+
+      expect(
+        database.customStatement(
+          'INSERT INTO accounts (name, type, opening_balance_minor, '
+          'created_at, is_budget_account) '
+          "VALUES ('B', 'savingsCash', 0, '2026', 1)",
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
+    test('a budget account must be Savings/Cash', () {
+      expect(
+        database.customStatement(
+          'INSERT INTO accounts (name, type, opening_balance_minor, '
+          'created_at, is_budget_account) '
+          "VALUES ('C', 'credit', 0, '2026', 1)",
+        ),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('accepts valid rows', () async {
