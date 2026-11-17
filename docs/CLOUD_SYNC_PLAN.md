@@ -2,9 +2,10 @@
 
 Date: 2026-11-17
 
-Status: **Proposal for review. Planning only is authorized.** No application,
-schema, backup format, dependency, or cloud configuration changes are approved
-by this document. Approve and implement one task at a time under
+Status: **Defaults approved; connection feasibility accepted; S2 proposal ready.**
+The owner requested development to proceed on 2026-11-18. Production
+schema, data migration, dependency integration, and deployment still require
+the relevant task review. Approve and implement one task at a time under
 [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
 
 ## Goal and known setup
@@ -16,8 +17,9 @@ Android remains best-effort.
 
 - Supabase project created in Tokyo; currently on the free tier.
 - PowerSync instance created. JP was recommended; confirm its actual region.
-- The database connection, Google OAuth configuration, and cloud tables have
-  not yet been verified. Do not assume that instance creation connects them.
+- Public client settings have been provided and saved in the ignored prototype
+  configuration. The product owner created disposable probe tables and confirmed
+  that the PowerSync connection is working. Google OAuth is not yet tested.
 - Hosting domain and mobile OAuth identifiers still need confirmation.
 
 ## Current implementation
@@ -79,9 +81,10 @@ derived balances, Spending totals, Ready to assign, or carry-over snapshots.
 | Restore | Preserve existing signed-out restore. For the first sync release, propose blocking restore into a signed-in dataset until cloud-wide replacement is designed and approved; show an explanation. |
 | Backup | Preserve formats 1–6 as import inputs. Approve any new export version and ID conversion before changing persisted identity. |
 
-These are proposed product behaviors, not confirmed additions to CLAUDE.md §11.
-An approved implementation task must update the relevant guidance explicitly
-when its scope includes documenting those decisions.
+The product owner approved these defaults. The ID representation and local
+schema implementation still depend on S1 evidence. Production behavior is not
+implemented yet; the relevant delivery task must update CLAUDE.md §11 when
+that behavior is implemented and its scope includes documenting the decisions.
 
 ## Delivery tasks and approval gates
 
@@ -241,10 +244,12 @@ SQLite integrity/foreign keys after any local schema migration.
 
 ## Next task
 
-Review the proposed decisions, then authorize **S1 only**. Do not add SDKs,
-run cloud SQL, migrate personal records, or start S2 as part of this planning
-task. Outstanding setup details can be recorded during S1 without sharing
-secrets in chat.
+Review [S2's concrete implementation proposal](CLOUD_SYNC_S2_PLAN.md), then
+implement only its approved task. The owner accepted the connection checks and
+requested development to proceed; unverified rejection/conflict cases remain
+explicit development and release requirements. See
+[S1 findings](CLOUD_SYNC_S1_FINDINGS.md) for evidence and gaps. Keep the probe
+separate from production and do not migrate personal data yet.
 
 ## Technical references
 

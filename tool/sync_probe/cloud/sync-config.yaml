@@ -1,0 +1,8 @@
+config:
+  edition: 3
+streams:
+  probe_user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT id, name, revision FROM probe_parents WHERE owner_id = auth.user_id()
+      - SELECT id, parent_id, amount_minor FROM probe_entries WHERE owner_id = auth.user_id()

@@ -1,0 +1,25 @@
+name: fundly_sync_probe
+description: Disposable S1 compatibility probe; never opens Fundly data.
+publish_to: none
+version: 0.0.1+1
+environment:
+  sdk: ^3.13.7
+dependencies:
+  flutter:
+    sdk: flutter
+  drift: 2.35.4
+  drift_sqlite_async: ^0.3.1
+  powersync: ^2.6.1
+  supabase_flutter: ^2.0.0
+  uuid: ^4.0.0
+  path_provider: ^2.1.0
+  sqlite_async: ^0.14.8
+  google_sign_in: ^7.2.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: 2.35.3
+  build_runner: ^2.17.1
