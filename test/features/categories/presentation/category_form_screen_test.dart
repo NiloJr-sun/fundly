@@ -89,14 +89,37 @@ void main() {
     testWidgets('adds an inflow category', (tester) async {
       await openForm(tester);
 
-      await tester.tap(find.text('Spending'));
+      await tester.tap(find.byType(DropdownButtonFormField<CategoryKind>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Inflow').last);
       await tester.pumpAndSettle();
+      expect(find.text('Group'), findsNothing, reason: 'inflow has no group');
       await tester.enterText(nameField(), 'Freelance');
       await tapButton(tester, 'Add category');
 
       expect(repository.created.single.kind, CategoryKind.inflow);
+      expect(repository.created.single.planGroup, PlanGroup.spending);
+    });
+
+    testWidgets('adds a spending category to the chosen group', (tester) async {
+      await openForm(tester);
+
+      expect(
+        find.text('The section it appears in on the Plans page.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byType(DropdownButtonFormField<PlanGroup>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Savings').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(nameField(), 'Emergency fund');
+      await tapButton(tester, 'Add category');
+
+      expect(repository.created.single, (
+        name: 'Emergency fund',
+        kind: CategoryKind.spending,
+        planGroup: PlanGroup.savings,
+      ));
     });
 
     testWidgets('requires a name', (tester) async {
@@ -142,7 +165,54 @@ void main() {
       await tapButton(tester, 'Save changes');
 
       expect(repository.renamed.single, (id: foodId, name: 'Groceries'));
+      expect(repository.groupChanges, isEmpty, reason: 'group unchanged');
       expect(find.text('Changes saved'), findsOneWidget);
+    });
+
+    testWidgets('moves a category to another group', (tester) async {
+      await openForm(tester, editing: food);
+
+      await tester.tap(find.byType(DropdownButtonFormField<PlanGroup>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Liability').last);
+      await tester.pumpAndSettle();
+      await tapButton(tester, 'Save changes');
+
+      expect(repository.groupChanges.single, (
+        id: foodId,
+        planGroup: PlanGroup.liability,
+      ));
+      expect(find.text('Changes saved'), findsOneWidget);
+    });
+
+    testWidgets('pre-fills the group of the category', (tester) async {
+      await openForm(
+        tester,
+        editing: const Category(
+          id: foodId,
+          name: 'Food',
+          kind: CategoryKind.spending,
+          planGroup: PlanGroup.savings,
+        ),
+      );
+
+      final dropdown = tester.widget<DropdownButton<PlanGroup>>(
+        find.byType(DropdownButton<PlanGroup>),
+      );
+      expect(dropdown.value, PlanGroup.savings);
+    });
+
+    testWidgets('an inflow category shows no group', (tester) async {
+      await openForm(
+        tester,
+        editing: const Category(
+          id: 20,
+          name: 'Salary',
+          kind: CategoryKind.inflow,
+        ),
+      );
+
+      expect(find.byType(DropdownButtonFormField<PlanGroup>), findsNothing);
     });
 
     testWidgets('archives an active category', (tester) async {

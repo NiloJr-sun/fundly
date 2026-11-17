@@ -104,9 +104,16 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A spending category's Plans group shows unless it is the default.
+    final group =
+        category.kind == CategoryKind.spending &&
+            category.planGroup != PlanGroup.spending
+        ? planGroupLabel(category.planGroup)
+        : null;
+    final details = [if (showKind) categoryKindLabel(category.kind), ?group];
     return ListTile(
       title: Text(category.name),
-      subtitle: showKind ? Text(categoryKindLabel(category.kind)) : null,
+      subtitle: details.isEmpty ? null : Text(details.join(' · ')),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(

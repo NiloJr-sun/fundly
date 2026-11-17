@@ -9,8 +9,9 @@ import '../domain/category_validation_exception.dart';
 import 'categories_providers.dart';
 import 'category_display.dart';
 
-/// Creates a category, or edits [category] when given: rename, archive or
-/// unarchive, and delete when no transaction uses it.
+/// Creates a category, or edits [category] when given: rename, change the
+/// Plans group of a spending category, archive or unarchive, and delete when
+/// no transaction uses it.
 ///
 /// The kind cannot be changed when editing. Closes itself after a successful
 /// save, archive or delete.
@@ -27,6 +28,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late CategoryKind _kind;
+  late PlanGroup _planGroup;
   bool _isBusy = false;
 
   /// Error returned by the repository on the last save, shown on the name
@@ -39,6 +41,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
   void initState() {
     super.initState();
     _kind = widget.category?.kind ?? CategoryKind.spending;
+    _planGroup = widget.category?.planGroup ?? PlanGroup.spending;
     _nameController = TextEditingController(text: widget.category?.name ?? '');
   }
 
@@ -87,10 +90,25 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     final name = _nameController.text;
     final category = widget.category;
+    // Only spending categories have a group; inflow keeps the default.
+    final planGroup = _kind == CategoryKind.spending
+        ? _planGroup
+        : PlanGroup.spending;
     await _run(
-      (repository) => category == null
-          ? repository.create(name: name, kind: _kind)
-          : repository.rename(category.id, name),
+      (repository) async {
+        if (category == null) {
+          await repository.create(
+            name: name,
+            kind: _kind,
+            planGroup: planGroup,
+          );
+          return;
+        }
+        await repository.rename(category.id, name);
+        if (planGroup != category.planGroup) {
+          await repository.setPlanGroup(category.id, planGroup);
+        }
+      },
       doneMessage: category == null ? 'Category added' : 'Changes saved',
       failureMessage: 'The category could not be saved.',
     );
@@ -148,6 +166,13 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
               enabled: !_isEditing,
               onChanged: (kind) => setState(() => _kind = kind),
             ),
+            if (_kind == CategoryKind.spending) ...[
+              const SizedBox(height: Spacing.lg),
+              _GroupSelector(
+                selected: _planGroup,
+                onChanged: (group) => setState(() => _planGroup = group),
+              ),
+            ],
             const SizedBox(height: Spacing.lg),
             TextFormField(
               controller: _nameController,
@@ -233,6 +258,32 @@ class _DeleteButton extends ConsumerWidget {
         icon: const Icon(Icons.delete_outline),
         label: const Text('Delete category'),
       ),
+    );
+  }
+}
+
+/// Which section of the Plans page a spending category is listed under.
+class _GroupSelector extends StatelessWidget {
+  const _GroupSelector({required this.selected, required this.onChanged});
+
+  final PlanGroup selected;
+  final ValueChanged<PlanGroup> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<PlanGroup>(
+      initialValue: selected,
+      decoration: const InputDecoration(
+        labelText: 'Group',
+        helperText: 'The section it appears in on the Plans page.',
+      ),
+      items: [
+        for (final group in PlanGroup.values)
+          DropdownMenuItem(value: group, child: Text(planGroupLabel(group))),
+      ],
+      onChanged: (group) {
+        if (group != null) onChanged(group);
+      },
     );
   }
 }

@@ -70,6 +70,34 @@ void main() {
     );
   });
 
+  testWidgets('shows a Plans group other than Spending', (tester) async {
+    await pumpScreen(tester, const [
+      food,
+      Category(
+        id: 4,
+        name: 'Emergency fund',
+        kind: CategoryKind.spending,
+        planGroup: PlanGroup.savings,
+      ),
+      Category(
+        id: 5,
+        name: 'Old card',
+        kind: CategoryKind.spending,
+        isArchived: true,
+        planGroup: PlanGroup.liability,
+      ),
+    ]);
+
+    String? subtitleOf(String name) {
+      final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, name));
+      return (tile.subtitle as Text?)?.data;
+    }
+
+    expect(subtitleOf('Emergency fund'), 'Savings');
+    expect(subtitleOf('Food'), isNull, reason: 'the default is not shown');
+    expect(subtitleOf('Old card'), 'Spending · Liability');
+  });
+
   testWidgets('hides empty sections', (tester) async {
     await pumpScreen(tester, const [food]);
 

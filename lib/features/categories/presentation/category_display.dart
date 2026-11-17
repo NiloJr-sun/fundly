@@ -7,6 +7,13 @@ String categoryKindLabel(CategoryKind kind) => switch (kind) {
   CategoryKind.inflow => 'Inflow',
 };
 
+/// The heading of a [PlanGroup] on the Plans page.
+String planGroupLabel(PlanGroup group) => switch (group) {
+  PlanGroup.spending => 'Spending',
+  PlanGroup.savings => 'Savings',
+  PlanGroup.liability => 'Liability',
+};
+
 String categoryNameErrorText(CategoryNameError error) => switch (error) {
   CategoryNameError.empty => 'Enter a name.',
   CategoryNameError.tooLong =>

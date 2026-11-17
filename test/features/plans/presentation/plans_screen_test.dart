@@ -116,6 +116,69 @@ void main() {
       expect(find.textContaining('Gifts'), findsNothing);
     });
 
+    testWidgets('only the Spending section when nothing is grouped', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      expect(find.text('Spending'), findsOneWidget);
+      expect(find.text('Savings'), findsNothing);
+      expect(find.text('Liability'), findsNothing);
+    });
+
+    testWidgets('sections follow the groups: Spending, Savings, Liability', (
+      tester,
+    ) async {
+      // Tall enough for every section; the list builds only visible rows.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(
+        tester,
+        withCategories: [
+          ...allCategories,
+          const Category(
+            id: 40,
+            name: 'Emergency fund',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.savings,
+          ),
+          const Category(
+            id: 41,
+            name: 'Card payoff',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.liability,
+          ),
+        ],
+      );
+
+      double top(Finder finder) => tester.getTopLeft(finder).dy;
+      expect(top(find.text('Spending')), lessThan(top(row('Food'))));
+      expect(top(row('Transport')), lessThan(top(find.text('Savings'))));
+      expect(top(find.text('Savings')), lessThan(top(row('Emergency fund'))));
+      expect(top(row('Emergency fund')), lessThan(top(find.text('Liability'))));
+      expect(top(find.text('Liability')), lessThan(top(row('Card payoff'))));
+    });
+
+    testWidgets('a section with only Savings categories hides Spending', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        withCategories: const [
+          Category(
+            id: 40,
+            name: 'Emergency fund',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.savings,
+          ),
+        ],
+      );
+
+      expect(find.text('Savings'), findsOneWidget);
+      expect(find.text('Spending'), findsNothing);
+    });
+
     testWidgets('shows target, assigned, activity, available and status', (
       tester,
     ) async {
