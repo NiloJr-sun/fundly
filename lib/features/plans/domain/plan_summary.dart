@@ -66,7 +66,7 @@ List<CategoryPlanSummary> planSummaries({
 }) {
   final plannedByCategory = {
     for (final plan in plans)
-      if (plan.month == month) plan.categoryId: plan.plannedAmount,
+      if (plan.month == month) plan.categoryId: plan.target,
   };
 
   final range = month.dateRange;

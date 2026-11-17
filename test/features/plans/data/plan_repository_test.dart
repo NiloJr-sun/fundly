@@ -42,26 +42,29 @@ void main() {
     isA<PlanValidationException>().having((e) => e.error, 'error', error),
   );
 
+  /// Saves a plan with [target] and, unless given, the same [assigned].
   Future<MonthlyPlan> plan(
     int categoryId,
-    int amount, {
+    int target, {
     CalendarMonth? month,
-  }) => repository.setPlannedAmount(
+    int? assigned,
+  }) async => (await repository.save(
     month: month ?? november,
     categoryId: categoryId,
-    amount: php(amount),
-  );
+    target: php(target),
+    assigned: php(assigned ?? target),
+  ))!;
 
   Future<List<MonthlyPlan>> plansFor(CalendarMonth month) =>
       repository.watchForMonth(month).first;
 
-  group('setPlannedAmount', () {
+  group('save', () {
     test('creates a plan with UTC timestamps', () async {
       final created = await plan(food, 500000);
 
       expect(created.month, november);
       expect(created.categoryId, food);
-      expect(created.plannedAmount, php(500000));
+      expect(created.target, php(500000));
       expect(created.createdAt, DateTime.utc(2026, 11, 16, 9));
       expect(created.updatedAt, created.createdAt);
       expect(await plansFor(november), [created]);
@@ -76,23 +79,78 @@ void main() {
         final updated = await plan(food, 650000);
 
         expect(updated.id, created.id);
-        expect(updated.plannedAmount, php(650000));
+        expect(updated.target, php(650000));
         expect(updated.createdAt, created.createdAt);
         expect(updated.updatedAt, DateTime.utc(2026, 11, 17, 9));
         expect(await plansFor(november), [updated]);
       },
     );
 
-    test('zero is a valid plan', () async {
-      final created = await plan(food, 0);
+    test('stores target and assigned separately', () async {
+      final created = await plan(food, 500000, assigned: 250000);
 
-      expect(created.plannedAmount, php(0));
+      expect(created.target, php(500000));
+      expect(created.assigned, php(250000));
+      expect(await plansFor(november), [created]);
+    });
+
+    test('a zero target with nothing assigned is a valid plan', () async {
+      final created = await plan(food, 0, assigned: 0);
+
+      expect(created.target, php(0));
+      expect(created.assigned, php(0));
       expect(await plansFor(november), hasLength(1));
     });
 
-    test('rejects a negative amount', () async {
+    test('money can be assigned without a target', () async {
+      final created = await repository.save(
+        month: november,
+        categoryId: food,
+        target: null,
+        assigned: php(100000),
+      );
+
+      expect(created!.target, isNull);
+      expect(created.assigned, php(100000));
+      expect(await plansFor(november), [created]);
+    });
+
+    test('an update can remove the target and keep the assigned', () async {
+      final created = await plan(food, 500000);
+
+      final updated = await repository.save(
+        month: november,
+        categoryId: food,
+        target: null,
+        assigned: php(500000),
+      );
+
+      expect(updated!.id, created.id);
+      expect(updated.target, isNull);
+      expect(await plansFor(november), [updated]);
+    });
+
+    test('no target and nothing assigned removes the plan', () async {
+      await plan(food, 500000);
+
+      final result = await repository.save(
+        month: november,
+        categoryId: food,
+        target: null,
+        assigned: php(0),
+      );
+
+      expect(result, isNull);
+      expect(await plansFor(november), isEmpty);
+    });
+
+    test('rejects a negative target or assigned amount', () async {
       await expectLater(
-        plan(food, -1),
+        plan(food, -1, assigned: 0),
+        throwsPlanError(PlanValidationError.amountNegative),
+      );
+      await expectLater(
+        plan(food, 0, assigned: -1),
         throwsPlanError(PlanValidationError.amountNegative),
       );
       expect(await plansFor(november), isEmpty);
@@ -127,15 +185,16 @@ void main() {
 
       final updated = await plan(food, 200);
 
-      expect(updated.plannedAmount, php(200));
+      expect(updated.target, php(200));
     });
 
     test('rejects a currency other than PHP', () {
       expect(
-        repository.setPlannedAmount(
+        repository.save(
           month: november,
           categoryId: food,
-          amount: const Money(minorUnits: 100, currencyCode: 'USD'),
+          target: null,
+          assigned: const Money(minorUnits: 100, currencyCode: 'USD'),
         ),
         throwsArgumentError,
       );
@@ -148,14 +207,13 @@ void main() {
       await plan(transport, 200000);
       await plan(food, 300000, month: december);
 
-      expect(
-        (await plansFor(november)).map((p) => (p.categoryId, p.plannedAmount)),
-        [(food, php(500000)), (transport, php(200000))],
-      );
-      expect(
-        (await plansFor(december)).map((p) => (p.categoryId, p.plannedAmount)),
-        [(food, php(300000))],
-      );
+      expect((await plansFor(november)).map((p) => (p.categoryId, p.target)), [
+        (food, php(500000)),
+        (transport, php(200000)),
+      ]);
+      expect((await plansFor(december)).map((p) => (p.categoryId, p.target)), [
+        (food, php(300000)),
+      ]);
       expect(await plansFor(CalendarMonth(2027, 1)), isEmpty);
     });
   });
@@ -212,14 +270,17 @@ void main() {
     Future<void> insertRaw({
       String month = '2026-11',
       int? categoryId,
-      int amount = 100,
+      int? target = 100,
+      int assigned = 100,
     }) => database.customStatement(
-      'INSERT INTO monthly_plans (month, category_id, planned_amount_minor, '
-      'currency_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO monthly_plans (month, category_id, target_amount_minor, '
+      'assigned_amount_minor, currency_code, created_at, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         month,
         categoryId ?? food,
-        amount,
+        target,
+        assigned,
         'PHP',
         '2026-11-16T09:00:00.000Z',
         '2026-11-16T09:00:00.000Z',
@@ -238,8 +299,15 @@ void main() {
       expect(insertRaw(), throwsA(isA<Exception>()));
     });
 
-    test('rejects a negative amount', () {
-      expect(insertRaw(amount: -1), throwsA(isA<Exception>()));
+    test('accepts a missing target', () async {
+      await insertRaw(target: null);
+
+      expect((await plansFor(november)).single.target, isNull);
+    });
+
+    test('rejects a negative target or assigned amount', () {
+      expect(insertRaw(target: -1), throwsA(isA<Exception>()));
+      expect(insertRaw(assigned: -1), throwsA(isA<Exception>()));
     });
 
     test('rejects malformed months', () {

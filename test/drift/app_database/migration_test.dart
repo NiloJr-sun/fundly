@@ -11,6 +11,7 @@ import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
+import 'generated/schema_v6.dart' as v6;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -306,6 +307,133 @@ void main() {
           ]);
           expect(await newDb.select(newDb.categories).get(), hasLength(9));
           expect(await newDb.select(newDb.monthlyPlans).get(), isEmpty);
+        },
+      );
+    });
+  });
+
+  group('v5 to v6: planned amounts become both target and assigned', () {
+    const categories = [
+      v5.CategoriesData(id: 1, name: 'Food', kind: 'spending', isArchived: 0),
+      v5.CategoriesData(id: 2, name: 'Gifts', kind: 'spending', isArchived: 1),
+    ];
+    const plans = [
+      v5.MonthlyPlansData(
+        id: 1,
+        month: '2026-11',
+        categoryId: 1,
+        plannedAmountMinor: 500000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:00:00.000Z',
+        updatedAt: '2026-11-16T10:00:00.000Z',
+      ),
+      // Zero stays a zero target, not "no target".
+      v5.MonthlyPlansData(
+        id: 2,
+        month: '2026-11',
+        categoryId: 2,
+        plannedAmountMinor: 0,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-16T09:00:00.000Z',
+        updatedAt: '2026-11-16T09:00:00.000Z',
+      ),
+      v5.MonthlyPlansData(
+        id: 3,
+        month: '2026-12',
+        categoryId: 1,
+        plannedAmountMinor: 300050,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-17T08:00:00.000Z',
+        updatedAt: '2026-11-17T08:00:00.000Z',
+      ),
+    ];
+    const transaction = v5.TransactionsData(
+      id: 1,
+      type: 'spending',
+      amountMinor: 50000,
+      currencyCode: 'PHP',
+      date: '2026-11-16',
+      payee: 'SM Supermarket',
+      categoryId: 1,
+      sourceAccountId: 1,
+      note: '',
+      createdAt: '2026-11-16T10:00:00.000Z',
+      updatedAt: '2026-11-16T10:00:00.000Z',
+    );
+    const account = v5.AccountsData(
+      id: 1,
+      name: 'BDO Savings',
+      type: 'savingsCash',
+      openingBalanceMinor: 1500000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:30:00.000Z',
+      isArchived: 0,
+    );
+
+    test('keeps every plan and the rest of the data', () async {
+      await verifier.testWithDataIntegrity(
+        oldVersion: 5,
+        newVersion: 6,
+        createOld: v5.DatabaseAtV5.new,
+        createNew: v6.DatabaseAtV6.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch
+            ..insert(oldDb.accounts, account)
+            ..insertAll(oldDb.categories, categories)
+            ..insert(oldDb.transactions, transaction)
+            ..insertAll(oldDb.monthlyPlans, plans);
+        },
+        validateItems: (newDb) async {
+          final migrated = await newDb.select(newDb.monthlyPlans).get();
+          expect(migrated, [
+            for (final plan in plans)
+              v6.MonthlyPlansData(
+                id: plan.id,
+                month: plan.month,
+                categoryId: plan.categoryId,
+                targetAmountMinor: plan.plannedAmountMinor,
+                assignedAmountMinor: plan.plannedAmountMinor,
+                currencyCode: plan.currencyCode,
+                createdAt: plan.createdAt,
+                updatedAt: plan.updatedAt,
+              ),
+          ]);
+          expect(
+            (await newDb.select(newDb.accounts).get()).map((r) => r.toJson()),
+            [account.toJson()],
+          );
+          expect(
+            (await newDb.select(newDb.categories).get()).map((r) => r.toJson()),
+            categories.map((r) => r.toJson()),
+          );
+          expect(
+            (await newDb.select(newDb.transactions).get()).map(
+              (r) => r.toJson(),
+            ),
+            [transaction.toJson()],
+          );
+
+          // The rebuilt table still enforces its rules.
+          Future<void> insert(Object? target, int assigned) =>
+              newDb.customStatement(
+                'INSERT INTO monthly_plans (month, category_id, '
+                'target_amount_minor, assigned_amount_minor, currency_code, '
+                'created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [
+                  '2027-01',
+                  1,
+                  target,
+                  assigned,
+                  'PHP',
+                  '2026-11-17T08:00:00.000Z',
+                  '2026-11-17T08:00:00.000Z',
+                ],
+              );
+          await expectLater(insert(-1, 0), throwsA(isA<Exception>()));
+          await expectLater(insert(0, -1), throwsA(isA<Exception>()));
+          await insert(null, 100);
+          await expectLater(insert(null, 100), throwsA(isA<Exception>()));
         },
       );
     });

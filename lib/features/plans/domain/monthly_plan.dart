@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 
-/// How much the user plans to spend in one spending category in one month.
+/// One spending category's target and assigned amount in one month.
 ///
 /// Each month stands alone: nothing carries over between months.
 @immutable
@@ -12,7 +12,8 @@ final class MonthlyPlan {
     required this.id,
     required this.month,
     required this.categoryId,
-    required this.plannedAmount,
+    required this.target,
+    required this.assigned,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -21,9 +22,13 @@ final class MonthlyPlan {
   final CalendarMonth month;
   final int categoryId;
 
-  /// Zero or positive. Zero means "plan to spend nothing", which differs
-  /// from having no plan at all.
-  final Money plannedAmount;
+  /// The budget for the month: zero or positive, or `null` for no target.
+  /// A zero target differs from having none.
+  final Money? target;
+
+  /// Money set aside for the category this month: zero or positive. Entered
+  /// by the user; it is not checked against income or balances.
+  final Money assigned;
 
   /// UTC instants.
   final DateTime createdAt;
@@ -35,15 +40,24 @@ final class MonthlyPlan {
       other.id == id &&
       other.month == month &&
       other.categoryId == categoryId &&
-      other.plannedAmount == plannedAmount &&
+      other.target == target &&
+      other.assigned == assigned &&
       other.createdAt == createdAt &&
       other.updatedAt == updatedAt;
 
   @override
-  int get hashCode =>
-      Object.hash(id, month, categoryId, plannedAmount, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    month,
+    categoryId,
+    target,
+    assigned,
+    createdAt,
+    updatedAt,
+  );
 
   @override
   String toString() =>
-      'MonthlyPlan($id, $month, category $categoryId, $plannedAmount)';
+      'MonthlyPlan($id, $month, category $categoryId, target: $target, '
+      'assigned: $assigned)';
 }

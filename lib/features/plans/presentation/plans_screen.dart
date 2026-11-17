@@ -87,10 +87,13 @@ class _PlanList extends ConsumerWidget {
     try {
       switch (choice) {
         case SetPlannedAmount(:final amount):
-          await repository.setPlannedAmount(
+          // Until the screen shows assigned amounts, the planned amount is
+          // also what is assigned, as v6 did for existing plans.
+          await repository.save(
             month: month,
             categoryId: categoryId,
-            amount: amount,
+            target: amount,
+            assigned: amount,
           );
         case ClearPlannedAmount():
           await repository.clear(month: month, categoryId: categoryId);

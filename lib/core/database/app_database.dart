@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +59,23 @@ class AppDatabase extends _$AppDatabase {
       // v5: monthly plans per spending category (task 4.2).
       from4To5: (m, schema) async {
         await m.createTable(schema.monthlyPlans);
+      },
+      // v6: planned amount becomes an optional target, and plans gain an
+      // assigned amount. Existing plans keep their amount as both, so what
+      // was "left" before is "available" now. SQLite cannot make a column
+      // nullable in place, so the table is rebuilt.
+      from5To6: (m, schema) async {
+        await m.alterTable(
+          TableMigration(
+            schema.monthlyPlans,
+            columnTransformer: {
+              schema.monthlyPlans.targetAmountMinor:
+                  const CustomExpression<int>('planned_amount_minor'),
+              schema.monthlyPlans.assignedAmountMinor:
+                  const CustomExpression<int>('planned_amount_minor'),
+            },
+          ),
+        );
       },
     ),
     beforeOpen: (details) async {

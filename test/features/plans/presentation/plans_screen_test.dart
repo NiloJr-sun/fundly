@@ -35,7 +35,8 @@ void main() {
         id: categoryId,
         month: month ?? november,
         categoryId: categoryId,
-        plannedAmount: php(amount),
+        target: php(amount),
+        assigned: php(amount),
         createdAt: DateTime.utc(2026, 11, 1),
         updatedAt: DateTime.utc(2026, 11, 1),
       );
@@ -213,10 +214,11 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      expect(repository.set.single, (
+      expect(repository.saved.single, (
         month: october,
         categoryId: foodId,
-        amount: php(450050),
+        target: php(450050),
+        assigned: php(450050),
       ));
       expect(find.byType(AlertDialog), findsNothing);
     });
@@ -229,7 +231,7 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
 
-      expect(repository.set.single.amount, php(0));
+      expect(repository.saved.single.target, php(0));
     });
 
     testWidgets('pre-fills the current plan and can clear it', (tester) async {
@@ -241,7 +243,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.cleared.single, (month: november, categoryId: foodId));
-      expect(repository.set, isEmpty);
+      expect(repository.saved, isEmpty);
     });
 
     testWidgets('rejects invalid amounts and saves nothing', (tester) async {
@@ -260,7 +262,7 @@ void main() {
         findsOneWidget,
       );
 
-      expect(repository.set, isEmpty);
+      expect(repository.saved, isEmpty);
       expect(find.byType(AlertDialog), findsOneWidget);
     });
 
@@ -272,7 +274,7 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
 
-      expect(repository.set, isEmpty);
+      expect(repository.saved, isEmpty);
       expect(repository.cleared, isEmpty);
     });
 

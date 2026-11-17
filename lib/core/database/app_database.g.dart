@@ -1569,11 +1569,22 @@ class $MonthlyPlansTable extends MonthlyPlans
       'REFERENCES categories (id) ON DELETE CASCADE',
     ),
   );
-  static const VerificationMeta _plannedAmountMinorMeta =
-      const VerificationMeta('plannedAmountMinor');
+  static const VerificationMeta _targetAmountMinorMeta = const VerificationMeta(
+    'targetAmountMinor',
+  );
   @override
-  late final GeneratedColumn<int> plannedAmountMinor = GeneratedColumn<int>(
-    'planned_amount_minor',
+  late final GeneratedColumn<int> targetAmountMinor = GeneratedColumn<int>(
+    'target_amount_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _assignedAmountMinorMeta =
+      const VerificationMeta('assignedAmountMinor');
+  @override
+  late final GeneratedColumn<int> assignedAmountMinor = GeneratedColumn<int>(
+    'assigned_amount_minor',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -1617,7 +1628,8 @@ class $MonthlyPlansTable extends MonthlyPlans
     id,
     month,
     categoryId,
-    plannedAmountMinor,
+    targetAmountMinor,
+    assignedAmountMinor,
     currencyCode,
     createdAt,
     updatedAt,
@@ -1645,16 +1657,25 @@ class $MonthlyPlansTable extends MonthlyPlans
     } else if (isInserting) {
       context.missing(_categoryIdMeta);
     }
-    if (data.containsKey('planned_amount_minor')) {
+    if (data.containsKey('target_amount_minor')) {
       context.handle(
-        _plannedAmountMinorMeta,
-        plannedAmountMinor.isAcceptableOrUnknown(
-          data['planned_amount_minor']!,
-          _plannedAmountMinorMeta,
+        _targetAmountMinorMeta,
+        targetAmountMinor.isAcceptableOrUnknown(
+          data['target_amount_minor']!,
+          _targetAmountMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('assigned_amount_minor')) {
+      context.handle(
+        _assignedAmountMinorMeta,
+        assignedAmountMinor.isAcceptableOrUnknown(
+          data['assigned_amount_minor']!,
+          _assignedAmountMinorMeta,
         ),
       );
     } else if (isInserting) {
-      context.missing(_plannedAmountMinorMeta);
+      context.missing(_assignedAmountMinorMeta);
     }
     if (data.containsKey('currency_code')) {
       context.handle(
@@ -1710,9 +1731,13 @@ class $MonthlyPlansTable extends MonthlyPlans
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
       )!,
-      plannedAmountMinor: attachedDatabase.typeMapping.read(
+      targetAmountMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}planned_amount_minor'],
+        data['${effectivePrefix}target_amount_minor'],
+      ),
+      assignedAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}assigned_amount_minor'],
       )!,
       currencyCode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1745,8 +1770,14 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
   final CalendarMonth month;
   final int categoryId;
 
-  /// Zero or positive minor units (centavos for PHP).
-  final int plannedAmountMinor;
+  /// The budget for the month: zero or positive minor units (centavos for
+  /// PHP), or `NULL` when the category has no target. Named
+  /// `planned_amount_minor` before v6.
+  final int? targetAmountMinor;
+
+  /// Money set aside for the category this month, in minor units. Zero or
+  /// positive; entered by the user and not checked against income.
+  final int assignedAmountMinor;
   final String currencyCode;
 
   /// UTC instants.
@@ -1756,7 +1787,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
     required this.id,
     required this.month,
     required this.categoryId,
-    required this.plannedAmountMinor,
+    this.targetAmountMinor,
+    required this.assignedAmountMinor,
     required this.currencyCode,
     required this.createdAt,
     required this.updatedAt,
@@ -1771,7 +1803,10 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
       );
     }
     map['category_id'] = Variable<int>(categoryId);
-    map['planned_amount_minor'] = Variable<int>(plannedAmountMinor);
+    if (!nullToAbsent || targetAmountMinor != null) {
+      map['target_amount_minor'] = Variable<int>(targetAmountMinor);
+    }
+    map['assigned_amount_minor'] = Variable<int>(assignedAmountMinor);
     map['currency_code'] = Variable<String>(currencyCode);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1783,7 +1818,10 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
       id: Value(id),
       month: Value(month),
       categoryId: Value(categoryId),
-      plannedAmountMinor: Value(plannedAmountMinor),
+      targetAmountMinor: targetAmountMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetAmountMinor),
+      assignedAmountMinor: Value(assignedAmountMinor),
       currencyCode: Value(currencyCode),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1799,7 +1837,10 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
       id: serializer.fromJson<int>(json['id']),
       month: serializer.fromJson<CalendarMonth>(json['month']),
       categoryId: serializer.fromJson<int>(json['categoryId']),
-      plannedAmountMinor: serializer.fromJson<int>(json['plannedAmountMinor']),
+      targetAmountMinor: serializer.fromJson<int?>(json['targetAmountMinor']),
+      assignedAmountMinor: serializer.fromJson<int>(
+        json['assignedAmountMinor'],
+      ),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1812,7 +1853,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
       'id': serializer.toJson<int>(id),
       'month': serializer.toJson<CalendarMonth>(month),
       'categoryId': serializer.toJson<int>(categoryId),
-      'plannedAmountMinor': serializer.toJson<int>(plannedAmountMinor),
+      'targetAmountMinor': serializer.toJson<int?>(targetAmountMinor),
+      'assignedAmountMinor': serializer.toJson<int>(assignedAmountMinor),
       'currencyCode': serializer.toJson<String>(currencyCode),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1823,7 +1865,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
     int? id,
     CalendarMonth? month,
     int? categoryId,
-    int? plannedAmountMinor,
+    Value<int?> targetAmountMinor = const Value.absent(),
+    int? assignedAmountMinor,
     String? currencyCode,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1831,7 +1874,10 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
     id: id ?? this.id,
     month: month ?? this.month,
     categoryId: categoryId ?? this.categoryId,
-    plannedAmountMinor: plannedAmountMinor ?? this.plannedAmountMinor,
+    targetAmountMinor: targetAmountMinor.present
+        ? targetAmountMinor.value
+        : this.targetAmountMinor,
+    assignedAmountMinor: assignedAmountMinor ?? this.assignedAmountMinor,
     currencyCode: currencyCode ?? this.currencyCode,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1843,9 +1889,12 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
-      plannedAmountMinor: data.plannedAmountMinor.present
-          ? data.plannedAmountMinor.value
-          : this.plannedAmountMinor,
+      targetAmountMinor: data.targetAmountMinor.present
+          ? data.targetAmountMinor.value
+          : this.targetAmountMinor,
+      assignedAmountMinor: data.assignedAmountMinor.present
+          ? data.assignedAmountMinor.value
+          : this.assignedAmountMinor,
       currencyCode: data.currencyCode.present
           ? data.currencyCode.value
           : this.currencyCode,
@@ -1860,7 +1909,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
           ..write('id: $id, ')
           ..write('month: $month, ')
           ..write('categoryId: $categoryId, ')
-          ..write('plannedAmountMinor: $plannedAmountMinor, ')
+          ..write('targetAmountMinor: $targetAmountMinor, ')
+          ..write('assignedAmountMinor: $assignedAmountMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1873,7 +1923,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
     id,
     month,
     categoryId,
-    plannedAmountMinor,
+    targetAmountMinor,
+    assignedAmountMinor,
     currencyCode,
     createdAt,
     updatedAt,
@@ -1885,7 +1936,8 @@ class MonthlyPlanRow extends DataClass implements Insertable<MonthlyPlanRow> {
           other.id == this.id &&
           other.month == this.month &&
           other.categoryId == this.categoryId &&
-          other.plannedAmountMinor == this.plannedAmountMinor &&
+          other.targetAmountMinor == this.targetAmountMinor &&
+          other.assignedAmountMinor == this.assignedAmountMinor &&
           other.currencyCode == this.currencyCode &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -1895,7 +1947,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
   final Value<int> id;
   final Value<CalendarMonth> month;
   final Value<int> categoryId;
-  final Value<int> plannedAmountMinor;
+  final Value<int?> targetAmountMinor;
+  final Value<int> assignedAmountMinor;
   final Value<String> currencyCode;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1903,7 +1956,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
     this.id = const Value.absent(),
     this.month = const Value.absent(),
     this.categoryId = const Value.absent(),
-    this.plannedAmountMinor = const Value.absent(),
+    this.targetAmountMinor = const Value.absent(),
+    this.assignedAmountMinor = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1912,13 +1966,14 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
     this.id = const Value.absent(),
     required CalendarMonth month,
     required int categoryId,
-    required int plannedAmountMinor,
+    this.targetAmountMinor = const Value.absent(),
+    required int assignedAmountMinor,
     required String currencyCode,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : month = Value(month),
        categoryId = Value(categoryId),
-       plannedAmountMinor = Value(plannedAmountMinor),
+       assignedAmountMinor = Value(assignedAmountMinor),
        currencyCode = Value(currencyCode),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
@@ -1926,7 +1981,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
     Expression<int>? id,
     Expression<String>? month,
     Expression<int>? categoryId,
-    Expression<int>? plannedAmountMinor,
+    Expression<int>? targetAmountMinor,
+    Expression<int>? assignedAmountMinor,
     Expression<String>? currencyCode,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1935,8 +1991,9 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
       if (id != null) 'id': id,
       if (month != null) 'month': month,
       if (categoryId != null) 'category_id': categoryId,
-      if (plannedAmountMinor != null)
-        'planned_amount_minor': plannedAmountMinor,
+      if (targetAmountMinor != null) 'target_amount_minor': targetAmountMinor,
+      if (assignedAmountMinor != null)
+        'assigned_amount_minor': assignedAmountMinor,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1947,7 +2004,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
     Value<int>? id,
     Value<CalendarMonth>? month,
     Value<int>? categoryId,
-    Value<int>? plannedAmountMinor,
+    Value<int?>? targetAmountMinor,
+    Value<int>? assignedAmountMinor,
     Value<String>? currencyCode,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1956,7 +2014,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
       id: id ?? this.id,
       month: month ?? this.month,
       categoryId: categoryId ?? this.categoryId,
-      plannedAmountMinor: plannedAmountMinor ?? this.plannedAmountMinor,
+      targetAmountMinor: targetAmountMinor ?? this.targetAmountMinor,
+      assignedAmountMinor: assignedAmountMinor ?? this.assignedAmountMinor,
       currencyCode: currencyCode ?? this.currencyCode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1977,8 +2036,11 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
     }
-    if (plannedAmountMinor.present) {
-      map['planned_amount_minor'] = Variable<int>(plannedAmountMinor.value);
+    if (targetAmountMinor.present) {
+      map['target_amount_minor'] = Variable<int>(targetAmountMinor.value);
+    }
+    if (assignedAmountMinor.present) {
+      map['assigned_amount_minor'] = Variable<int>(assignedAmountMinor.value);
     }
     if (currencyCode.present) {
       map['currency_code'] = Variable<String>(currencyCode.value);
@@ -1998,7 +2060,8 @@ class MonthlyPlansCompanion extends UpdateCompanion<MonthlyPlanRow> {
           ..write('id: $id, ')
           ..write('month: $month, ')
           ..write('categoryId: $categoryId, ')
-          ..write('plannedAmountMinor: $plannedAmountMinor, ')
+          ..write('targetAmountMinor: $targetAmountMinor, ')
+          ..write('assignedAmountMinor: $assignedAmountMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -3304,7 +3367,8 @@ typedef $$MonthlyPlansTableCreateCompanionBuilder =
       Value<int> id,
       required CalendarMonth month,
       required int categoryId,
-      required int plannedAmountMinor,
+      Value<int?> targetAmountMinor,
+      required int assignedAmountMinor,
       required String currencyCode,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -3314,7 +3378,8 @@ typedef $$MonthlyPlansTableUpdateCompanionBuilder =
       Value<int> id,
       Value<CalendarMonth> month,
       Value<int> categoryId,
-      Value<int> plannedAmountMinor,
+      Value<int?> targetAmountMinor,
+      Value<int> assignedAmountMinor,
       Value<String> currencyCode,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -3362,8 +3427,13 @@ class $$MonthlyPlansTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<int> get plannedAmountMinor => $composableBuilder(
-    column: $table.plannedAmountMinor,
+  ColumnFilters<int> get targetAmountMinor => $composableBuilder(
+    column: $table.targetAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get assignedAmountMinor => $composableBuilder(
+    column: $table.assignedAmountMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3425,8 +3495,13 @@ class $$MonthlyPlansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get plannedAmountMinor => $composableBuilder(
-    column: $table.plannedAmountMinor,
+  ColumnOrderings<int> get targetAmountMinor => $composableBuilder(
+    column: $table.targetAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get assignedAmountMinor => $composableBuilder(
+    column: $table.assignedAmountMinor,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3484,8 +3559,13 @@ class $$MonthlyPlansTableAnnotationComposer
   GeneratedColumnWithTypeConverter<CalendarMonth, String> get month =>
       $composableBuilder(column: $table.month, builder: (column) => column);
 
-  GeneratedColumn<int> get plannedAmountMinor => $composableBuilder(
-    column: $table.plannedAmountMinor,
+  GeneratedColumn<int> get targetAmountMinor => $composableBuilder(
+    column: $table.targetAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get assignedAmountMinor => $composableBuilder(
+    column: $table.assignedAmountMinor,
     builder: (column) => column,
   );
 
@@ -3555,7 +3635,8 @@ class $$MonthlyPlansTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<CalendarMonth> month = const Value.absent(),
                 Value<int> categoryId = const Value.absent(),
-                Value<int> plannedAmountMinor = const Value.absent(),
+                Value<int?> targetAmountMinor = const Value.absent(),
+                Value<int> assignedAmountMinor = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -3563,7 +3644,8 @@ class $$MonthlyPlansTableTableManager
                 id: id,
                 month: month,
                 categoryId: categoryId,
-                plannedAmountMinor: plannedAmountMinor,
+                targetAmountMinor: targetAmountMinor,
+                assignedAmountMinor: assignedAmountMinor,
                 currencyCode: currencyCode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3573,7 +3655,8 @@ class $$MonthlyPlansTableTableManager
                 Value<int> id = const Value.absent(),
                 required CalendarMonth month,
                 required int categoryId,
-                required int plannedAmountMinor,
+                Value<int?> targetAmountMinor = const Value.absent(),
+                required int assignedAmountMinor,
                 required String currencyCode,
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -3581,7 +3664,8 @@ class $$MonthlyPlansTableTableManager
                 id: id,
                 month: month,
                 categoryId: categoryId,
-                plannedAmountMinor: plannedAmountMinor,
+                targetAmountMinor: targetAmountMinor,
+                assignedAmountMinor: assignedAmountMinor,
                 currencyCode: currencyCode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -1,6 +1,6 @@
 /// Why a monthly plan could not be saved.
 enum PlanValidationError {
-  /// Planned amounts are zero or positive.
+  /// Target and assigned amounts are zero or positive.
   amountNegative,
 
   categoryNotFound,

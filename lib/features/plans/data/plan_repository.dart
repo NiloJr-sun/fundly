@@ -30,19 +30,28 @@ class PlanRepository {
     );
   }
 
-  /// Sets the planned [amount] for [categoryId] in [month], creating the plan
-  /// or replacing its amount.
+  /// Saves the [target] and [assigned] amount for [categoryId] in [month],
+  /// creating the plan or replacing both amounts. A `null` [target] means no
+  /// target. With no target and nothing assigned the plan is removed, since
+  /// it would say nothing.
   ///
-  /// Throws [PlanValidationException] when a rule is broken. An archived
-  /// category's existing plan may still be changed; a new one is rejected.
-  Future<MonthlyPlan> setPlannedAmount({
+  /// Returns the saved plan, or `null` when it was removed. Throws
+  /// [PlanValidationException] when a rule is broken. An archived category's
+  /// existing plan may still be changed; a new one is rejected.
+  Future<MonthlyPlan?> save({
     required CalendarMonth month,
     required int categoryId,
-    required Money amount,
+    required Money? target,
+    required Money assigned,
   }) async {
-    _requireSupportedCurrency(amount);
-    if (amount.isNegative) {
+    if (target != null) _requireSupportedCurrency(target);
+    _requireSupportedCurrency(assigned);
+    if ((target?.isNegative ?? false) || assigned.isNegative) {
       throw const PlanValidationException(PlanValidationError.amountNegative);
+    }
+    if (target == null && assigned.isZero) {
+      await clear(month: month, categoryId: categoryId);
+      return null;
     }
     return _database.transaction(() async {
       final category = await (_database.select(
@@ -67,7 +76,8 @@ class PlanRepository {
               _plans,
             )..where((plan) => plan.id.equals(existing.id))).writeReturning(
               MonthlyPlansCompanion(
-                plannedAmountMinor: Value(amount.minorUnits),
+                targetAmountMinor: Value(target?.minorUnits),
+                assignedAmountMinor: Value(assigned.minorUnits),
                 updatedAt: Value(now),
               ),
             );
@@ -85,8 +95,9 @@ class PlanRepository {
             MonthlyPlansCompanion.insert(
               month: month,
               categoryId: categoryId,
-              plannedAmountMinor: amount.minorUnits,
-              currencyCode: amount.currencyCode,
+              targetAmountMinor: Value(target?.minorUnits),
+              assignedAmountMinor: assigned.minorUnits,
+              currencyCode: assigned.currencyCode,
               createdAt: now,
               updatedAt: now,
             ),
@@ -95,7 +106,8 @@ class PlanRepository {
     });
   }
 
-  /// Removes the plan for [categoryId] in [month], leaving it unplanned.
+  /// Removes the plan for [categoryId] in [month]: no target and nothing
+  /// assigned.
   /// Does nothing if there is no such plan.
   Future<void> clear({
     required CalendarMonth month,
@@ -133,8 +145,12 @@ class PlanRepository {
     id: row.id,
     month: row.month,
     categoryId: row.categoryId,
-    plannedAmount: Money(
-      minorUnits: row.plannedAmountMinor,
+    target: switch (row.targetAmountMinor) {
+      final minor? => Money(minorUnits: minor, currencyCode: row.currencyCode),
+      null => null,
+    },
+    assigned: Money(
+      minorUnits: row.assignedAmountMinor,
       currencyCode: row.currencyCode,
     ),
     createdAt: row.createdAt,

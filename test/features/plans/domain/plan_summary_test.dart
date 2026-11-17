@@ -30,7 +30,8 @@ void main() {
         id: nextPlanId++,
         month: month ?? november,
         categoryId: categoryId,
-        plannedAmount: php(amount),
+        target: php(amount),
+        assigned: php(amount),
         createdAt: DateTime.utc(2026, 11, 1),
         updatedAt: DateTime.utc(2026, 11, 1),
       );
