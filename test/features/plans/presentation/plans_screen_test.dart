@@ -225,10 +225,10 @@ void main() {
       expect(inRow('Food', 'Funded'), findsOneWidget);
     });
 
-    testWidgets('no target: a dash and no status', (tester) async {
+    testWidgets('no target: displays zero and no status', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, null, assigned: 100000)]);
 
-      expect(amount(tester, 'Food', 'Target'), '—');
+      expect(amount(tester, 'Food', 'Target'), '₱0.00');
       expect(amount(tester, 'Food', 'Available'), '₱1,000.00');
       expect(inRow('Food', 'Funded'), findsNothing);
       expect(inRow('Food', 'Underfunded'), findsNothing);
@@ -240,7 +240,7 @@ void main() {
       await pumpScreen(tester, transactions: [saved(spending(amount: 8000))]);
 
       expect(amounts(tester, 'Food'), (
-        target: '—',
+        target: '₱0.00',
         assigned: '₱0.00',
         activity: '₱80.00',
         available: '-₱80.00',

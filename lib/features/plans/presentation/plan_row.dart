@@ -75,7 +75,9 @@ class PlanRow extends StatelessWidget {
               children: [
                 _Amount(
                   label: 'Target',
-                  value: target == null ? '—' : MoneyFormatter.format(target),
+                  value: MoneyFormatter.format(
+                    target ?? Money.zero(summary.assigned.currencyCode),
+                  ),
                   onTap: onEdit == null
                       ? null
                       : () => onEdit(PlanAmountField.target),
