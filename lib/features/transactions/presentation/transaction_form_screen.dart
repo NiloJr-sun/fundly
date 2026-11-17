@@ -352,8 +352,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     List<Account> sources,
     List<Account> destinations,
   ) {
-    String need(Set<AccountType> types) =>
-        types.map(accountTypeLabel).join(' or ');
+    // Custom types qualify too, through the built-in type they are based on.
+    final customTypes = ref.watch(customAccountTypesProvider).value ?? const [];
+    String need(Set<AccountType> types) => accountTypeNames(types, customTypes);
     if (_type.hasSourceAccount && sources.isEmpty) {
       return 'Add a ${need(allowedSourceAccountTypes(_type))} account first.';
     }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
+import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/presentation/categories_providers.dart';
@@ -13,6 +15,7 @@ import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'package:fundly/features/transactions/presentation/transaction_form_screen.dart';
 
 import '../../../helpers/fake_transaction_repository.dart';
+import '../../../helpers/provider_overrides.dart';
 import '../domain/transaction_fixtures.dart';
 
 void main() {
@@ -30,6 +33,7 @@ void main() {
     TransactionType type, {
     List<Account>? withAccounts,
     Transaction? editing,
+    List<CustomAccountType> customTypes = const [],
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -41,6 +45,7 @@ void main() {
             (ref, kind) => Stream.value(ofKind(kind)),
           ),
           transactionRepositoryProvider.overrideWithValue(repository),
+          ...fakeCustomAccountTypes(customTypes),
         ],
         child: MaterialApp(
           home: Builder(
@@ -386,6 +391,30 @@ void main() {
       );
 
       expect(find.text('Add a Credit account first.'), findsOneWidget);
+    });
+
+    testWidgets('names custom types that would work too', (tester) async {
+      await openForm(
+        tester,
+        TransactionType.creditCardPayment,
+        withAccounts: [accounts[bdoId]!],
+        customTypes: [
+          CustomAccountType(
+            id: 10,
+            name: 'Pay later',
+            baseType: AccountType.credit,
+            createdAt: DateTime.utc(2026, 11, 17),
+          ),
+          CustomAccountType(
+            id: 11,
+            name: 'Debt',
+            baseType: AccountType.loan,
+            createdAt: DateTime.utc(2026, 11, 17),
+          ),
+        ],
+      );
+
+      expect(find.text('Add a Credit or Pay later account first.'), findsOne);
     });
   });
 

@@ -17,6 +17,32 @@ void main() {
     expect(accountTypeLabel(AccountType.loan), 'Loan');
   });
 
+  test('accountTypeNames lists custom types after their base type', () {
+    CustomAccountType custom(int id, String name, AccountType base) =>
+        CustomAccountType(
+          id: id,
+          name: name,
+          baseType: base,
+          createdAt: DateTime.utc(2026, 11, 17),
+        );
+    final types = [
+      custom(10, 'E-wallet', AccountType.savingsCash),
+      custom(11, 'Pay later', AccountType.credit),
+      custom(12, 'Debt', AccountType.loan),
+    ];
+
+    expect(
+      accountTypeNames({AccountType.credit, AccountType.savingsCash}, types),
+      'Savings / Cash, E-wallet, Credit or Pay later',
+    );
+    expect(accountTypeNames({AccountType.loan}, types), 'Loan or Debt');
+    expect(accountTypeNames({AccountType.credit}, const []), 'Credit');
+    expect(
+      accountTypeNames({AccountType.savingsCash, AccountType.credit}, const []),
+      'Savings / Cash or Credit',
+    );
+  });
+
   test('accountClassLabel', () {
     expect(accountClassLabel(AccountClass.asset), 'Assets');
     expect(accountClassLabel(AccountClass.liability), 'Liabilities');
