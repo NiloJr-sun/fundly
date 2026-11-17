@@ -36,7 +36,7 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 1);
+      expect(backup['formatVersion'], 2);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
@@ -49,6 +49,7 @@ void main() {
         'name': 'Food',
         'kind': 'spending',
         'isArchived': false,
+        'planGroup': 'spending',
       });
     },
   );
@@ -75,8 +76,11 @@ void main() {
       type: AccountType.credit,
       enteredOpeningAmount: php(300000),
     );
-    final gifts = await CategoryRepository(database)
-        .create(name: 'Gifts', kind: CategoryKind.spending);
+    final gifts = await CategoryRepository(database).create(
+      name: 'Gifts',
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.savings,
+    );
     final transactions = TransactionRepository(
       database,
       clock: () => createdAt,
@@ -157,6 +161,7 @@ void main() {
       'name': 'Gifts',
       'kind': 'spending',
       'isArchived': false,
+      'planGroup': 'savings',
     });
     expect(backup['transactions'], [
       {

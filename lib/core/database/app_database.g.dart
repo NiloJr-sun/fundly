@@ -905,7 +905,18 @@ class $CategoriesTable extends Categories
     defaultValue: const Constant(false),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, kind, isArchived];
+  late final GeneratedColumnWithTypeConverter<PlanGroup, String> planGroup =
+      GeneratedColumn<String>(
+        'plan_group',
+        aliasedName,
+        false,
+        check: () => planGroup.isIn(const ['spending', 'savings', 'liability']),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('spending'),
+      ).withConverter<PlanGroup>($CategoriesTable.$converterplanGroup);
+  @override
+  List<GeneratedColumn> get $columns => [id, name, kind, isArchived, planGroup];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -962,6 +973,12 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_archived'],
       )!,
+      planGroup: $CategoriesTable.$converterplanGroup.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}plan_group'],
+        )!,
+      ),
     );
   }
 
@@ -972,6 +989,8 @@ class $CategoriesTable extends Categories
 
   static JsonTypeConverter2<CategoryKind, String, String> $converterkind =
       const EnumNameConverter<CategoryKind>(CategoryKind.values);
+  static JsonTypeConverter2<PlanGroup, String, String> $converterplanGroup =
+      const EnumNameConverter<PlanGroup>(PlanGroup.values);
 }
 
 class CategoryRow extends DataClass implements Insertable<CategoryRow> {
@@ -981,11 +1000,16 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   /// Stored by enum name (`spending` or `inflow`).
   final CategoryKind kind;
   final bool isArchived;
+
+  /// The Plans page section, stored by enum name. Inflow categories keep the
+  /// default; the repository only lets spending categories change it.
+  final PlanGroup planGroup;
   const CategoryRow({
     required this.id,
     required this.name,
     required this.kind,
     required this.isArchived,
+    required this.planGroup,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -998,6 +1022,11 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       );
     }
     map['is_archived'] = Variable<bool>(isArchived);
+    {
+      map['plan_group'] = Variable<String>(
+        $CategoriesTable.$converterplanGroup.toSql(planGroup),
+      );
+    }
     return map;
   }
 
@@ -1007,6 +1036,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       name: Value(name),
       kind: Value(kind),
       isArchived: Value(isArchived),
+      planGroup: Value(planGroup),
     );
   }
 
@@ -1022,6 +1052,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         serializer.fromJson<String>(json['kind']),
       ),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
+      planGroup: $CategoriesTable.$converterplanGroup.fromJson(
+        serializer.fromJson<String>(json['planGroup']),
+      ),
     );
   }
   @override
@@ -1034,6 +1067,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         $CategoriesTable.$converterkind.toJson(kind),
       ),
       'isArchived': serializer.toJson<bool>(isArchived),
+      'planGroup': serializer.toJson<String>(
+        $CategoriesTable.$converterplanGroup.toJson(planGroup),
+      ),
     };
   }
 
@@ -1042,11 +1078,13 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     String? name,
     CategoryKind? kind,
     bool? isArchived,
+    PlanGroup? planGroup,
   }) => CategoryRow(
     id: id ?? this.id,
     name: name ?? this.name,
     kind: kind ?? this.kind,
     isArchived: isArchived ?? this.isArchived,
+    planGroup: planGroup ?? this.planGroup,
   );
   CategoryRow copyWithCompanion(CategoriesCompanion data) {
     return CategoryRow(
@@ -1056,6 +1094,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       isArchived: data.isArchived.present
           ? data.isArchived.value
           : this.isArchived,
+      planGroup: data.planGroup.present ? data.planGroup.value : this.planGroup,
     );
   }
 
@@ -1065,13 +1104,14 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('kind: $kind, ')
-          ..write('isArchived: $isArchived')
+          ..write('isArchived: $isArchived, ')
+          ..write('planGroup: $planGroup')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, kind, isArchived);
+  int get hashCode => Object.hash(id, name, kind, isArchived, planGroup);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1079,7 +1119,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.id == this.id &&
           other.name == this.name &&
           other.kind == this.kind &&
-          other.isArchived == this.isArchived);
+          other.isArchived == this.isArchived &&
+          other.planGroup == this.planGroup);
 }
 
 class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
@@ -1087,17 +1128,20 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<String> name;
   final Value<CategoryKind> kind;
   final Value<bool> isArchived;
+  final Value<PlanGroup> planGroup;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.kind = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.planGroup = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required CategoryKind kind,
     this.isArchived = const Value.absent(),
+    this.planGroup = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind);
   static Insertable<CategoryRow> custom({
@@ -1105,12 +1149,14 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<String>? name,
     Expression<String>? kind,
     Expression<bool>? isArchived,
+    Expression<String>? planGroup,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (kind != null) 'kind': kind,
       if (isArchived != null) 'is_archived': isArchived,
+      if (planGroup != null) 'plan_group': planGroup,
     });
   }
 
@@ -1119,12 +1165,14 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<String>? name,
     Value<CategoryKind>? kind,
     Value<bool>? isArchived,
+    Value<PlanGroup>? planGroup,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       kind: kind ?? this.kind,
       isArchived: isArchived ?? this.isArchived,
+      planGroup: planGroup ?? this.planGroup,
     );
   }
 
@@ -1145,6 +1193,11 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     if (isArchived.present) {
       map['is_archived'] = Variable<bool>(isArchived.value);
     }
+    if (planGroup.present) {
+      map['plan_group'] = Variable<String>(
+        $CategoriesTable.$converterplanGroup.toSql(planGroup.value),
+      );
+    }
     return map;
   }
 
@@ -1154,7 +1207,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('kind: $kind, ')
-          ..write('isArchived: $isArchived')
+          ..write('isArchived: $isArchived, ')
+          ..write('planGroup: $planGroup')
           ..write(')'))
         .toString();
   }
@@ -3164,12 +3218,14 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required String name,
   required CategoryKind kind,
   Value<bool> isArchived,
+  Value<PlanGroup> planGroup,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<CategoryKind> kind,
   Value<bool> isArchived,
+  Value<PlanGroup> planGroup,
 });
 
 final class $$CategoriesTableReferences
@@ -3242,6 +3298,12 @@ class $$CategoriesTableFilterComposer
     column: $table.isArchived,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<PlanGroup, PlanGroup, String> get planGroup =>
+      $composableBuilder(
+        column: $table.planGroup,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   Expression<bool> transactionsRefs(
     Expression<bool> Function($$TransactionsTableFilterComposer f) f,
@@ -3322,6 +3384,11 @@ class $$CategoriesTableOrderingComposer
     column: $table.isArchived,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get planGroup => $composableBuilder(
+    column: $table.planGroup,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -3346,6 +3413,9 @@ class $$CategoriesTableAnnotationComposer
     column: $table.isArchived,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<PlanGroup, String> get planGroup =>
+      $composableBuilder(column: $table.planGroup, builder: (column) => column);
 
   Expression<T> transactionsRefs<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -3430,11 +3500,13 @@ class $$CategoriesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<PlanGroup> planGroup = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
                 kind: kind,
                 isArchived: isArchived,
+                planGroup: planGroup,
               ),
           createCompanionCallback:
               ({
@@ -3442,11 +3514,13 @@ class $$CategoriesTableTableManager
                 required String name,
                 required CategoryKind kind,
                 Value<bool> isArchived = const Value.absent(),
+                Value<PlanGroup> planGroup = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
                 kind: kind,
                 isArchived: isArchived,
+                planGroup: planGroup,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -58,6 +58,7 @@ void main() {
     final gifts = await categories.create(
       name: 'Gifts',
       kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
     );
     final transactions = TransactionRepository(database, clock: () => now);
     await transactions.create(
@@ -123,6 +124,21 @@ void main() {
     await importer.replaceAll(importer.parse(original));
 
     expect(await exportJson(target), original);
+  });
+
+  test('a format 1 backup restores with every category in Spending', () async {
+    final backup = await sourceBackup();
+    backup['formatVersion'] = 1;
+    for (final category in backup['categories']! as List) {
+      (category as Map<String, Object?>).remove('planGroup');
+    }
+    final importer = BackupImporter(target);
+
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+    final restored = await target.select(target.categories).get();
+    expect(restored, hasLength(10));
+    expect(restored.map((c) => c.planGroup).toSet(), {PlanGroup.spending});
   });
 
   test('parse reports when the backup was made and what it holds', () async {
@@ -371,6 +387,37 @@ void main() {
       await expectLater(
         restore(json: backup),
         throwsProblem(BackupImportProblem.invalidData, 'only PHP'),
+      );
+      await expectUnchanged();
+    });
+
+    test('a format 2 category without a plan group', () async {
+      final backup = await withRecord(
+        'categories',
+        0,
+        (c) => c.remove('planGroup'),
+      );
+
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(
+          BackupImportProblem.invalidData,
+          'categories[0].planGroup: missing',
+        ),
+      );
+      await expectUnchanged();
+    });
+
+    test('an inflow category with a plan group', () async {
+      final backup = await withRecord(
+        'categories',
+        7, // Salary (inflow)
+        (c) => c['planGroup'] = 'savings',
+      );
+
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(BackupImportProblem.invalidData, 'have no group'),
       );
       await expectUnchanged();
     });

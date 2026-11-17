@@ -110,7 +110,8 @@ final class BackupSnapshot {
   );
 }
 
-/// Restores a backup written by [BackupExporter], replacing all data.
+/// Restores a backup written by [BackupExporter] (format 1 or 2), replacing
+/// all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
 /// every field's type, enum values, dates, currency, references between
@@ -198,14 +199,18 @@ BackupSnapshot parseBackup(String contents) {
     throw const BackupImportException(BackupImportProblem.newerFormat);
   }
   if (formatVersion < 1) header.fail('formatVersion', 'unknown version');
-  return _Parser(header).parse();
+  return _Parser(header, formatVersion).parse();
 }
 
 /// Turns the checked JSON into database rows, record by record.
 class _Parser {
-  _Parser(this.header);
+  _Parser(this.header, this.formatVersion);
 
   final _Reader header;
+
+  /// Format 1 has no category `planGroup`; those categories restore into
+  /// the default group.
+  final int formatVersion;
 
   final _customTypes = <int, AccountType>{};
   final _customTypeNames = <String>{};
@@ -340,17 +345,25 @@ class _Parser {
     }
     final kind = reader.enumValue('kind', CategoryKind.values);
     final isArchived = reader.boolean('isArchived');
+    final planGroup = formatVersion < 2
+        ? PlanGroup.spending
+        : reader.enumValue('planGroup', PlanGroup.values);
+    if (kind == CategoryKind.inflow && planGroup != PlanGroup.spending) {
+      reader.fail('planGroup', 'inflow categories have no group');
+    }
     _categories[id] = Category(
       id: id,
       name: name,
       kind: kind,
       isArchived: isArchived,
+      planGroup: planGroup,
     );
     return CategoriesCompanion.insert(
       id: Value(id),
       name: name,
       kind: kind,
       isArchived: Value(isArchived),
+      planGroup: Value(planGroup),
     );
   }
 

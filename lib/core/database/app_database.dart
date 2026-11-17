@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -91,6 +91,11 @@ class AppDatabase extends _$AppDatabase {
       from6To7: (m, schema) async {
         await m.createTable(schema.customAccountTypes);
         await m.addColumn(schema.accounts, schema.accounts.customTypeId);
+      },
+      // v8: spending categories get a Plans page group. Existing categories
+      // join the default Spending group.
+      from7To8: (m, schema) async {
+        await m.addColumn(schema.categories, schema.categories.planGroup);
       },
     ),
     beforeOpen: (details) async {

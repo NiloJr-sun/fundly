@@ -2,7 +2,8 @@ import 'package:drift/drift.dart';
 
 import '../domain/category.dart';
 
-/// SQLite table for [Category]s (added in schema v2; `is_archived` in v4).
+/// SQLite table for [Category]s (added in schema v2; `is_archived` in v4;
+/// `plan_group` in v8).
 ///
 /// Names are unique ignoring ASCII case and 1-40 characters long. A category
 /// used by a transaction cannot be deleted (the foreign key restricts it).
@@ -17,6 +18,15 @@ class Categories extends Table {
   TextColumn get kind => textEnum<CategoryKind>()();
 
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+
+  /// The Plans page section, stored by enum name. Inflow categories keep the
+  /// default; the repository only lets spending categories change it.
+  TextColumn get planGroup => textEnum<PlanGroup>()
+      .withDefault(const Constant('spending'))
+      // The check refers to the column itself, which is drift's documented
+      // way to write a column CHECK; the generated code does not recurse.
+      // ignore: recursive_getters
+      .check(planGroup.isIn(const ['spending', 'savings', 'liability']))();
 
   @override
   List<String> get customConstraints => [

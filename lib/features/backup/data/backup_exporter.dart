@@ -30,7 +30,8 @@ class BackupExporter {
     : _now = clock ?? DateTime.now;
 
   /// Version of the backup format, independent of the database schema.
-  static const int formatVersion = 1;
+  /// 2 added `planGroup` to categories.
+  static const int formatVersion = 2;
 
   final AppDatabase _database;
   final DateTime Function() _now;
@@ -77,6 +78,7 @@ class BackupExporter {
             'name': category.name,
             'kind': category.kind.name,
             'isArchived': category.isArchived,
+            'planGroup': category.planGroup.name,
           },
       ],
       'transactions': [

@@ -80,6 +80,7 @@ void main() {
       expect(repository.created.single, (
         name: 'Groceries',
         kind: CategoryKind.spending,
+        planGroup: PlanGroup.spending,
       ));
       expect(find.text('Category added'), findsOneWidget);
       expect(find.byType(CategoryFormScreen), findsNothing);

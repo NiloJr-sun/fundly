@@ -54,7 +54,7 @@ class FakeBackupExporter implements BackupExporter {
 /// A valid backup with two accounts and one transaction.
 String validBackup() => jsonEncode({
   'app': 'fundly',
-  'formatVersion': 1,
+  'formatVersion': 2,
   'schemaVersion': 7,
   'exportedAt': '2026-11-17T01:00:00.000Z',
   'customAccountTypes': <Object>[],

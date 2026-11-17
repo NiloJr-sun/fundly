@@ -30,18 +30,61 @@ class CategoryRepository {
     );
   }
 
-  /// Throws [CategoryValidationException] when a rule is broken.
+  /// Creates a category. Spending categories go into [planGroup] on the
+  /// Plans page; inflow categories are not planned and must keep the default.
+  ///
+  /// Throws [CategoryValidationException] when a rule is broken, or
+  /// [ArgumentError] for a non-default group on an inflow category.
   Future<Category> create({
     required String name,
     required CategoryKind kind,
+    PlanGroup planGroup = PlanGroup.spending,
   }) async {
+    _requireGroupAllowed(kind, planGroup);
     final trimmedName = await _validName(name);
     final row = await _database
         .into(_categories)
         .insertReturning(
-          CategoriesCompanion.insert(name: trimmedName, kind: kind),
+          CategoriesCompanion.insert(
+            name: trimmedName,
+            kind: kind,
+            planGroup: Value(planGroup),
+          ),
         );
     return row.toDomain();
+  }
+
+  /// Moves spending category [id] to [planGroup] on the Plans page. Only
+  /// organises the page; plans and activity are unchanged.
+  ///
+  /// Throws [ArgumentError] for an inflow category, or [StateError] if the
+  /// category does not exist.
+  Future<Category> setPlanGroup(int id, PlanGroup planGroup) =>
+      _database.transaction(() async {
+        final existing = await (_database.select(
+          _categories,
+        )..where((category) => category.id.equals(id))).getSingleOrNull();
+        if (existing == null) throw StateError('Category $id does not exist.');
+        _requireGroupAllowed(existing.kind, planGroup);
+        final rows =
+            await (_database.update(
+              _categories,
+            )..where((category) => category.id.equals(id))).writeReturning(
+              CategoriesCompanion(planGroup: Value(planGroup)),
+            );
+        return rows.single.toDomain();
+      });
+
+  /// Inflow categories are never planned, so they stay in the default group.
+  /// The UI only offers groups for spending, so this is a programming error.
+  static void _requireGroupAllowed(CategoryKind kind, PlanGroup planGroup) {
+    if (kind == CategoryKind.inflow && planGroup != PlanGroup.spending) {
+      throw ArgumentError.value(
+        planGroup,
+        'planGroup',
+        'Inflow categories are not planned and have no group.',
+      );
+    }
   }
 
   /// Renames category [id]. The kind cannot change.

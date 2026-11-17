@@ -13,6 +13,7 @@ import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
+import 'generated/schema_v8.dart' as v8;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -548,6 +549,99 @@ void main() {
         );
         await newDb.customStatement(
           'UPDATE accounts SET custom_type_id = 1 WHERE id = 1',
+        );
+      },
+    );
+  });
+
+  test('v7 to v8 puts every category in the Spending group', () async {
+    const categories = [
+      v7.CategoriesData(id: 1, name: 'Food', kind: 'spending', isArchived: 0),
+      v7.CategoriesData(id: 2, name: 'Gifts', kind: 'spending', isArchived: 1),
+      v7.CategoriesData(id: 3, name: 'Salary', kind: 'inflow', isArchived: 0),
+    ];
+    const account = v7.AccountsData(
+      id: 1,
+      name: 'BDO Savings',
+      type: 'savingsCash',
+      openingBalanceMinor: 1500000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:30:00.000Z',
+      isArchived: 0,
+    );
+    const transaction = v7.TransactionsData(
+      id: 1,
+      type: 'spending',
+      amountMinor: 50000,
+      currencyCode: 'PHP',
+      date: '2026-11-16',
+      payee: 'SM Supermarket',
+      categoryId: 1,
+      sourceAccountId: 1,
+      note: '',
+      createdAt: '2026-11-16T10:00:00.000Z',
+      updatedAt: '2026-11-16T10:00:00.000Z',
+    );
+    const plan = v7.MonthlyPlansData(
+      id: 1,
+      month: '2026-11',
+      categoryId: 2,
+      targetAmountMinor: null,
+      assignedAmountMinor: 250000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-16T09:00:00.000Z',
+      updatedAt: '2026-11-16T09:00:00.000Z',
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 7,
+      newVersion: 8,
+      createOld: v7.DatabaseAtV7.new,
+      createNew: v8.DatabaseAtV8.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insert(oldDb.accounts, account)
+          ..insertAll(oldDb.categories, categories)
+          ..insert(oldDb.transactions, transaction)
+          ..insert(oldDb.monthlyPlans, plan);
+      },
+      validateItems: (newDb) async {
+        final migrated = await (newDb.select(
+          newDb.categories,
+        )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+        expect(migrated, [
+          for (final category in categories)
+            v8.CategoriesData(
+              id: category.id,
+              name: category.name,
+              kind: category.kind,
+              isArchived: category.isArchived,
+              planGroup: 'spending',
+            ),
+        ]);
+        expect(
+          (await newDb.select(newDb.accounts).get()).map((r) => r.toJson()),
+          [account.toJson()],
+        );
+        expect(
+          (await newDb.select(newDb.transactions).get()).map((r) => r.toJson()),
+          [transaction.toJson()],
+        );
+        expect(
+          (await newDb.select(newDb.monthlyPlans).get()).map((r) => r.toJson()),
+          [plan.toJson()],
+        );
+
+        // The new column accepts only the three groups.
+        await expectLater(
+          newDb.customStatement(
+            "UPDATE categories SET plan_group = 'other' WHERE id = 1",
+          ),
+          throwsA(isA<Exception>()),
+        );
+        await newDb.customStatement(
+          "UPDATE categories SET plan_group = 'savings' WHERE id = 1",
         );
       },
     );

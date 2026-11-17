@@ -6,7 +6,9 @@ import 'package:fundly/features/categories/domain/category_validation_exception.
 /// under the fake test clock. Repository behaviour itself is covered by
 /// `category_repository_test.dart` against an in-memory database.
 class FakeCategoryRepository implements CategoryRepository {
-  final List<({String name, CategoryKind kind})> created = [];
+  final List<({String name, CategoryKind kind, PlanGroup planGroup})> created =
+      [];
+  final List<({int id, PlanGroup planGroup})> groupChanges = [];
   final List<({int id, String name})> renamed = [];
   final List<({int id, bool archived})> archivedChanges = [];
   final List<int> deleted = [];
@@ -22,10 +24,28 @@ class FakeCategoryRepository implements CategoryRepository {
   Future<Category> create({
     required String name,
     required CategoryKind kind,
+    PlanGroup planGroup = PlanGroup.spending,
   }) async {
     _maybeFail();
-    created.add((name: name, kind: kind));
-    return Category(id: 100 + created.length, name: name.trim(), kind: kind);
+    created.add((name: name, kind: kind, planGroup: planGroup));
+    return Category(
+      id: 100 + created.length,
+      name: name.trim(),
+      kind: kind,
+      planGroup: planGroup,
+    );
+  }
+
+  @override
+  Future<Category> setPlanGroup(int id, PlanGroup planGroup) async {
+    _maybeFail();
+    groupChanges.add((id: id, planGroup: planGroup));
+    return Category(
+      id: id,
+      name: '',
+      kind: CategoryKind.spending,
+      planGroup: planGroup,
+    );
   }
 
   @override

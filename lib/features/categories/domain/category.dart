@@ -3,6 +3,11 @@ import 'package:flutter/foundation.dart';
 /// Whether a category classifies spending or inflows.
 enum CategoryKind { spending, inflow }
 
+/// The section of the Plans page a spending category is listed under. Only
+/// organises the page: plan amounts and activity work the same in every
+/// group. Fixed for now; user-defined groups are not supported.
+enum PlanGroup { spending, savings, liability }
+
 /// A category that transactions can be assigned to.
 ///
 /// The app starts with a seeded list (CLAUDE.md §11, G1); users can add,
@@ -15,6 +20,7 @@ final class Category {
     required this.name,
     required this.kind,
     this.isArchived = false,
+    this.planGroup = PlanGroup.spending,
   });
 
   final int id;
@@ -25,18 +31,24 @@ final class Category {
   /// transactions.
   final bool isArchived;
 
+  /// Where a spending category appears on the Plans page. Inflow categories
+  /// are not planned, so theirs is always [PlanGroup.spending] and unused.
+  final PlanGroup planGroup;
+
   @override
   bool operator ==(Object other) =>
       other is Category &&
       other.id == id &&
       other.name == name &&
       other.kind == kind &&
-      other.isArchived == isArchived;
+      other.isArchived == isArchived &&
+      other.planGroup == planGroup;
 
   @override
-  int get hashCode => Object.hash(id, name, kind, isArchived);
+  int get hashCode => Object.hash(id, name, kind, isArchived, planGroup);
 
   @override
   String toString() =>
-      'Category($id, "$name", ${kind.name}${isArchived ? ', archived' : ''})';
+      'Category($id, "$name", ${kind.name}, ${planGroup.name}'
+      '${isArchived ? ', archived' : ''})';
 }

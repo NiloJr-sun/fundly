@@ -78,6 +78,16 @@ void main() {
       expect(insertRaw('a' * 41, 'spending'), throwsA(isA<Exception>()));
     });
 
+    test('rejects an unknown plan group', () {
+      expect(
+        database.customStatement(
+          'INSERT INTO categories (name, kind, plan_group) '
+          "VALUES ('Gifts', 'spending', 'investments')",
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+
     test('accepts a valid new category', () async {
       await insertRaw('Gifts', 'spending');
 
@@ -162,6 +172,87 @@ void main() {
 
     test('throws for an unknown id', () {
       expect(repository.rename(999, 'Gifts'), throwsStateError);
+    });
+  });
+
+  group('plan groups', () {
+    test('seeded categories start in the Spending group', () async {
+      final categories = await repository.watchAll().first;
+
+      expect(categories.map((c) => c.planGroup).toSet(), {PlanGroup.spending});
+    });
+
+    test('create puts a spending category in the chosen group', () async {
+      final fund = await repository.create(
+        name: 'Emergency fund',
+        kind: CategoryKind.spending,
+        planGroup: PlanGroup.savings,
+      );
+
+      expect(fund.planGroup, PlanGroup.savings);
+      expect(await named('Emergency fund'), fund);
+    });
+
+    test('create defaults to the Spending group', () async {
+      final gifts = await repository.create(
+        name: 'Gifts',
+        kind: CategoryKind.spending,
+      );
+
+      expect(gifts.planGroup, PlanGroup.spending);
+    });
+
+    test('an inflow category cannot get another group', () async {
+      await expectLater(
+        repository.create(
+          name: 'Bonus',
+          kind: CategoryKind.inflow,
+          planGroup: PlanGroup.savings,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        (await repository.watchAll().first).map((c) => c.name),
+        isNot(contains('Bonus')),
+      );
+    });
+
+    test('setPlanGroup moves a spending category, keeping the rest', () async {
+      final food = await named('Food');
+
+      final moved = await repository.setPlanGroup(food.id, PlanGroup.liability);
+
+      expect(moved.planGroup, PlanGroup.liability);
+      expect(moved.name, 'Food');
+      expect(moved.kind, CategoryKind.spending);
+      expect(await named('Food'), moved);
+
+      final back = await repository.setPlanGroup(food.id, PlanGroup.spending);
+      expect(back.planGroup, PlanGroup.spending);
+    });
+
+    test('setPlanGroup works on an archived category', () async {
+      final food = await named('Food');
+      await repository.setArchived(food.id, archived: true);
+
+      final moved = await repository.setPlanGroup(food.id, PlanGroup.savings);
+
+      expect(moved.planGroup, PlanGroup.savings);
+      expect(moved.isArchived, isTrue);
+    });
+
+    test('setPlanGroup refuses an inflow category', () async {
+      final salary = await named('Salary');
+
+      await expectLater(
+        repository.setPlanGroup(salary.id, PlanGroup.savings),
+        throwsArgumentError,
+      );
+      expect((await named('Salary')).planGroup, PlanGroup.spending);
+    });
+
+    test('setPlanGroup throws for an unknown id', () {
+      expect(repository.setPlanGroup(999, PlanGroup.savings), throwsStateError);
     });
   });
 
