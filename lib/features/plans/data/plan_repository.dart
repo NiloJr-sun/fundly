@@ -8,6 +8,7 @@ import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
 import '../../transactions/domain/transaction.dart';
 import '../domain/monthly_plan.dart';
+import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
 import '../domain/plan_validation_exception.dart';
 
@@ -66,6 +67,9 @@ class PlanRepository {
         );
       }
 
+      if (category.isPlanDeleted) {
+        throw const PlanValidationException(PlanValidationError.planDeleted);
+      }
       if (category.isPlanArchived) {
         throw const PlanValidationException(PlanValidationError.planArchived);
       }
@@ -131,6 +135,9 @@ class PlanRepository {
         PlanValidationError.categoryNotSpending,
       );
     }
+    if (category.isPlanDeleted) {
+      throw const PlanValidationException(PlanValidationError.planDeleted);
+    }
     if (!archived && category.isArchived) {
       throw const PlanValidationException(PlanValidationError.categoryArchived);
     }
@@ -190,6 +197,72 @@ class PlanRepository {
           ..where((c) => c.id.equals(categoryId)))
         .write(CategoriesCompanion(isPlanArchived: Value(archived)));
   });
+
+  /// Eligibility watches all months and all activity, including backdated or
+  /// future transactions. Read errors never enable the destructive action.
+  Stream<PlanDeletionStatus> watchDeletionStatus(int categoryId) =>
+      _deletionQuery(categoryId).watchSingleOrNull().map(_deletionStatus);
+
+  /// Removes every monthly plan while preserving the category/account. The
+  /// deletion flag prevents automatic liability sync or unarchive from reviving
+  /// the row. Eligibility is rechecked atomically even if the UI was enabled.
+  Future<void> deletePermanently(int categoryId) =>
+      _database.transaction(() async {
+        final status = _deletionStatus(
+          await _deletionQuery(categoryId).getSingleOrNull(),
+        );
+        if (status != PlanDeletionStatus.allowed) {
+          throw PlanDeletionException(status);
+        }
+        await (_database.delete(
+          _plans,
+        )..where((p) => p.categoryId.equals(categoryId))).go();
+        await (_database.update(
+          _database.categories,
+        )..where((c) => c.id.equals(categoryId))).write(
+          const CategoriesCompanion(
+            isPlanArchived: Value(true),
+            isPlanDeleted: Value(true),
+          ),
+        );
+      });
+
+  /// One query shared by the preview stream and the guarded write. Liability
+  /// rows count payments into their account; ordinary rows count spending in
+  /// their category, matching their Plans Activity definition.
+  Selectable<QueryRow> _deletionQuery(int categoryId) => _database.customSelect(
+    """
+    SELECT c.kind, c.is_archived, c.is_plan_archived, c.is_plan_deleted,
+      EXISTS(SELECT 1 FROM monthly_plans p
+        WHERE p.category_id = c.id AND p.assigned_amount_minor != 0) AS has_assigned,
+      EXISTS(SELECT 1 FROM transactions t WHERE
+        (c.linked_account_id IS NULL AND t.type = 'spending' AND t.category_id = c.id)
+        OR (c.linked_account_id IS NOT NULL
+          AND t.destination_account_id = c.linked_account_id
+          AND t.type IN ('transfer', 'creditCardPayment'))) AS has_activity
+    FROM categories c WHERE c.id = ?
+    """,
+    variables: [Variable.withInt(categoryId)],
+    readsFrom: {_database.categories, _plans, _database.transactions},
+  );
+
+  static PlanDeletionStatus _deletionStatus(QueryRow? row) {
+    if (row == null) return PlanDeletionStatus.categoryNotFound;
+    if (row.read<String>('kind') != 'spending') {
+      return PlanDeletionStatus.categoryNotSpending;
+    }
+    if (row.read<bool>('is_plan_deleted')) {
+      return PlanDeletionStatus.alreadyDeleted;
+    }
+    if (!row.read<bool>('is_archived') && !row.read<bool>('is_plan_archived')) {
+      return PlanDeletionStatus.notArchived;
+    }
+    if (row.read<bool>('has_assigned')) {
+      return PlanDeletionStatus.hasAssignedMoney;
+    }
+    if (row.read<bool>('has_activity')) return PlanDeletionStatus.hasActivity;
+    return PlanDeletionStatus.allowed;
+  }
 
   /// Removes the plan for [categoryId] in [month]: no target and nothing
   /// assigned.

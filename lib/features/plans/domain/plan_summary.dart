@@ -118,6 +118,7 @@ List<CategoryPlanSummary> planSummaries({
   return [
     for (final category in categories)
       if (category.kind == CategoryKind.spending &&
+          !category.isPlanDeleted &&
           category.isArchivedInPlans == archived)
         CategoryPlanSummary(
           category: category,

@@ -236,25 +236,28 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.14 | New default spending categories; keep existing data and add missing defaults on upgrade. Auto-create linked Liability Plans rows for Credit/Loan accounts, synchronize names/archive status, count payments as Activity, release remaining allocations only for payments from the budget account. Backup format 4 adds linkedAccountId; older formats remain restorable | v10 | Migration, repository, calculator, backup and widget tests |
 | R.15 | Archive Plans rows independently across all months, hide archived rows from Plans, and browse read-only history/unarchive from Archived plans. Block archive when any current/future month has remaining budget allocation. Backup format 5 adds isPlanArchived; earlier formats default false | v11 | Migration, repository, archive guard, backup and widget tests |
 | R.16 | Automatic budget-money carry-over: show the previous closing ledger balance in Plans without adding a transaction or duplicating money. Refresh at local midnight and on resume/open; catch up missed months while preserving browsed months. Category allocations stay monthly; edits recalculate carry-over | — | Calculator, month-boundary and lifecycle widget tests |
+| R.17 | Permanently delete unused archived Plans rows: zero Assigned in every month, no spending/payment activity, confirmation, and a red button below Unarchive. Remove monthly targets while keeping category/account; a persistent deletion flag prevents automatic recreation. Backup format 6 adds isPlanDeleted; earlier formats default false | v12 | Migration, eligibility, atomic deletion/rollback, backup and widget tests |
 
 ### Phase 5 — After the MVP (one item approved)
 
 | ID | Task | Status |
 |---|---|---|
-| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 5) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 6) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
-Backup format 5: a header (`app`, `formatVersion`, `schemaVersion`,
+Backup format 6: a header (`app`, `formatVersion`, `schemaVersion`,
 `exportedAt`) and arrays `customAccountTypes`, `accounts`, `categories`,
 `transactions` and `monthlyPlans`. Format 2 added `planGroup` to
 categories, format 3 added `isBudgetAccount` to accounts, and format 4 adds
 `linkedAccountId` to categories for automatic liability Plans rows. Format 5
 adds `isPlanArchived` to categories, independent of category/account archives.
-Restore still accepts formats 1–4 (the plan archive flag defaults false).
+Format 6 adds `isPlanDeleted`, preserving permanent plan removal while keeping
+its category/account. Restore accepts formats 1–5 (the deletion flag defaults
+false; the archive flag defaults false for formats 1–4).
 Formats 1–3 retain their previous defaults (format 1 categories default to
-Spending; formats 1–2 have no budget account). Missing liability rows are generated and included
-in the restore preview counts. Money is integer minor units, dates
+Spending; formats 1–2 have no budget account). Missing liability rows are
+generated and included in the restore preview counts. Money is integer minor units, dates
 `YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
 derived balances are left out. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;

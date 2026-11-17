@@ -2,6 +2,7 @@ import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/plans/data/plan_repository.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/domain/plan_deletion.dart';
 import 'package:fundly/features/plans/domain/plan_validation_exception.dart';
 
 /// Records calls for widget tests, which cannot await a real drift database
@@ -18,6 +19,29 @@ class FakePlanRepository implements PlanRepository {
   PlanArchiveBlocked? archiveBlocked;
   bool failArchive = false;
   void Function(int categoryId, bool archived)? onArchive;
+
+  final List<int> deleted = [];
+  PlanDeletionStatus deletionStatus = PlanDeletionStatus.allowed;
+  PlanDeletionStatus? deleteBlocked;
+  bool failDeletionCheck = false;
+  Stream<PlanDeletionStatus>? deletionStatusStream;
+  bool failDelete = false;
+  void Function(int categoryId)? onDelete;
+
+  @override
+  Stream<PlanDeletionStatus> watchDeletionStatus(int categoryId) =>
+      deletionStatusStream ??
+      (failDeletionCheck
+          ? Stream.error(StateError('Deletion check failed'))
+          : Stream.value(deletionStatus));
+
+  @override
+  Future<void> deletePermanently(int categoryId) async {
+    if (deleteBlocked case final status?) throw PlanDeletionException(status);
+    if (failDelete) throw StateError('Delete failed');
+    deleted.add(categoryId);
+    onDelete?.call(categoryId);
+  }
 
   @override
   Future<void> setArchived(int categoryId, {required bool archived}) async {

@@ -111,7 +111,7 @@ final class BackupSnapshot {
   );
 }
 
-/// Restores a backup written by [BackupExporter] (format 1 to 5),
+/// Restores a backup written by [BackupExporter] (format 1 to 6),
 /// replacing all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
@@ -213,7 +213,8 @@ class _Parser {
   /// Format 1 has no category `planGroup`; those categories restore into
   /// the default group. Formats 1 and 2 have no `isBudgetAccount`; they
   /// restore with no budget account. Formats 1–4 have no independent Plans
-  /// archive flag, which defaults to false.
+  /// archive flag, which defaults to false. Formats 1–5 have no deletion flag,
+  /// which also defaults to false.
   final int formatVersion;
 
   bool _hasBudgetAccount = false;
@@ -414,6 +415,13 @@ class _Parser {
     if (isPlanArchived && kind != CategoryKind.spending) {
       reader.fail('isPlanArchived', 'only spending categories have Plans rows');
     }
+    final isPlanDeleted = formatVersion >= 6 && reader.boolean('isPlanDeleted');
+    if (isPlanDeleted && (!isPlanArchived || kind != CategoryKind.spending)) {
+      reader.fail(
+        'isPlanDeleted',
+        'deleted Plans rows must be archived spending categories',
+      );
+    }
     final planGroup = formatVersion < 2
         ? PlanGroup.spending
         : reader.enumValue('planGroup', PlanGroup.values);
@@ -443,6 +451,7 @@ class _Parser {
       kind: kind,
       isArchived: isArchived,
       isPlanArchived: isPlanArchived,
+      isPlanDeleted: isPlanDeleted,
       planGroup: planGroup,
       linkedAccountId: linkedAccountId,
     );
@@ -452,6 +461,7 @@ class _Parser {
       kind: kind,
       isArchived: Value(isArchived),
       isPlanArchived: Value(isPlanArchived),
+      isPlanDeleted: Value(isPlanDeleted),
       planGroup: Value(planGroup),
       linkedAccountId: Value(linkedAccountId),
     );
@@ -508,6 +518,12 @@ class _Parser {
     if (category == null) reader.fail('categoryId', 'no such category');
     if (category.kind != CategoryKind.spending) {
       reader.fail('categoryId', 'plans need a spending category');
+    }
+    if (category.isPlanDeleted) {
+      reader.fail(
+        'categoryId',
+        'a deleted Plans row cannot have saved monthly plans',
+      );
     }
     final assigned = reader.money(
       'assignedAmountMinor',

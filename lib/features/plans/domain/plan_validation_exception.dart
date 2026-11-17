@@ -17,6 +17,9 @@ enum PlanValidationError {
   /// Unarchive the Plans row before editing it.
   planArchived,
 
+  /// A deleted Plans row cannot be edited or unarchived.
+  planDeleted,
+
   /// Current or future months still reserve money in the budget account.
   hasAllocation,
 }

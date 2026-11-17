@@ -64,6 +64,11 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   and unarchive a row. This leaves its category/account active; if its parent is
   archived, restore that category/account first. History and budget reservations
   are retained, including after later transaction edits.
+  Archived plans have a Delete permanently button below Unarchive. Deletion
+  requires zero Assigned in every month and no spending/payment history for
+  that row. Confirmation removes the plan and its saved targets across all
+  months, while keeping its category and account. Deleted liability rows do
+  not reappear when their account changes.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
   is plain text, so keep it private. ⋮ → Restore from backup picks a backup
@@ -174,10 +179,10 @@ lib/
       presentation/         # Plans tab, Ready to assign card
     backup/
       data/                 # BackupExporter and BackupImporter: JSON backup
-                            # format (version 5), checks, replace-all restore
+                            # format (version 6), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v11)
+drift_schemas/              # schema snapshot per version (currently v12)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

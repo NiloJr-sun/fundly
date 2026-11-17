@@ -5,6 +5,7 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../categories/presentation/category_display.dart';
 import '../data/plan_repository.dart';
+import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
 import 'plan_activity.dart';
 import 'plan_month_bar.dart';
@@ -70,6 +71,7 @@ class _ArchivedPlanDetailScreen extends ConsumerStatefulWidget {
 class _ArchivedPlanDetailScreenState
     extends ConsumerState<_ArchivedPlanDetailScreen> {
   bool _saving = false;
+  bool _deleting = false;
 
   Future<void> _unarchive() async {
     setState(() => _saving = true);
@@ -87,6 +89,78 @@ class _ArchivedPlanDetailScreenState
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  Future<void> _delete(String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete $name plan?'),
+        content: const Text(
+          'This permanently removes this plan and its saved targets for every month. '
+          'Your category and account are kept. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _saving = true;
+      _deleting = true;
+    });
+    try {
+      await ref
+          .read(planRepositoryProvider)
+          .deletePermanently(widget.categoryId);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      messenger.showSnackBar(SnackBar(content: Text('$name plan deleted.')));
+    } on PlanDeletionException catch (error) {
+      if (!mounted) return;
+      ref.invalidate(planDeletionStatusProvider(widget.categoryId));
+      messenger.showSnackBar(
+        SnackBar(content: Text(_deletionMessage(error.status))),
+      );
+    } on Object {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('This plan could not be deleted.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _deleting = false;
+        });
+      }
+    }
+  }
+
+  static String _deletionMessage(PlanDeletionStatus status) => switch (status) {
+    PlanDeletionStatus.hasAssignedMoney =>
+      'Assigned must be zero in every month before this plan can be deleted.',
+    PlanDeletionStatus.hasActivity =>
+      'Plans with spending or payment history cannot be permanently deleted.',
+    PlanDeletionStatus.notArchived => 'Archive this plan before deleting it.',
+    PlanDeletionStatus.alreadyDeleted => 'This plan has already been deleted.',
+    PlanDeletionStatus.categoryNotFound => 'This plan no longer exists.',
+    PlanDeletionStatus.categoryNotSpending =>
+      'Only spending plans can be deleted.',
+    PlanDeletionStatus.allowed => 'This plan could not be deleted.',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +186,17 @@ class _ArchivedPlanDetailScreenState
     final summary = matches.single;
     final category = summary.category;
     final month = ref.watch(selectedPlanMonthProvider);
+    final deletion = ref.watch(planDeletionStatusProvider(widget.categoryId));
+    final canDelete =
+        deletion is AsyncData<PlanDeletionStatus> &&
+        deletion.value == PlanDeletionStatus.allowed;
+    final hint = switch (deletion) {
+      AsyncData(value: final status) =>
+        status == PlanDeletionStatus.allowed ? null : _deletionMessage(status),
+      AsyncError() => 'Could not check whether this plan can be deleted.',
+      _ => 'Checking whether this plan can be deleted…',
+    };
+    final errorColor = Theme.of(context).colorScheme.error;
     return ListView(
       children: [
         const PlanMonthBar(),
@@ -136,8 +221,28 @@ class _ArchivedPlanDetailScreenState
               FilledButton.icon(
                 onPressed: _saving || category.isArchived ? null : _unarchive,
                 icon: const Icon(Icons.unarchive_outlined),
-                label: Text(_saving ? 'Unarchiving…' : 'Unarchive plan'),
+                label: Text(
+                  _saving && !_deleting ? 'Unarchiving…' : 'Unarchive plan',
+                ),
               ),
+              const SizedBox(height: Spacing.sm),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: errorColor,
+                  side: canDelete && !_saving
+                      ? BorderSide(color: errorColor)
+                      : null,
+                ),
+                onPressed: canDelete && !_saving
+                    ? () => _delete(category.name)
+                    : null,
+                icon: const Icon(Icons.delete_outline),
+                label: Text(_deleting ? 'Deleting…' : 'Delete permanently'),
+              ),
+              if (hint != null) ...[
+                const SizedBox(height: Spacing.sm),
+                Text(hint),
+              ],
             ],
           ),
         ),

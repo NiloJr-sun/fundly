@@ -332,6 +332,99 @@ void main() {
     );
   });
 
+  test('deleted ordinary and linked debt plans survive backup/restore without resurrection', () async {
+    final rows = await source.select(source.categories).get();
+    final normal = rows.first;
+    final debt = rows.singleWhere((c) => c.linkedAccountId != null);
+    final repository = PlanRepository(source, clock: () => now);
+    for (final row in [normal, debt]) {
+      await repository.setArchived(row.id, archived: true);
+      await repository.deletePermanently(row.id);
+    }
+    // The ordinary category remains usable after removing its Plans row.
+    await TransactionRepository(source, clock: () => now).create(
+      TransactionDraft(
+        type: TransactionType.spending,
+        amount: php(1000),
+        date: CalendarDate(2026, 11, 17),
+        payee: 'Shop',
+        categoryId: normal.id,
+        sourceAccountId: 1,
+      ),
+    );
+    final original = await exportJson(source);
+    final importer = BackupImporter(target);
+    await importer.replaceAll(importer.parse(original));
+    expect(await exportJson(target), original);
+    final restored = await target.select(target.categories).get();
+    expect(restored.where((c) => c.isPlanDeleted).map((c) => c.id).toSet(), {
+      normal.id,
+      debt.id,
+    });
+    expect((await target.select(target.accounts).get()).length, 3);
+    await AccountRepository(target)
+        .update(debt.linkedAccountId!, name: 'Renamed card');
+    expect(
+      (await target.select(target.categories).get())
+          .singleWhere((c) => c.id == debt.id)
+          .isPlanDeleted,
+      isTrue,
+    );
+  });
+
+  test('format 5 restores archive flags with no deleted plan flags', () async {
+    final normal = (await source.select(source.categories).get()).first;
+    await PlanRepository(
+      source,
+      clock: () => now,
+    ).setArchived(normal.id, archived: true);
+    final backup = await sourceBackup();
+    backup['formatVersion'] = 5;
+    for (final row in backup['categories']! as List) {
+      (row as Map).remove('isPlanDeleted');
+    }
+    final importer = BackupImporter(target);
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+    final rows = await target.select(target.categories).get();
+    expect(rows.every((c) => !c.isPlanDeleted), isTrue);
+    expect(rows.singleWhere((c) => c.id == normal.id).isPlanArchived, isTrue);
+  });
+
+  for (final invalid in ['true', 1, null]) {
+    test('restore rejects invalid plan deletion flag $invalid', () async {
+      final before = await exportJson(target);
+      final backup = await sourceBackup();
+      ((backup['categories']! as List).first as Map)['isPlanDeleted'] = invalid;
+      expect(
+        () => parseBackup(jsonEncode(backup)),
+        throwsProblem(BackupImportProblem.invalidData, 'isPlanDeleted'),
+      );
+      expect(await exportJson(target), before);
+    });
+  }
+
+  test('restore rejects a deleted plan that is not archived', () async {
+    final backup = await sourceBackup();
+    ((backup['categories']! as List).first as Map)['isPlanDeleted'] = true;
+    expect(
+      () => parseBackup(jsonEncode(backup)),
+      throwsProblem(BackupImportProblem.invalidData, 'isPlanDeleted'),
+    );
+  });
+
+  test('restore rejects saved monthly plans for a deleted row', () async {
+    final backup = await sourceBackup();
+    final normal = (backup['categories']! as List).first as Map;
+    normal['isPlanArchived'] = true;
+    normal['isPlanDeleted'] = true;
+    ((backup['monthlyPlans']! as List).first as Map)['categoryId'] =
+        normal['id'];
+    expect(
+      () => parseBackup(jsonEncode(backup)),
+      throwsProblem(BackupImportProblem.invalidData, 'categoryId'),
+    );
+  });
+
   test('the budget account survives a round trip', () async {
     final importer = BackupImporter(target);
 

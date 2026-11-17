@@ -41,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'fundly'));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -118,6 +118,10 @@ class AppDatabase extends _$AppDatabase {
       // v11: Plans rows can be archived independently across all months.
       from10To11: (m, schema) async {
         await m.addColumn(schema.categories, schema.categories.isPlanArchived);
+      },
+      // v12: permanent Plans deletion leaves its category/account intact.
+      from11To12: (m, schema) async {
+        await m.addColumn(schema.categories, schema.categories.isPlanDeleted);
       },
     ),
     beforeOpen: (details) async {

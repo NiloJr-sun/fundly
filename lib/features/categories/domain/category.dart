@@ -21,6 +21,7 @@ final class Category {
     required this.kind,
     this.isArchived = false,
     this.isPlanArchived = false,
+    this.isPlanDeleted = false,
     this.planGroup = PlanGroup.spending,
     this.linkedAccountId,
   });
@@ -39,6 +40,9 @@ final class Category {
   /// Archives the Plans row across months, without disabling the category.
   final bool isPlanArchived;
 
+  /// The plan was permanently removed; the category/account stays available.
+  final bool isPlanDeleted;
+
   bool get isArchivedInPlans => isArchived || isPlanArchived;
 
   /// Where a spending category appears on the Plans page. Inflow categories
@@ -53,6 +57,7 @@ final class Category {
       other.kind == kind &&
       other.isArchived == isArchived &&
       other.isPlanArchived == isPlanArchived &&
+      other.isPlanDeleted == isPlanDeleted &&
       other.planGroup == planGroup &&
       other.linkedAccountId == linkedAccountId;
 
@@ -63,6 +68,7 @@ final class Category {
     kind,
     isArchived,
     isPlanArchived,
+    isPlanDeleted,
     planGroup,
     linkedAccountId,
   );

@@ -7,6 +7,7 @@ import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/domain/plan_deletion.dart';
 import 'package:fundly/features/plans/domain/plan_validation_exception.dart';
 import 'package:fundly/features/plans/presentation/archived_plans_screen.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
@@ -24,12 +25,14 @@ void main() {
   Category food({
     bool archived = false,
     bool categoryArchived = false,
+    bool deleted = false,
     int? linkedAccountId,
   }) => Category(
     id: foodId,
     name: 'Food',
     kind: CategoryKind.spending,
     isPlanArchived: archived,
+    isPlanDeleted: deleted,
     isArchived: categoryArchived,
     linkedAccountId: linkedAccountId,
   );
@@ -240,6 +243,161 @@ void main() {
     await tester.tap(find.text('Unarchive plan'));
     await tester.pumpAndSettle();
     expect(find.text('This plan could not be unarchived.'), findsOneWidget);
+    expect(find.text('Food (archived)'), findsOneWidget);
+  });
+
+  testWidgets('permanent delete is below Unarchive and requires confirmation', (
+    tester,
+  ) async {
+    await pump(tester, rows: [food(archived: true)]);
+    await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+    final delete = find.widgetWithText(OutlinedButton, 'Delete permanently');
+    final unarchive = find.widgetWithText(FilledButton, 'Unarchive plan');
+    expect(
+      tester.getTopLeft(delete).dy,
+      greaterThan(tester.getTopLeft(unarchive).dy),
+    );
+    expect(
+      tester.widget<OutlinedButton>(delete).style!.foregroundColor!.resolve({}),
+      Theme.of(tester.element(delete)).colorScheme.error,
+    );
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Food plan?'), findsOneWidget);
+    expect(find.textContaining('This cannot be undone.'), findsOneWidget);
+    expect(
+      find.textContaining('Your category and account are kept.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(repository.deleted, isEmpty);
+    expect(find.text('Food (archived)'), findsOneWidget);
+  });
+
+  testWidgets(
+    'successful deletion removes the archived row while keeping its category',
+    (tester) async {
+      final stream = StreamController<List<Category>>();
+      addTearDown(stream.close);
+      var current = food(archived: true);
+      stream.add([current]);
+      repository.onDelete = (_) {
+        current = food(archived: true, deleted: true);
+        stream.add([current]);
+      };
+      await pump(tester, stream: stream.stream);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete permanently'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(repository.deleted, [foodId]);
+      expect(current.id, foodId);
+      expect(current.isArchived, isFalse);
+      expect(find.text('No archived plans.'), findsOneWidget);
+      expect(find.text('Food plan deleted.'), findsOneWidget);
+    },
+  );
+
+  for (final (status, message) in [
+    (
+      PlanDeletionStatus.hasAssignedMoney,
+      'Assigned must be zero in every month',
+    ),
+    (PlanDeletionStatus.hasActivity, 'spending or payment history'),
+  ]) {
+    testWidgets('deletion is disabled and explains $status', (tester) async {
+      repository.deletionStatus = status;
+      await pump(tester, rows: [food(archived: true)]);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Delete permanently'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.textContaining(message), findsOneWidget);
+    });
+  }
+
+  testWidgets(
+    'loading eligibility disables deletion and reacts to later data',
+    (tester) async {
+      final stream = StreamController<PlanDeletionStatus>();
+      addTearDown(stream.close);
+      repository.deletionStatusStream = stream.stream;
+      await pump(tester, rows: [food(archived: true)]);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      final button = find.widgetWithText(OutlinedButton, 'Delete permanently');
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+      expect(
+        find.text('Checking whether this plan can be deleted…'),
+        findsOneWidget,
+      );
+      stream.add(PlanDeletionStatus.allowed);
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+      stream.add(PlanDeletionStatus.hasAssignedMoney);
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+    },
+  );
+
+  testWidgets('an eligibility error never enables deletion', (tester) async {
+    repository.failDeletionCheck = true;
+    await pump(tester, rows: [food(archived: true)]);
+    await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Delete permanently'),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      find.text('Could not check whether this plan can be deleted.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'a write-time rejection preserves the plan and explains the rule',
+    (tester) async {
+      await pump(tester, rows: [food(archived: true)]);
+      await tester.tap(find.text('Food'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete permanently'));
+      await tester.pumpAndSettle();
+      repository.deleteBlocked = PlanDeletionStatus.hasActivity;
+      repository.deletionStatus = PlanDeletionStatus.hasActivity;
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(repository.deleted, isEmpty);
+      expect(find.text('Food (archived)'), findsOneWidget);
+      expect(find.textContaining('spending or payment history'), findsWidgets);
+    },
+  );
+
+  testWidgets('a delete failure leaves the detail open', (tester) async {
+    repository.failDelete = true;
+    await pump(tester, rows: [food(archived: true)]);
+    await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete permanently'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(repository.deleted, isEmpty);
+    expect(find.text('This plan could not be deleted.'), findsOneWidget);
     expect(find.text('Food (archived)'), findsOneWidget);
   });
 

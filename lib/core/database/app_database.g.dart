@@ -979,6 +979,24 @@ class $CategoriesTable extends Categories
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isPlanDeletedMeta = const VerificationMeta(
+    'isPlanDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isPlanDeleted = GeneratedColumn<bool>(
+    'is_plan_deleted',
+    aliasedName,
+    false,
+    check: () =>
+        isPlanDeleted.equals(false) |
+        (isPlanArchived.equals(true) & kind.equals('spending')),
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_plan_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<PlanGroup, String> planGroup =
       GeneratedColumn<String>(
@@ -1011,6 +1029,7 @@ class $CategoriesTable extends Categories
     kind,
     isArchived,
     isPlanArchived,
+    isPlanDeleted,
     planGroup,
     linkedAccountId,
   ];
@@ -1049,6 +1068,15 @@ class $CategoriesTable extends Categories
         isPlanArchived.isAcceptableOrUnknown(
           data['is_plan_archived']!,
           _isPlanArchivedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_plan_deleted')) {
+      context.handle(
+        _isPlanDeletedMeta,
+        isPlanDeleted.isAcceptableOrUnknown(
+          data['is_plan_deleted']!,
+          _isPlanDeletedMeta,
         ),
       );
     }
@@ -1092,6 +1120,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.bool,
         data['${effectivePrefix}is_plan_archived'],
       )!,
+      isPlanDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_plan_deleted'],
+      )!,
       planGroup: $CategoriesTable.$converterplanGroup.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -1127,6 +1159,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   /// Hides only the Plans row, independently of category/account archiving.
   final bool isPlanArchived;
 
+  /// Keeps a permanently deleted Plans row from being recreated.
+  final bool isPlanDeleted;
+
   /// The Plans page section, stored by enum name. Inflow categories keep the
   /// default; the repository only lets spending categories change it.
   final PlanGroup planGroup;
@@ -1139,6 +1174,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     required this.kind,
     required this.isArchived,
     required this.isPlanArchived,
+    required this.isPlanDeleted,
     required this.planGroup,
     this.linkedAccountId,
   });
@@ -1154,6 +1190,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     }
     map['is_archived'] = Variable<bool>(isArchived);
     map['is_plan_archived'] = Variable<bool>(isPlanArchived);
+    map['is_plan_deleted'] = Variable<bool>(isPlanDeleted);
     {
       map['plan_group'] = Variable<String>(
         $CategoriesTable.$converterplanGroup.toSql(planGroup),
@@ -1172,6 +1209,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       kind: Value(kind),
       isArchived: Value(isArchived),
       isPlanArchived: Value(isPlanArchived),
+      isPlanDeleted: Value(isPlanDeleted),
       planGroup: Value(planGroup),
       linkedAccountId: linkedAccountId == null && nullToAbsent
           ? const Value.absent()
@@ -1192,6 +1230,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       ),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       isPlanArchived: serializer.fromJson<bool>(json['isPlanArchived']),
+      isPlanDeleted: serializer.fromJson<bool>(json['isPlanDeleted']),
       planGroup: $CategoriesTable.$converterplanGroup.fromJson(
         serializer.fromJson<String>(json['planGroup']),
       ),
@@ -1209,6 +1248,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       ),
       'isArchived': serializer.toJson<bool>(isArchived),
       'isPlanArchived': serializer.toJson<bool>(isPlanArchived),
+      'isPlanDeleted': serializer.toJson<bool>(isPlanDeleted),
       'planGroup': serializer.toJson<String>(
         $CategoriesTable.$converterplanGroup.toJson(planGroup),
       ),
@@ -1222,6 +1262,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     CategoryKind? kind,
     bool? isArchived,
     bool? isPlanArchived,
+    bool? isPlanDeleted,
     PlanGroup? planGroup,
     Value<int?> linkedAccountId = const Value.absent(),
   }) => CategoryRow(
@@ -1230,6 +1271,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     kind: kind ?? this.kind,
     isArchived: isArchived ?? this.isArchived,
     isPlanArchived: isPlanArchived ?? this.isPlanArchived,
+    isPlanDeleted: isPlanDeleted ?? this.isPlanDeleted,
     planGroup: planGroup ?? this.planGroup,
     linkedAccountId: linkedAccountId.present
         ? linkedAccountId.value
@@ -1246,6 +1288,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       isPlanArchived: data.isPlanArchived.present
           ? data.isPlanArchived.value
           : this.isPlanArchived,
+      isPlanDeleted: data.isPlanDeleted.present
+          ? data.isPlanDeleted.value
+          : this.isPlanDeleted,
       planGroup: data.planGroup.present ? data.planGroup.value : this.planGroup,
       linkedAccountId: data.linkedAccountId.present
           ? data.linkedAccountId.value
@@ -1261,6 +1306,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('kind: $kind, ')
           ..write('isArchived: $isArchived, ')
           ..write('isPlanArchived: $isPlanArchived, ')
+          ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
           ..write('linkedAccountId: $linkedAccountId')
           ..write(')'))
@@ -1274,6 +1320,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     kind,
     isArchived,
     isPlanArchived,
+    isPlanDeleted,
     planGroup,
     linkedAccountId,
   );
@@ -1286,6 +1333,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.kind == this.kind &&
           other.isArchived == this.isArchived &&
           other.isPlanArchived == this.isPlanArchived &&
+          other.isPlanDeleted == this.isPlanDeleted &&
           other.planGroup == this.planGroup &&
           other.linkedAccountId == this.linkedAccountId);
 }
@@ -1296,6 +1344,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<CategoryKind> kind;
   final Value<bool> isArchived;
   final Value<bool> isPlanArchived;
+  final Value<bool> isPlanDeleted;
   final Value<PlanGroup> planGroup;
   final Value<int?> linkedAccountId;
   const CategoriesCompanion({
@@ -1304,6 +1353,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.kind = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.isPlanArchived = const Value.absent(),
+    this.isPlanDeleted = const Value.absent(),
     this.planGroup = const Value.absent(),
     this.linkedAccountId = const Value.absent(),
   });
@@ -1313,6 +1363,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     required CategoryKind kind,
     this.isArchived = const Value.absent(),
     this.isPlanArchived = const Value.absent(),
+    this.isPlanDeleted = const Value.absent(),
     this.planGroup = const Value.absent(),
     this.linkedAccountId = const Value.absent(),
   }) : name = Value(name),
@@ -1323,6 +1374,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<String>? kind,
     Expression<bool>? isArchived,
     Expression<bool>? isPlanArchived,
+    Expression<bool>? isPlanDeleted,
     Expression<String>? planGroup,
     Expression<int>? linkedAccountId,
   }) {
@@ -1332,6 +1384,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       if (kind != null) 'kind': kind,
       if (isArchived != null) 'is_archived': isArchived,
       if (isPlanArchived != null) 'is_plan_archived': isPlanArchived,
+      if (isPlanDeleted != null) 'is_plan_deleted': isPlanDeleted,
       if (planGroup != null) 'plan_group': planGroup,
       if (linkedAccountId != null) 'linked_account_id': linkedAccountId,
     });
@@ -1343,6 +1396,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<CategoryKind>? kind,
     Value<bool>? isArchived,
     Value<bool>? isPlanArchived,
+    Value<bool>? isPlanDeleted,
     Value<PlanGroup>? planGroup,
     Value<int?>? linkedAccountId,
   }) {
@@ -1352,6 +1406,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       kind: kind ?? this.kind,
       isArchived: isArchived ?? this.isArchived,
       isPlanArchived: isPlanArchived ?? this.isPlanArchived,
+      isPlanDeleted: isPlanDeleted ?? this.isPlanDeleted,
       planGroup: planGroup ?? this.planGroup,
       linkedAccountId: linkedAccountId ?? this.linkedAccountId,
     );
@@ -1377,6 +1432,9 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     if (isPlanArchived.present) {
       map['is_plan_archived'] = Variable<bool>(isPlanArchived.value);
     }
+    if (isPlanDeleted.present) {
+      map['is_plan_deleted'] = Variable<bool>(isPlanDeleted.value);
+    }
     if (planGroup.present) {
       map['plan_group'] = Variable<String>(
         $CategoriesTable.$converterplanGroup.toSql(planGroup.value),
@@ -1396,6 +1454,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('kind: $kind, ')
           ..write('isArchived: $isArchived, ')
           ..write('isPlanArchived: $isPlanArchived, ')
+          ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
           ..write('linkedAccountId: $linkedAccountId')
           ..write(')'))
@@ -3531,6 +3590,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required CategoryKind kind,
   Value<bool> isArchived,
   Value<bool> isPlanArchived,
+  Value<bool> isPlanDeleted,
   Value<PlanGroup> planGroup,
   Value<int?> linkedAccountId,
 });
@@ -3540,6 +3600,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<CategoryKind> kind,
   Value<bool> isArchived,
   Value<bool> isPlanArchived,
+  Value<bool> isPlanDeleted,
   Value<PlanGroup> planGroup,
   Value<int?> linkedAccountId,
 });
@@ -3634,6 +3695,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isPlanArchived => $composableBuilder(
     column: $table.isPlanArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPlanDeleted => $composableBuilder(
+    column: $table.isPlanDeleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3751,6 +3817,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isPlanDeleted => $composableBuilder(
+    column: $table.isPlanDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get planGroup => $composableBuilder(
     column: $table.planGroup,
     builder: (column) => ColumnOrderings(column),
@@ -3805,6 +3876,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isPlanArchived => $composableBuilder(
     column: $table.isPlanArchived,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isPlanDeleted => $composableBuilder(
+    column: $table.isPlanDeleted,
     builder: (column) => column,
   );
 
@@ -3922,6 +3998,7 @@ class $$CategoriesTableTableManager
                 Value<CategoryKind> kind = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<bool> isPlanArchived = const Value.absent(),
+                Value<bool> isPlanDeleted = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
                 Value<int?> linkedAccountId = const Value.absent(),
               }) => CategoriesCompanion(
@@ -3930,6 +4007,7 @@ class $$CategoriesTableTableManager
                 kind: kind,
                 isArchived: isArchived,
                 isPlanArchived: isPlanArchived,
+                isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
               ),
@@ -3940,6 +4018,7 @@ class $$CategoriesTableTableManager
                 required CategoryKind kind,
                 Value<bool> isArchived = const Value.absent(),
                 Value<bool> isPlanArchived = const Value.absent(),
+                Value<bool> isPlanDeleted = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
                 Value<int?> linkedAccountId = const Value.absent(),
               }) => CategoriesCompanion.insert(
@@ -3948,6 +4027,7 @@ class $$CategoriesTableTableManager
                 kind: kind,
                 isArchived: isArchived,
                 isPlanArchived: isPlanArchived,
+                isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
               ),

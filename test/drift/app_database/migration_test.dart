@@ -9,6 +9,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
+import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -974,6 +975,137 @@ void main() {
           expect(
             await db.customSelect('PRAGMA foreign_key_check').get(),
             isEmpty,
+          );
+        },
+      );
+    },
+  );
+  test(
+    'v11 to v12 preserves archives, links, plans and activity; nothing deleted',
+    () async {
+      const rows = [
+        v11.CategoriesData(
+          id: 1,
+          name: 'Food',
+          kind: 'spending',
+          isArchived: 0,
+          isPlanArchived: 0,
+          planGroup: 'spending',
+        ),
+        v11.CategoriesData(
+          id: 2,
+          name: 'Old plan',
+          kind: 'spending',
+          isArchived: 0,
+          isPlanArchived: 1,
+          planGroup: 'savings',
+        ),
+        v11.CategoriesData(
+          id: 3,
+          name: 'Card',
+          kind: 'spending',
+          isArchived: 0,
+          isPlanArchived: 1,
+          planGroup: 'liability',
+          linkedAccountId: 2,
+        ),
+      ];
+      const plan = v11.MonthlyPlansData(
+        id: 1,
+        month: '2026-10',
+        categoryId: 2,
+        targetAmountMinor: 20000,
+        assignedAmountMinor: 10000,
+        currencyCode: 'PHP',
+        createdAt: '2026-10-17T00:00:00.000Z',
+        updatedAt: '2026-10-17T00:00:00.000Z',
+      );
+      const activity = v11.TransactionsData(
+        id: 1,
+        type: 'spending',
+        amountMinor: 10000,
+        currencyCode: 'PHP',
+        date: '2026-10-17',
+        payee: 'Shop',
+        categoryId: 2,
+        sourceAccountId: 1,
+        note: '',
+        createdAt: '2026-10-17T00:00:00.000Z',
+        updatedAt: '2026-10-17T00:00:00.000Z',
+      );
+      await verifier.testWithDataIntegrity(
+        oldVersion: 11,
+        newVersion: 12,
+        createOld: v11.DatabaseAtV11.new,
+        createNew: v12.DatabaseAtV12.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, db) => batch
+          ..insertAll(db.accounts, const [
+            v11.AccountsData(
+              id: 1,
+              name: 'Cash',
+              type: 'savingsCash',
+              openingBalanceMinor: 100000,
+              currencyCode: 'PHP',
+              createdAt: '2026-10-17T00:00:00.000Z',
+              isArchived: 0,
+              isBudgetAccount: 1,
+            ),
+            v11.AccountsData(
+              id: 2,
+              name: 'Card',
+              type: 'credit',
+              openingBalanceMinor: -10000,
+              currencyCode: 'PHP',
+              createdAt: '2026-10-17T00:00:00.000Z',
+              isArchived: 0,
+              isBudgetAccount: 0,
+            ),
+          ])
+          ..insertAll(db.categories, rows)
+          ..insert(db.monthlyPlans, plan)
+          ..insert(db.transactions, activity),
+        validateItems: (db) async {
+          final categories = await (db.select(
+            db.categories,
+          )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+          expect(categories.map((c) => c.toJson()).toList(), [
+            for (final row in rows) {...row.toJson(), 'isPlanDeleted': 0},
+          ]);
+          expect(
+            (await db.select(db.monthlyPlans).get()).single.toJson(),
+            plan.toJson(),
+          );
+          expect(
+            (await db.select(db.transactions).get()).single.toJson(),
+            activity.toJson(),
+          );
+          await expectLater(
+            db.customStatement(
+              'UPDATE categories SET is_plan_deleted = 1 WHERE id = 1',
+            ),
+            throwsA(isA<Exception>()),
+          );
+          await db.customStatement(
+            'UPDATE categories SET is_plan_deleted = 1 WHERE id = 3',
+          );
+          await expectLater(
+            db.customStatement(
+              'UPDATE categories SET is_plan_archived = 0 WHERE id = 3',
+            ),
+            throwsA(isA<Exception>()),
+          );
+          expect(
+            await db.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+          expect(
+            (await db.customSelect('PRAGMA integrity_check').get())
+                .single
+                .data
+                .values
+                .single,
+            'ok',
           );
         },
       );

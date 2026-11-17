@@ -24,6 +24,17 @@ class Categories extends Table {
   BoolColumn get isPlanArchived =>
       boolean().withDefault(const Constant(false))();
 
+  /// Keeps a permanently deleted Plans row from being recreated.
+  BoolColumn get isPlanDeleted => boolean()
+      .withDefault(const Constant(false))
+      // A deleted row must be an archived spending plan. The check refers to
+      // this column, as required by drift's CHECK API, without runtime recursion.
+      .check(
+        // ignore: recursive_getters
+        isPlanDeleted.equals(false) |
+            (isPlanArchived.equals(true) & kind.equals('spending')),
+      )();
+
   /// The Plans page section, stored by enum name. Inflow categories keep the
   /// default; the repository only lets spending categories change it.
   TextColumn get planGroup => textEnum<PlanGroup>()

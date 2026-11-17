@@ -7,6 +7,7 @@ import '../../spending/presentation/spending_providers.dart';
 import '../../transactions/presentation/transactions_providers.dart';
 import '../data/plan_repository.dart';
 import '../domain/monthly_plan.dart';
+import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
 
 /// The month the Plans tab shows. Starts at the current month each time the
@@ -139,3 +140,10 @@ final readyToAssignProvider =
         _ => const AsyncLoading(),
       };
     });
+
+/// Live eligibility for permanently deleting an archived Plans row.
+final planDeletionStatusProvider = StreamProvider.autoDispose
+    .family<PlanDeletionStatus, int>(
+      (ref, categoryId) =>
+          ref.watch(planRepositoryProvider).watchDeletionStatus(categoryId),
+    );

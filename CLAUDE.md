@@ -513,10 +513,10 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements (R.1–R.16 in the roadmap, including automatic liability rows,
+refinements (R.1–R.17 in the roadmap, including automatic liability rows,
 Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
-v11 and backups at format 5. [AGENTS.md](AGENTS.md) summarises the current
+v12 and backups at format 6. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
@@ -1005,5 +1005,27 @@ suggestions as approved decisions.
                           view advances; browsed
                           months stay selected. No
                           schema or backup change.
+
+  2026-11-17              Permanent plan deletion Confirmed
+                          (schema v12): archived
+                          rows only, Assigned zero
+                          in every month and no
+                          spending/payment history
+                          for the row. Remove all
+                          monthly targets/records;
+                          keep category/account.
+                          Require confirmation;
+                          button below Unarchive.
+                          Recheck atomically; show
+                          why deletion is blocked.
+                          isPlanDeleted hides the
+                          row from active/archive
+                          lists and prevents save,
+                          unarchive or auto debt
+                          sync from reviving it.
+                          Future category spending
+                          is still allowed. Backup
+                          format 6 adds the flag;
+                          formats 1–5 use false.
 
   -----------------------------------------------------------------------
