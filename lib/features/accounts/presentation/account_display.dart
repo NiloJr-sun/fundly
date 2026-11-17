@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+
+import '../../../app/theme/app_colors.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../domain/account_type.dart';
@@ -9,15 +12,27 @@ String accountTypeLabel(AccountType type) => switch (type) {
   AccountType.loan => 'Loan',
 };
 
-/// Formats a signed balance (D1) the way the user thinks about it.
-///
-/// Asset accounts show the signed amount. Liabilities show money owed as a
-/// positive "Owed" amount, and an overpaid liability as "Credit".
-String formatBalance(AccountType type, Money balance) {
-  if (!type.isLiability || balance.isZero) {
-    return MoneyFormatter.format(balance);
+/// Formats a signed balance (D1) as is: money owed on Credit and Loan
+/// accounts shows with a minus sign, e.g. `-₱3,000.00`.
+String formatBalance(Money balance) => MoneyFormatter.format(balance);
+
+/// A balance in [style], green when positive and the default text colour
+/// otherwise.
+class BalanceText extends StatelessWidget {
+  const BalanceText(this.balance, {super.key, this.style});
+
+  final Money balance;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = balance.minorUnits > 0;
+    final base = style ?? DefaultTextStyle.of(context).style;
+    return Text(
+      formatBalance(balance),
+      style: positive
+          ? base.copyWith(color: AppColors.of(context).positive)
+          : base,
+    );
   }
-  return balance.isNegative
-      ? 'Owed ${MoneyFormatter.format(-balance)}'
-      : 'Credit ${MoneyFormatter.format(balance)}';
 }

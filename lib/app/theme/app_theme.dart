@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 /// Light and dark Material 3 themes for Fundly.
 ///
 /// Colours come from a single seed via [ColorScheme.fromSeed]. Typography uses
@@ -18,6 +20,9 @@ abstract final class AppTheme {
         seedColor: seedColor,
         brightness: brightness,
       ),
+      extensions: [
+        brightness == Brightness.light ? AppColors.light : AppColors.dark,
+      ],
     );
   }
 }

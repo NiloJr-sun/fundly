@@ -72,10 +72,10 @@ void main() {
         '₱0.00',
         'Credit',
         'RCBC Credit',
-        'Owed ₱3,000.00',
+        '-₱3,000.00',
         'Loan',
         'Car Loan',
-        'Owed ₱50,000.00',
+        '-₱50,000.00',
       ]),
     );
   });
@@ -108,8 +108,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(headerTotal(tester, 'Savings / Cash'), '₱17,500.50');
-      expect(headerTotal(tester, 'Credit'), 'Owed ₱4,250.00');
-      expect(headerTotal(tester, 'Loan'), 'Owed ₱50,000.00');
+      expect(headerTotal(tester, 'Credit'), '-₱4,250.00');
+      expect(headerTotal(tester, 'Loan'), '-₱50,000.00');
     });
 
     testWidgets('collapse and expand, keeping the total', (tester) async {
@@ -121,7 +121,7 @@ void main() {
 
       expect(find.text('RCBC Credit'), findsNothing);
       expect(find.text('BPI Credit'), findsNothing);
-      expect(headerTotal(tester, 'Credit'), 'Owed ₱4,250.00');
+      expect(headerTotal(tester, 'Credit'), '-₱4,250.00');
       // Other sections stay open.
       expect(find.text('BDO Savings'), findsOneWidget);
       expect(find.text('Car Loan'), findsOneWidget);

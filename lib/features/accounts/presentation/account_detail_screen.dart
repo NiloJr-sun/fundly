@@ -71,10 +71,10 @@ class _AccountDetails extends StatelessWidget {
       children: [
         Text('Current balance', style: textTheme.labelLarge),
         const SizedBox(height: Spacing.xs),
-        Text(
-          balance == null ? '…' : formatBalance(account.type, balance!),
-          style: textTheme.headlineMedium,
-        ),
+        if (balance case final balance?)
+          BalanceText(balance, style: textTheme.headlineMedium)
+        else
+          Text('…', style: textTheme.headlineMedium),
         if (account.isArchived) ...[
           const SizedBox(height: Spacing.sm),
           const Align(
@@ -209,7 +209,7 @@ class _ConfirmArchiveDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatted = formatBalance(account.type, balance);
+    final formatted = formatBalance(balance);
     return AlertDialog(
       title: const Text('Archive this account?'),
       content: Text(

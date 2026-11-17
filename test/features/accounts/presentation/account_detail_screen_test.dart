@@ -78,7 +78,7 @@ void main() {
     );
 
     expect(find.text('RCBC Credit'), findsOneWidget);
-    expect(find.text('Owed ₱3,000.00'), findsOneWidget);
+    expect(find.text('-₱3,000.00'), findsOneWidget);
     expect(find.text('Credit'), findsOneWidget);
     expect(find.text('PHP'), findsOneWidget);
     expect(find.text('Nov 16, 2026'), findsOneWidget);
@@ -150,7 +150,7 @@ void main() {
       );
 
       await tapButton(tester, 'Archive account');
-      expect(find.textContaining('balance: Owed ₱50,000.00'), findsOneWidget);
+      expect(find.textContaining('balance: -₱50,000.00'), findsOneWidget);
       await tapButton(tester, 'Archive');
 
       expect(repository.archivedChanges, [(id: 1, archived: true)]);

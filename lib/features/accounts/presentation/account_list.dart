@@ -89,7 +89,8 @@ class _AccountSection extends StatelessWidget {
       title: Text(accountTypeLabel(type), style: headerStyle),
       trailing: total == null
           ? const SizedBox.shrink()
-          : Text(formatBalance(type, total), style: headerStyle),
+          // Green when positive, default colour otherwise, like the rows.
+          : BalanceText(total, style: theme.textTheme.titleSmall),
       children: [for (final account in accounts) AccountTile(account: account)],
     );
   }
@@ -106,10 +107,9 @@ class AccountTile extends ConsumerWidget {
     final balance = ref.watch(accountBalancesProvider).value?[account.id];
     return ListTile(
       title: Text(account.name),
-      trailing: Text(
-        balance == null ? '…' : formatBalance(account.type, balance),
-        style: Theme.of(context).textTheme.bodyLarge,
-      ),
+      trailing: balance == null
+          ? const Text('…')
+          : BalanceText(balance, style: Theme.of(context).textTheme.bodyLarge),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => AccountDetailScreen(accountId: account.id),
