@@ -4,8 +4,8 @@ import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
-import '../../spending/domain/period_summary.dart';
 import '../../transactions/domain/transaction.dart';
+import '../../transactions/domain/transaction_type.dart';
 import 'monthly_plan.dart';
 
 /// Whether a category's assigned money covers its target.
@@ -131,57 +131,67 @@ List<CategoryPlanSummary> planSummaries({
   ];
 }
 
-/// The month's income set against what has been assigned to categories.
+/// Money that came into the budget account in a month, set against what has
+/// been assigned to categories that month.
 @immutable
 final class ReadyToAssign {
-  const ReadyToAssign({required this.income, required this.assigned});
+  const ReadyToAssign({required this.moneyIn, required this.assigned});
 
-  /// Inflow transactions dated in the month.
-  final Money income;
+  /// Inflows and transfers into the budget account dated in the month.
+  final Money moneyIn;
 
   /// Every category's assigned amount for the month.
   final Money assigned;
 
-  /// `income - assigned`; negative when more was assigned than received.
-  Money get amount => income - assigned;
+  /// `moneyIn - assigned`; negative when more was assigned than came in.
+  Money get amount => moneyIn - assigned;
 
   @override
   bool operator ==(Object other) =>
       other is ReadyToAssign &&
-      other.income == income &&
+      other.moneyIn == moneyIn &&
       other.assigned == assigned;
 
   @override
-  int get hashCode => Object.hash(income, assigned);
+  int get hashCode => Object.hash(moneyIn, assigned);
 
   @override
-  String toString() => 'ReadyToAssign(income: $income, assigned: $assigned)';
+  String toString() => 'ReadyToAssign(moneyIn: $moneyIn, assigned: $assigned)';
 }
 
-/// How much of [month]'s income is not yet assigned (CLAUDE.md §11).
+/// How much of the money that came into the budget account in [month] is
+/// not yet assigned (CLAUDE.md §11).
 ///
-/// - Income is every Inflow transaction dated in the month, into any account
-///   (archived ones included), as in the Spending tab's inflow total.
-///   Transfers and card payments never count.
+/// - Money in is every Inflow and every Transfer into [budgetAccountId]
+///   dated in the month. Money leaving it (transfers out, spending) does not
+///   count, so sending budgeted money to other accounts never counts twice.
+///   Income into other accounts does not count.
 /// - Assigned is the total of every plan's assigned amount for the month,
 ///   archived categories included.
-/// - Nothing carries over between months.
+/// - Nothing carries over between months: the balance from before the month
+///   is not included.
 ReadyToAssign readyToAssign({
   required CalendarMonth month,
+  required int budgetAccountId,
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
   String currencyCode = Account.defaultCurrency,
 }) {
+  final range = month.dateRange;
+  var moneyIn = Money.zero(currencyCode);
+  for (final transaction in transactions) {
+    final fundsBudget =
+        transaction.type == TransactionType.inflow ||
+        transaction.type == TransactionType.transfer;
+    if (fundsBudget &&
+        transaction.destinationAccountId == budgetAccountId &&
+        range.contains(transaction.date)) {
+      moneyIn += transaction.amount;
+    }
+  }
   var assigned = Money.zero(currencyCode);
   for (final plan in plans) {
     if (plan.month == month) assigned += plan.assigned;
   }
-  return ReadyToAssign(
-    income: periodTotals(
-      transactions,
-      month.dateRange,
-      currencyCode: currencyCode,
-    ).inflow,
-    assigned: assigned,
-  );
+  return ReadyToAssign(moneyIn: moneyIn, assigned: assigned);
 }

@@ -17,7 +17,7 @@ Last updated: 2026-11-17
 | Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**; the rest is a proposal, not approved |
 | Platforms | iOS (primary), Android best-effort |
 | Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl, share_plus (share sheet for backups), file_picker (choosing a backup to restore); dev: drift_dev, build_runner, flutter_lints |
-| Database | Schema **v8**: accounts, custom_account_types, categories (with Plans group), transactions, monthly_plans; migration tests for every step |
+| Database | Schema **v9**: accounts (one can be the budget account), custom_account_types, categories (with Plans group), transactions, monthly_plans; migration tests for every step |
 | Git | One commit per task on `main` |
 | Tests | Domain, repository, migration and widget tests; all passing |
 
@@ -231,21 +231,23 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.9 | Account types screen: rename, change class while unused, delete when unused | — | Repository and widget tests |
 | R.10 | Archived accounts with no transactions can be deleted permanently (button below Unarchive account) | — | Repository and widget tests |
 | R.11 | Plans groups: each spending category is in Spending, Savings or Liability (fixed list), set in the category form; Plans shows a section per group. Backup format 2 adds `planGroup` | v8 | Migration, repository, backup and widget tests |
-| R.12 | Ready to assign on Plans: the month's Inflow transactions minus the total Assigned that month; no carry-over; red when negative | — | Calculator and widget tests |
+| R.12 | Ready to assign on Plans: money into the budget account that month (Inflows and Transfers into it) minus the total Assigned that month; transfers out never count; no carry-over; red when negative | — | Calculator and widget tests |
+| R.13 | Budget account: one active Savings/Cash account (custom asset types included) can be tagged in the account form; moving the tag asks first; archiving removes it. Backup format 3 adds `isBudgetAccount` | v9 | Migration, repository, backup and widget tests |
 
 ### Phase 5 — After the MVP (one item approved)
 
 | ID | Task | Status |
 |---|---|---|
-| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 2) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 3) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
-Backup format 2: a header (`app`, `formatVersion`, `schemaVersion`,
+Backup format 3: a header (`app`, `formatVersion`, `schemaVersion`,
 `exportedAt`) and arrays `customAccountTypes`, `accounts`, `categories`,
 `transactions` and `monthlyPlans`. Format 2 added `planGroup` to
-categories; restore still accepts format 1, putting its categories in the
-Spending group. Money is integer minor units, dates
+categories and format 3 added `isBudgetAccount` to accounts; restore still
+accepts formats 1 and 2 (categories in the Spending group, no budget
+account). Money is integer minor units, dates
 `YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
 derived balances are left out. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;

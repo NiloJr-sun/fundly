@@ -4,12 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
+import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
 import 'package:fundly/features/spending/presentation/spending_providers.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'package:fundly/features/transactions/presentation/all_transactions_screen.dart';
 import 'package:fundly/features/transactions/presentation/transaction_tile.dart';
 
@@ -56,13 +58,29 @@ void main() {
     List<Category>? withCategories,
     List<MonthlyPlan> plans = const [],
     List<Transaction> transactions = const [],
+    bool bdoIsBudgetAccount = false,
   }) async {
+    final bdo = accounts[bdoId]!;
+    final withBudget = [
+      for (final account in accounts.values)
+        if (account.id == bdoId && bdoIsBudgetAccount)
+          Account(
+            id: bdo.id,
+            name: bdo.name,
+            type: bdo.type,
+            openingBalance: bdo.openingBalance,
+            createdAt: bdo.createdAt,
+            isBudgetAccount: true,
+          )
+        else
+          account,
+    ];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           todayProvider.overrideWithValue(CalendarDate(2026, 11, 16)),
           ...fakeAccounts(
-            accounts.values.toList(),
+            withBudget,
             categories: withCategories ?? allCategories,
             transactions: transactions,
             plans: plans,
@@ -371,35 +389,77 @@ void main() {
       find.descendant(of: card(), matching: find.textContaining('₱')).last,
     );
 
-    testWidgets("shows the month's income minus assigned, in green", (
+    TransactionDraft transferToWallet(int amount) => TransactionDraft(
+      type: TransactionType.transfer,
+      amount: php(amount),
+      date: CalendarDate(2026, 11, 16),
+      sourceAccountId: bdoId,
+      destinationAccountId: walletId,
+    );
+
+    testWidgets('without a budget account, says how to choose one', (
       tester,
     ) async {
       await pumpScreen(
         tester,
-        plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
         transactions: [saved(inflow(amount: 4000000), id: 1)],
       );
 
       expect(
-        find.descendant(
-          of: card(),
-          matching: find.text('Income ₱40,000.00 − Assigned ₱5,000.00'),
+        find.text(
+          "Choose a budget account in the Account tab to see what's ready "
+          'to assign.',
         ),
         findsOneWidget,
       );
-      final amount = amountText(tester);
-      expect(amount.data, '₱35,000.00');
-      final context = tester.element(card());
-      expect(amount.style?.color, AppColors.of(context).positive);
-      // It sits above the category sections.
       expect(
-        tester.getTopLeft(card()).dy,
-        lessThan(tester.getTopLeft(find.text('Spending')).dy),
+        find.descendant(of: card(), matching: find.textContaining('₱')),
+        findsNothing,
       );
+      final tile = tester.widget<ListTile>(card());
+      expect(tile.onTap, isNull);
     });
 
-    testWidgets('is red when more was assigned than received', (tester) async {
-      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+    testWidgets(
+      'shows money into the budget account minus assigned, in green',
+      (tester) async {
+        await pumpScreen(
+          tester,
+          bdoIsBudgetAccount: true,
+          plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
+          transactions: [
+            saved(inflow(amount: 4000000), id: 1),
+            // Sending money on to another account does not count twice.
+            saved(transferToWallet(500000), id: 2),
+          ],
+        );
+
+        expect(
+          find.descendant(
+            of: card(),
+            matching: find.text(
+              'Into BDO Savings ₱40,000.00 − Assigned ₱5,000.00',
+            ),
+          ),
+          findsOneWidget,
+        );
+        final amount = amountText(tester);
+        expect(amount.data, '₱35,000.00');
+        final context = tester.element(card());
+        expect(amount.style?.color, AppColors.of(context).positive);
+        expect(
+          tester.getTopLeft(card()).dy,
+          lessThan(tester.getTopLeft(find.text('Spending')).dy),
+        );
+      },
+    );
+
+    testWidgets('is red when more was assigned than came in', (tester) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        plans: [plan(foodId, 500000)],
+      );
 
       final amount = amountText(tester);
       expect(amount.data, '-₱5,000.00');
@@ -408,7 +468,7 @@ void main() {
     });
 
     testWidgets('zero uses the default colour', (tester) async {
-      await pumpScreen(tester);
+      await pumpScreen(tester, bdoIsBudgetAccount: true);
 
       final amount = amountText(tester);
       expect(amount.data, '₱0.00');
@@ -422,6 +482,7 @@ void main() {
     testWidgets('follows the selected month', (tester) async {
       await pumpScreen(
         tester,
+        bdoIsBudgetAccount: true,
         plans: [plan(foodId, 100000, month: october)],
         transactions: [saved(inflow(amount: 4000000), id: 1)],
       );
@@ -432,9 +493,10 @@ void main() {
       expect(amountText(tester).data, '-₱1,000.00');
     });
 
-    testWidgets("tapping it opens the month's transactions", (tester) async {
+    testWidgets("tapping it opens the budget account's month", (tester) async {
       await pumpScreen(
         tester,
+        bdoIsBudgetAccount: true,
         transactions: [saved(inflow(amount: 4000000), id: 1)],
       );
 
@@ -443,6 +505,7 @@ void main() {
 
       expect(find.byType(AllTransactionsScreen), findsOneWidget);
       expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
+      expect(find.textContaining('BDO Savings'), findsWidgets);
     });
   });
 

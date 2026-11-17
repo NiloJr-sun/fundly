@@ -326,9 +326,9 @@ them:
 -   Currency conversion.
 -   Full YNAB-style envelope budgeting and automatic money allocation.
     (Approved 2026-11-17: a manual Assigned amount per category per month,
-    and a Ready to assign figure: the month's income minus the total
-    Assigned. Automatic allocation and carry-over between months remain
-    out of scope.)
+    and a Ready to assign figure: money into the one budget account that
+    month minus the total Assigned. Automatic allocation and carry-over
+    between months remain out of scope.)
 
 Keep future extension in mind, but do not build abstractions for
 hypothetical requirements.
@@ -889,15 +889,32 @@ suggestions as approved decisions.
 
   2026-11-17              Ready to assign on      Confirmed
                           Plans (reprioritised    
-                          from §6): the month's   
-                          Inflow transactions     
-                          (any account, incl.     
-                          archived) minus the     
-                          total Assigned that     
-                          month (incl. archived   
-                          categories). No carry-  
-                          over; red when          
+                          from §6): money into    
+                          the budget account      
+                          that month (Inflows +   
+                          Transfers into it)      
+                          minus the total         
+                          Assigned that month     
+                          (incl. archived         
+                          categories). Transfers  
+                          out never count; no     
+                          carry-over; red when    
                           negative; tap opens     
-                          the month's             
-                          transactions            
+                          the budget account's    
+                          month. Replaces the     
+                          earlier all-income      
+                          rule                    
+
+  2026-11-17              Budget account (schema  Confirmed
+                          v9): exactly one or no  
+                          account; must be an     
+                          active Savings/Cash     
+                          account (custom asset   
+                          types incl.); set with  
+                          "Use as budget          
+                          account" in the form;   
+                          moving it asks first;   
+                          archiving removes it.   
+                          Backup format 3 adds    
+                          isBudgetAccount         
   -----------------------------------------------------------------------

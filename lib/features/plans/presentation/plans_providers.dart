@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/time/calendar_month.dart';
+import '../../accounts/presentation/accounts_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
 import '../../spending/presentation/spending_providers.dart';
 import '../../transactions/presentation/transactions_providers.dart';
@@ -76,17 +77,32 @@ final planSummariesProvider =
       };
     });
 
-/// The month's income minus everything assigned; see [readyToAssign].
+/// Money into the budget account in [month] minus everything assigned; see
+/// [readyToAssign]. `null` (as data) when no budget account is chosen.
 final readyToAssignProvider =
-    Provider.family<AsyncValue<ReadyToAssign>, CalendarMonth>((ref, month) {
+    Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {
+      final accounts = ref.watch(allAccountsProvider);
       final plans = ref.watch(monthPlansProvider(month));
       final transactions = ref.watch(allTransactionsProvider);
-      return switch ((plans, transactions)) {
-        (AsyncData(value: final p), AsyncData(value: final t)) => AsyncData(
-          readyToAssign(month: month, plans: p, transactions: t),
-        ),
-        (AsyncError(:final error, :final stackTrace), _) ||
+      return switch ((accounts, plans, transactions)) {
         (
+          AsyncData(value: final a),
+          AsyncData(value: final p),
+          AsyncData(value: final t),
+        ) =>
+          AsyncData(switch (a.where((account) => account.isBudgetAccount)) {
+            final budget when budget.isEmpty => null,
+            final budget => readyToAssign(
+              month: month,
+              budgetAccountId: budget.first.id,
+              plans: p,
+              transactions: t,
+            ),
+          }),
+        (AsyncError(:final error, :final stackTrace), _, _) ||
+        (_, AsyncError(:final error, :final stackTrace), _) ||
+        (
+          _,
           _,
           AsyncError(:final error, :final stackTrace),
         ) => AsyncError(error, stackTrace),

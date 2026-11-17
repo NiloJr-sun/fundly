@@ -5,13 +5,15 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/time/calendar_month.dart';
+import '../../accounts/presentation/accounts_providers.dart';
 import '../../transactions/domain/transaction_filter.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import 'plans_providers.dart';
 
-/// The month's income minus everything assigned, at the top of Plans.
-/// Green when money is left to assign, red when more was assigned than
-/// received. Tap to see the month's transactions.
+/// Money into the budget account this month minus everything assigned, at
+/// the top of Plans. Green when money is left to assign, red when more was
+/// assigned than came in. Tap to see the budget account's transactions that
+/// month. Without a budget account, says how to choose one.
 class ReadyToAssignCard extends ConsumerWidget {
   const ReadyToAssignCard({super.key, required this.month});
 
@@ -20,11 +22,12 @@ class ReadyToAssignCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final budgetAccount = ref.watch(budgetAccountProvider);
     final ready = ref.watch(readyToAssignProvider(month));
-    final Widget amount;
+    final Widget? amount;
     final Widget? details;
     switch (ready) {
-      case AsyncData(:final value):
+      case AsyncData(value: final value?) when budgetAccount != null:
         final money = value.amount;
         amount = Text(
           MoneyFormatter.format(money),
@@ -37,8 +40,14 @@ class ReadyToAssignCard extends ConsumerWidget {
           ),
         );
         details = Text(
-          'Income ${MoneyFormatter.format(value.income)} − '
-          'Assigned ${MoneyFormatter.format(value.assigned)}',
+          'Into ${budgetAccount.name} ${MoneyFormatter.format(value.moneyIn)}'
+          ' − Assigned ${MoneyFormatter.format(value.assigned)}',
+        );
+      case AsyncData():
+        amount = null;
+        details = const Text(
+          "Choose a budget account in the Account tab to see what's ready "
+          'to assign.',
         );
       case AsyncError():
         amount = const Text('—');
@@ -58,13 +67,18 @@ class ReadyToAssignCard extends ConsumerWidget {
         title: const Text('Ready to assign'),
         subtitle: details,
         trailing: amount,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => AllTransactionsScreen(
-              initialFilter: TransactionFilter(dateRange: month.dateRange),
-            ),
-          ),
-        ),
+        onTap: budgetAccount == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AllTransactionsScreen(
+                    initialFilter: TransactionFilter(
+                      dateRange: month.dateRange,
+                      accountId: budgetAccount.id,
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }

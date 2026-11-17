@@ -279,6 +279,7 @@ void main() {
   });
 
   group('readyToAssign', () {
+    // BDO Savings is the budget account in every test.
     TransactionDraft inflowOn(CalendarDate date, int amount, {int? to}) =>
         TransactionDraft(
           type: TransactionType.inflow,
@@ -289,9 +290,31 @@ void main() {
           destinationAccountId: to ?? bdoId,
         );
 
-    test("is the month's income minus everything assigned", () {
-      final ready = readyToAssign(
-        month: november,
+    TransactionDraft transferOn(
+      CalendarDate date,
+      int amount, {
+      required int from,
+      required int to,
+    }) => TransactionDraft(
+      type: TransactionType.transfer,
+      amount: php(amount),
+      date: date,
+      sourceAccountId: from,
+      destinationAccountId: to,
+    );
+
+    ReadyToAssign ready({
+      List<MonthlyPlan> plans = const [],
+      List<TransactionDraft> transactions = const [],
+    }) => readyToAssign(
+      month: november,
+      budgetAccountId: bdoId,
+      plans: plans,
+      transactions: transactions,
+    );
+
+    test('is money into the budget account minus everything assigned', () {
+      final result = ready(
         plans: [
           plan(foodId, 500000, assigned: 300000),
           plan(transportId, null, assigned: 200000),
@@ -299,36 +322,63 @@ void main() {
           plan(giftsId, 100000, assigned: 50000),
         ],
         transactions: [
-          inflowOn(CalendarDate(2026, 11, 15), 2000000),
-          inflowOn(CalendarDate(2026, 11, 30), 2000000, to: rcbcCardId),
+          inflowOn(CalendarDate(2026, 11, 15), 3000000),
+          // Moving money into the budget account funds it too.
+          transferOn(
+            CalendarDate(2026, 11, 16),
+            1000000,
+            from: walletId,
+            to: bdoId,
+          ),
         ],
       );
 
-      expect(ready.income, php(4000000));
-      expect(ready.assigned, php(550000));
-      expect(ready.amount, php(3450000));
+      expect(result.moneyIn, php(4000000));
+      expect(result.assigned, php(550000));
+      expect(result.amount, php(3450000));
     });
 
-    test('only counts inflows; spending, transfers and payments are not '
-        'income', () {
-      final ready = readyToAssign(
-        month: november,
-        plans: const [],
+    test('money leaving the budget account does not count', () {
+      final result = ready(
+        plans: [plan(foodId, null, assigned: 500000)],
         transactions: [
-          inflowOn(CalendarDate(2026, 11, 1), 100000),
+          inflowOn(CalendarDate(2026, 11, 1), 4000000),
+          // Disseminating per the plan: no double counting.
+          transferOn(
+            CalendarDate(2026, 11, 2),
+            500000,
+            from: bdoId,
+            to: walletId,
+          ),
           spending(amount: 999),
-          transfer(amount: 777),
           cardPayment(amount: 555),
         ],
       );
 
-      expect(ready.income, php(100000));
-      expect(ready.amount, php(100000));
+      expect(result.moneyIn, php(4000000));
+      expect(result.amount, php(3500000));
     });
 
-    test('ignores other months for income and plans (no carry-over)', () {
-      final ready = readyToAssign(
-        month: november,
+    test('income into other accounts does not count', () {
+      final result = ready(
+        transactions: [
+          inflowOn(CalendarDate(2026, 11, 1), 100000),
+          inflowOn(CalendarDate(2026, 11, 1), 700000, to: walletId),
+          inflowOn(CalendarDate(2026, 11, 1), 300000, to: rcbcCardId),
+          transferOn(
+            CalendarDate(2026, 11, 3),
+            200000,
+            from: bdoId,
+            to: walletId,
+          ),
+        ],
+      );
+
+      expect(result.moneyIn, php(100000));
+    });
+
+    test('ignores other months for money in and plans (no carry-over)', () {
+      final result = ready(
         plans: [
           plan(foodId, null, assigned: 100000),
           plan(foodId, null, assigned: 900000, month: CalendarMonth(2026, 10)),
@@ -340,30 +390,25 @@ void main() {
         ],
       );
 
-      expect(ready.income, php(300000));
-      expect(ready.assigned, php(100000));
-      expect(ready.amount, php(200000));
+      expect(result.moneyIn, php(300000));
+      expect(result.assigned, php(100000));
+      expect(result.amount, php(200000));
     });
 
-    test('is negative when more was assigned than received', () {
-      final ready = readyToAssign(
-        month: november,
+    test('is negative when more was assigned than came in', () {
+      final result = ready(
         plans: [plan(foodId, null, assigned: 300000)],
         transactions: [inflowOn(CalendarDate(2026, 11, 5), 100000)],
       );
 
-      expect(ready.amount, php(-200000));
+      expect(result.amount, php(-200000));
     });
 
-    test('is zero with no income and nothing assigned', () {
-      final ready = readyToAssign(
-        month: november,
-        plans: const [],
-        transactions: const [],
-      );
+    test('is zero with no money in and nothing assigned', () {
+      final result = ready();
 
-      expect(ready, ReadyToAssign(income: php(0), assigned: php(0)));
-      expect(ready.amount, php(0));
+      expect(result, ReadyToAssign(moneyIn: php(0), assigned: php(0)));
+      expect(result.amount, php(0));
     });
   });
 }

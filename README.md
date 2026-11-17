@@ -14,7 +14,9 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - **Account:** create Savings/Cash, Credit and Loan accounts with an opening
   balance; view details and history; rename; archive and unarchive. Archived
-  accounts with no transactions can be deleted permanently.
+  accounts with no transactions can be deleted permanently. One asset
+  account can be the budget account ("Use as budget account" in the
+  account form); money coming into it funds Ready to assign on Plans.
 - **Account types:** add your own types (e.g. E-wallet, Pay later) as an
   Asset or a Liability that works like a credit card or a loan; rename them,
   change their class while unused, and delete them when unused. The Account
@@ -33,7 +35,8 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   Available (Assigned − Activity) and a Funded / Underfunded status. Tap
   Target or Assigned to edit just that amount. Categories are listed in
   Spending, Savings and Liability sections (set the group in the category
-  form). At the top, Ready to assign shows the month's income minus
+  form). At the top, Ready to assign shows the money that came into the
+  budget account that month (inflows and transfers into it) minus
   everything assigned. Categories can be added, renamed, archived and
   deleted when unused.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
@@ -149,7 +152,7 @@ lib/
                             # format (version 1), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v8)
+drift_schemas/              # schema snapshot per version (currently v9)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added
