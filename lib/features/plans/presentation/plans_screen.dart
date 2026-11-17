@@ -178,34 +178,42 @@ class _PlanList extends ConsumerWidget {
         // One section per group that has rows, in [PlanGroup] order.
         for (final group in PlanGroup.values)
           if (rows.any((row) => row.category.planGroup == group))
-            ExpansionTile(
-              key: PageStorageKey('plans-group-${group.name}'),
-              initiallyExpanded: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              shape: const Border(),
-              collapsedShape: const Border(),
-              tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-              title: Semantics(
-                header: true,
-                child: Text(
-                  planGroupLabel(group),
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
+            Card(
+              key: ValueKey(group),
+              margin: const EdgeInsets.symmetric(
+                horizontal: Spacing.md,
+                vertical: Spacing.xs,
               ),
-              children: [
-                for (final summary in rows)
-                  if (summary.category.planGroup == group)
-                    PlanRow(
-                      summary: summary,
-                      onEdit: (field) => _edit(context, ref, summary, field),
-                      onActivityTap: () =>
-                          showPlanActivity(context, month, summary.category),
-                      onArchive: () =>
-                          archivePlan(context, ref, summary.category),
-                    ),
-              ],
+              clipBehavior: Clip.antiAlias,
+              child: ExpansionTile(
+                key: PageStorageKey('plans-group-${group.name}'),
+                initiallyExpanded: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                shape: const Border(),
+                collapsedShape: const Border(),
+                tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+                expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                title: Semantics(
+                  header: true,
+                  child: Text(
+                    planGroupLabel(group),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                children: [
+                  for (final summary in rows)
+                    if (summary.category.planGroup == group)
+                      PlanRow(
+                        summary: summary,
+                        onEdit: (field) => _edit(context, ref, summary, field),
+                        onActivityTap: () =>
+                            showPlanActivity(context, month, summary.category),
+                        onArchive: () =>
+                            archivePlan(context, ref, summary.category),
+                      ),
+                ],
+              ),
             ),
       ],
     );

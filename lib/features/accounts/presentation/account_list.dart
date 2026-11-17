@@ -117,19 +117,28 @@ class _AccountSection extends StatelessWidget {
     final headerStyle = theme.textTheme.titleSmall?.copyWith(
       color: theme.colorScheme.primary,
     );
-    return ExpansionTile(
-      initiallyExpanded: true,
-      controlAffinity: ListTileControlAffinity.leading,
-      // The section is a header, not a card: no borders when expanded.
-      shape: const Border(),
-      collapsedShape: const Border(),
-      tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-      title: Text(title, style: headerStyle),
-      trailing: total == null
-          ? const SizedBox.shrink()
-          // Green when positive, default colour otherwise, like the rows.
-          : BalanceText(total, style: theme.textTheme.titleSmall),
-      children: [for (final account in accounts) AccountTile(account: account)],
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        horizontal: Spacing.md,
+        vertical: Spacing.xs,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        controlAffinity: ListTileControlAffinity.leading,
+        // The section is a header, not a card: no borders when expanded.
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
+        title: Text(title, style: headerStyle),
+        trailing: total == null
+            ? const SizedBox.shrink()
+            // Green when positive, default colour otherwise, like the rows.
+            : BalanceText(total, style: theme.textTheme.titleSmall),
+        children: [
+          for (final account in accounts) AccountTile(account: account),
+        ],
+      ),
     );
   }
 }

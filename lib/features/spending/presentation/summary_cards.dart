@@ -34,6 +34,7 @@ class BalanceSummaryCards extends ConsumerWidget {
       children: [
         _SummaryCard(
           label: 'Available money',
+          icon: Icons.account_balance_wallet_outlined,
           value: value == null
               ? '…'
               : MoneyFormatter.format(value.availableMoney),
@@ -46,6 +47,7 @@ class BalanceSummaryCards extends ConsumerWidget {
             Expanded(
               child: _SummaryCard(
                 label: 'Credit owed',
+                icon: Icons.credit_card_outlined,
                 value: value == null ? '…' : formatOwed(value.creditOwed),
               ),
             ),
@@ -53,6 +55,7 @@ class BalanceSummaryCards extends ConsumerWidget {
             Expanded(
               child: _SummaryCard(
                 label: 'Loans owed',
+                icon: Icons.account_balance_outlined,
                 value: value == null ? '…' : formatOwed(value.loansOwed),
               ),
             ),
@@ -95,6 +98,7 @@ class PeriodTotalsCards extends ConsumerWidget {
               Expanded(
                 child: _SummaryCard(
                   label: 'Inflow',
+                  icon: Icons.south_west_rounded,
                   value: value == null
                       ? '…'
                       : '+${MoneyFormatter.format(value.inflow)}',
@@ -104,6 +108,7 @@ class PeriodTotalsCards extends ConsumerWidget {
               Expanded(
                 child: _SummaryCard(
                   label: 'Spending',
+                  icon: Icons.north_east_rounded,
                   value: value == null
                       ? '…'
                       : '-${MoneyFormatter.format(value.spending)}',
@@ -120,12 +125,14 @@ class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.label,
     required this.value,
+    required this.icon,
     this.caption,
     this.large = false,
   });
 
   final String label;
   final String value;
+  final IconData icon;
   final String? caption;
   final bool large;
 
@@ -139,15 +146,33 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: textTheme.labelLarge),
-            const SizedBox(height: Spacing.xs),
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
             FittedBox(
               // Large amounts shrink instead of overflowing a narrow card.
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: large ? textTheme.headlineMedium : textTheme.titleLarge,
+                style: (large ? textTheme.headlineMedium : textTheme.titleLarge)
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             if (caption != null) ...[

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/app.dart';
 import 'package:fundly/app/home_shell.dart';
+import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/app/theme/app_theme.dart';
 
 import '../../helpers/provider_overrides.dart';
@@ -48,6 +49,11 @@ void main() {
           (colors.onSurface, theme.cardTheme.color!),
           (colors.onPrimary, colors.primary),
           (colors.onPrimaryContainer, colors.primaryContainer),
+          for (final background
+              in theme.extension<AppColors>()!.backdrop.colors) ...[
+            (colors.onSurface, background),
+            (colors.onSurfaceVariant, background),
+          ],
         ]) {
           final a = foreground.computeLuminance();
           final b = background.computeLuminance();

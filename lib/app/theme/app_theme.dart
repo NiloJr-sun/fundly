@@ -65,10 +65,7 @@ abstract final class AppTheme {
         color: panel,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: colors.outlineVariant),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: panel,
@@ -105,10 +102,10 @@ abstract final class AppTheme {
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: colors.primaryContainer,
-        foregroundColor: colors.onPrimaryContainer,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: panel,
+        foregroundColor: colors.primary,
+        elevation: 2,
+        shape: const StadiumBorder(),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: panel,
