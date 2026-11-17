@@ -5,7 +5,7 @@
 > Nothing in section 2 is approved until it is recorded in the CLAUDE.md
 > Product Decisions Log.
 
-Last updated: 2026-11-16
+Last updated: 2026-11-17
 
 ---
 
@@ -14,10 +14,10 @@ Last updated: 2026-11-16
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Roadmap | **Phases 0–4 done** (MVP delivered). Phase 5 is a proposal, not approved |
+| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5 is a proposal, not approved |
 | Platforms | iOS (primary), Android best-effort |
 | Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl; dev: drift_dev, build_runner, flutter_lints |
-| Database | Schema **v5**: accounts, categories, transactions, monthly_plans; migration tests for every step |
+| Database | Schema **v7**: accounts, custom_account_types, categories, transactions, monthly_plans; migration tests for every step |
 | Git | One commit per task on `main` |
 | Tests | Domain, repository, migration and widget tests; all passing |
 
@@ -38,7 +38,7 @@ G10 remains open (see Phase 5).
 | G4 | **Loan** accounts have no defined transactions. How is a loan payment recorded? | Phase 2 | Treat a loan payment as a **Transfer** from an asset account to the loan. Interest is out of scope. |
 | G5 | Is a Transfer into a Credit account allowed, or must it be a Credit Card Payment? | Phase 2 | Destination is Credit → it must be a **Credit Card Payment**. Transfer is for all other pairs. Both have the same balance effect, so this only affects labels and reports. |
 | G6 | Currency is per account, but conversion is out of scope. | Phase 1–3 | MVP: every account is **PHP**. Store the currency code, but don't allow changing it yet. Transfers between accounts with different currencies are rejected. |
-| G7 | Behaviour of archived accounts is not defined. | Phase 1 | Archived accounts can't receive new transactions, are hidden from pickers and the summary, and keep their history. **Accounts that have transactions are never hard-deleted.** |
+| G7 | Behaviour of archived accounts is not defined. | Phase 1 | Archived accounts can't receive new transactions, are hidden from pickers and the summary, and keep their history. **Accounts that have transactions are never hard-deleted.** Archived accounts with no transactions can be deleted permanently (2026-11-17). |
 | G8 | Can a transaction's **type** change when it is edited? | Phase 2 | MVP: **no**. To change the type, delete the transaction and create a new one. This keeps validation simple. |
 | G9 | The transaction **date** and the created/updated **timestamps** are mixed together. | Phase 2 | The transaction date is a **local calendar date** (no time). Audit timestamps are UTC instants. |
 | G10 | The app stores data on the device only, so uninstalling or losing the phone **loses all data**. | Long-term | Not in scope yet. Suggest a JSON export/backup as the first item after the MVP (see Phase 5). |
@@ -214,6 +214,23 @@ Done *when you can compare a monthly plan with actual spending*.
 | 4.3 | Plan calculator: planned vs actual (Spending only) vs remaining, per category per month | M | Unit tests |
 | 4.4 | Plans screen: month selector, a row per category, edit the planned amount | M | Widget test |
 
+### Post-MVP refinements — ✅ Done (2026-11-17)
+
+Requested by the product owner after the MVP and logged in CLAUDE.md §11.
+
+| ID | Task | Schema | Done when |
+|---|---|---|---|
+| R.1 | Spending tab list follows the period: 10 newest overall for This month, only that period's 10 newest otherwise; See all opens All transactions pre-filtered | — | Widget tests |
+| R.2 | Plans: Target (optional), Assigned, Activity, Available and Funded / Underfunded status per category per month; existing plans became Target = Assigned | v6 | Migration, calculator and widget tests |
+| R.3 | Plans quick edit: tap Target or Assigned to edit just that amount; Activity opens that month's transactions | — | Widget tests |
+| R.4 | Zero amounts in input fields are placeholders, not values | — | Widget tests |
+| R.5 | Account tab: collapsible section per account type with its total | — | Widget tests |
+| R.6 | Balances shown signed: owed as -₱X in the default colour, positive in green (`AppColors` theme extension) | — | Widget tests |
+| R.7 | Custom account types, each an Asset or a Liability that works like a credit card or a loan; accounts store the base type, so no rule changes | v7 | Migration and repository tests |
+| R.8 | Account tab grouped under Assets and Liabilities; type dropdown with "New account type…" in the account form | — | Widget tests |
+| R.9 | Account types screen: rename, change class while unused, delete when unused | — | Repository and widget tests |
+| R.10 | Archived accounts with no transactions can be deleted permanently (button below Unarchive account) | — | Repository and widget tests |
+
 ### Phase 5 — Proposed for after the MVP (not approved)
 
 - JSON export/import for backup (addresses G10). **Recommended first.**
@@ -248,6 +265,7 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 
 ## 6. Next step
 
-The MVP roadmap is delivered. Nothing further is approved. The product owner
+The MVP roadmap and the post-MVP refinements are delivered. Nothing further
+is approved. The product owner
 decides what comes next; the recommended candidate is the JSON backup/export
 in Phase 5 (G10). Plan it like any other task: propose, approve, then build.
