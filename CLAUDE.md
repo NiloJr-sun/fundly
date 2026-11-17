@@ -512,10 +512,10 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements and Phase 5 task 5.1 (JSON backup export) are also done.
-The rest of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal
-only (import/restore recommended next); the product owner must approve any
-next step before work starts.
+refinements and Phase 5 tasks 5.1 and 5.2 (JSON backup export and
+restore) are also done. The rest of Phase 5 in
+[docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
+must approve any next step before work starts.
 
 Every schema change must bump `schemaVersion`, run
 `dart run drift_dev make-migrations`, and ship with a data-integrity
@@ -850,4 +850,23 @@ suggestions as approved decisions.
                           no derived balances.    
                           Export only; import     
                           is a separate task      
+
+  2026-11-17              JSON restore (Phase 5   Confirmed
+                          task 5.2): Account tab  
+                          ⋮ → Restore from        
+                          backup; file chosen in  
+                          Files (file_picker      
+                          added). Replaces all    
+                          data, no merge. The     
+                          whole file is checked   
+                          first (format version,  
+                          types, references,      
+                          app rules; archived     
+                          records may hold        
+                          history); confirm shows 
+                          backup vs current       
+                          counts with an option   
+                          to export first; one    
+                          transaction, so a       
+                          failure changes nothing 
   -----------------------------------------------------------------------

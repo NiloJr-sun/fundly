@@ -7,7 +7,7 @@ spending. It works offline and keeps all data on the device.
 - Delivery plan and open decisions: [docs/ROADMAP.md](docs/ROADMAP.md)
 
 **Status:** Phases 0–4 are complete, so the MVP is delivered, along with
-post-MVP refinements and the first Phase 5 item, JSON backup export. Nothing
+post-MVP refinements and Phase 5's JSON backup export and restore. Nothing
 else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Features
@@ -35,8 +35,10 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   renamed, archived and deleted when unused.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
-  is plain text, so keep it private. Restoring from a backup is not built
-  yet.
+  is plain text, so keep it private. ⋮ → Restore from backup picks a backup
+  in Files, checks it fully, shows what it holds next to what's on the phone
+  (with an option to export the current data first), and on confirmation
+  replaces all data in one step. An invalid file changes nothing.
 
 ## Requirements
 
@@ -140,8 +142,9 @@ lib/
       domain/               # MonthlyPlan, plan summaries
       presentation/         # Plans tab
     backup/
-      data/                 # BackupExporter: JSON backup format (version 1)
-      presentation/         # Export backup action and share sheet
+      data/                 # BackupExporter and BackupImporter: JSON backup
+                            # format (version 1), checks, replace-all restore
+      presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
 drift_schemas/              # schema snapshot per version (currently v7)
 ```
