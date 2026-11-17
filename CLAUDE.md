@@ -788,4 +788,51 @@ suggestions as approved decisions.
                           name. Accounts switch   
                           only between types      
                           with the same base      
+
+  2026-11-17              Archived accounts with  Confirmed
+                          no transactions can be  
+                          permanently deleted     
+                          from their detail       
+                          screen (button below    
+                          Unarchive account),     
+                          after confirming.       
+                          Accounts with           
+                          transactions stay       
+                          archived only (G7       
+                          unchanged); the data    
+                          layer enforces it       
+
+  2026-11-17              Balances display        Confirmed
+                          signed: owed amounts as 
+                          -₱X in the default      
+                          colour, positive ones   
+                          green (theme colour,    
+                          lighter in dark mode),  
+                          zero default. Replaces  
+                          the "Owed ₱X" display;  
+                          storage (D1) unchanged  
+
+  2026-11-17              Account tab: each       Confirmed
+                          account type is a       
+                          collapsible section,    
+                          expanded by default,    
+                          with its total on the   
+                          right; the Archived     
+                          accounts screen shows   
+                          no totals               
+
+  2026-11-17              Zero amounts in input   Confirmed
+                          fields show 0.00 as a   
+                          placeholder, not a      
+                          value; an empty field   
+                          saves zero (a zero      
+                          Target left empty       
+                          stays a zero Target)    
+
+  2026-11-17              Plans: tap Target or    Confirmed
+                          Assigned to edit just   
+                          that amount, the row    
+                          to edit both, and       
+                          Activity to open that   
+                          month's transactions    
   -----------------------------------------------------------------------

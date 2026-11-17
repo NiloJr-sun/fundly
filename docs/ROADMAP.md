@@ -62,8 +62,9 @@ For D6 the answer was iOS; the theme seed is teal.
   Loan) are usually ≤ 0, and a negative balance means money owed.
 - The user always enters a **positive** amount. The transaction type and the
   account role decide the sign.
-- The UI shows liabilities as "Owed ₱X" (absolute value). The domain layer
-  never flips signs per account type.
+- The UI shows balances signed: money owed as "-₱X" in the default text
+  colour, positive balances in green (changed 2026-11-17 from "Owed ₱X";
+  see CLAUDE.md §11). The domain layer never flips signs per account type.
 
 | Transaction | Source account | Destination account | Counted as spending | Counted as inflow |
 |---|---|---|---|---|
