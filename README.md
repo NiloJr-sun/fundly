@@ -13,7 +13,14 @@ proposal.
 ## Features
 
 - **Account:** create Savings/Cash, Credit and Loan accounts with an opening
-  balance; view details and history; rename; archive and unarchive.
+  balance; view details and history; rename; archive and unarchive. Archived
+  accounts with no transactions can be deleted permanently.
+- **Account types:** add your own types (e.g. E-wallet, Pay later) as an
+  Asset or a Liability that works like a credit card or a loan; rename them,
+  change their class while unused, and delete them when unused. The Account
+  tab groups accounts under Assets and Liabilities, with a collapsible
+  section and total per type. Balances show signed: money owed as -₱X,
+  positive amounts in green.
 - **Transactions:** record Spending, Inflow, Transfer and Credit Card
   Payment; edit and delete them. Balances are always derived from the opening
   balance plus transactions.
@@ -23,8 +30,9 @@ proposal.
   list filtered by date, account and category.
 - **Plans:** per spending category per month, a Target and an Assigned
   amount, the month's Activity (spending; tap to see the transactions),
-  Available (Assigned − Activity) and a Funded / Underfunded status. Categories can be added, renamed, archived
-  and deleted when unused.
+  Available (Assigned − Activity) and a Funded / Underfunded status. Tap
+  Target or Assigned to edit just that amount. Categories can be added,
+  renamed, archived and deleted when unused.
 
 ## Requirements
 
@@ -99,7 +107,7 @@ lib/
   app/
     app.dart                # MaterialApp and theme setup
     home_shell.dart         # bottom navigation: Spending, Plans, Account
-    theme/                  # AppTheme (light/dark), Spacing
+    theme/                  # AppTheme (light/dark), AppColors, Spacing
   core/
     database/               # drift AppDatabase (SQLite), migrations, converters
     formatting/             # MoneyFormatter, DateFormatter
@@ -108,9 +116,10 @@ lib/
     widgets/                # shared widgets
   features/
     accounts/
-      data/                 # table, repository
-      domain/               # Account, AccountType, rules, balance calculator
-      presentation/
+      data/                 # accounts and custom types tables, repositories
+      domain/               # Account, AccountType, custom types, grouping,
+                            # rules, balance calculator
+      presentation/         # Account tab, account form, Account types screen
     categories/
       data/                 # table, seeded defaults, repository
       domain/               # Category, CategoryKind, rules
@@ -136,7 +145,8 @@ when a feature needs them.
 ## Conventions
 
 - Colours and text styles come from `Theme.of(context)`. Don't hard-code
-  them in widgets.
+  them in widgets. Colours the colour scheme lacks (such as the green for
+  positive balances) live in the `AppColors` theme extension.
 - Use `Spacing` constants (`xs`–`xl`) for padding and gaps.
 - Keep business rules out of widgets.
 - Money is stored as integer minor units (centavos for PHP), never `double`.
