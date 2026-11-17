@@ -76,7 +76,7 @@ class _PlanList extends ConsumerWidget {
       context,
       categoryName: summary.category.name,
       monthLabel: DateFormatter.monthYear(month.year, month.month),
-      current: summary.planned,
+      current: summary.target,
       currencyCode: Account.defaultCurrency,
     );
     if (choice == null || !context.mounted) return;
@@ -116,7 +116,7 @@ class _PlanList extends ConsumerWidget {
             summary: summary,
             // A new plan cannot use an archived category; an existing one
             // can still be changed or cleared.
-            onTap: summary.category.isArchived && summary.planned == null
+            onTap: summary.category.isArchived && !summary.hasPlan
                 ? null
                 : () => _edit(context, ref, summary),
           ),

@@ -25,16 +25,23 @@ void main() {
   ];
 
   var nextPlanId = 1;
-  MonthlyPlan plan(int categoryId, int amount, {CalendarMonth? month}) =>
-      MonthlyPlan(
-        id: nextPlanId++,
-        month: month ?? november,
-        categoryId: categoryId,
-        target: php(amount),
-        assigned: php(amount),
-        createdAt: DateTime.utc(2026, 11, 1),
-        updatedAt: DateTime.utc(2026, 11, 1),
-      );
+
+  /// A plan with [target] (`null` for none) and [assigned], which defaults
+  /// to the target, or zero without one.
+  MonthlyPlan plan(
+    int categoryId,
+    int? target, {
+    int? assigned,
+    CalendarMonth? month,
+  }) => MonthlyPlan(
+    id: nextPlanId++,
+    month: month ?? november,
+    categoryId: categoryId,
+    target: target == null ? null : php(target),
+    assigned: php(assigned ?? target ?? 0),
+    createdAt: DateTime.utc(2026, 11, 1),
+    updatedAt: DateTime.utc(2026, 11, 1),
+  );
 
   List<CategoryPlanSummary> summarize({
     List<MonthlyPlan> plans = const [],
@@ -54,16 +61,19 @@ void main() {
 
     expect(rows.map((row) => row.category.id), [foodId, transportId]);
     for (final row in rows) {
-      expect(row.planned, isNull);
-      expect(row.actual, php(0));
-      expect(row.remaining, isNull);
+      expect(row.hasPlan, isFalse);
+      expect(row.target, isNull);
+      expect(row.assigned, php(0));
+      expect(row.activity, php(0));
+      expect(row.available, php(0));
+      expect(row.status, isNull);
       expect(row.isOverspent, isFalse);
     }
   });
 
-  test('remaining is planned minus actual', () {
+  test('available is assigned minus activity', () {
     final rows = summarize(
-      plans: [plan(foodId, 500000)],
+      plans: [plan(foodId, 500000, assigned: 250000)],
       transactions: [
         spending(amount: 120000),
         spending(amount: 30000, from: rcbcCardId),
@@ -71,47 +81,93 @@ void main() {
     );
 
     final food = rowFor(rows, foodId);
-    expect(food.planned, php(500000));
-    expect(food.actual, php(150000));
-    expect(food.remaining, php(350000));
+    expect(food.hasPlan, isTrue);
+    expect(food.target, php(500000));
+    expect(food.assigned, php(250000));
+    expect(food.activity, php(150000));
+    expect(food.available, php(100000));
     expect(food.isOverspent, isFalse);
   });
 
-  test('overspending gives a negative remaining', () {
-    final rows = summarize(
-      plans: [plan(foodId, 100000)],
-      transactions: [spending(amount: 125000)],
+  test('spending more than assigned gives a negative available', () {
+    final food = rowFor(
+      summarize(
+        plans: [plan(foodId, 100000)],
+        transactions: [spending(amount: 125000)],
+      ),
+      foodId,
     );
 
-    final food = rowFor(rows, foodId);
-    expect(food.remaining, php(-25000));
+    expect(food.available, php(-25000));
     expect(food.isOverspent, isTrue);
   });
 
-  test('a zero plan with no spending is on track; any spending is over', () {
-    final onTrack = rowFor(summarize(plans: [plan(foodId, 0)]), foodId);
-    expect(onTrack.remaining, php(0));
-    expect(onTrack.isOverspent, isFalse);
-
-    final over = rowFor(
-      summarize(plans: [plan(foodId, 0)], transactions: [spending(amount: 1)]),
-      foodId,
-    );
-    expect(over.isOverspent, isTrue);
-  });
-
-  test('spending without a plan still shows its actual', () {
+  test('spending with nothing assigned is overspent', () {
     final food = rowFor(
       summarize(transactions: [spending(amount: 80000)]),
       foodId,
     );
 
-    expect(food.planned, isNull);
-    expect(food.actual, php(80000));
-    expect(food.remaining, isNull);
+    expect(food.hasPlan, isFalse);
+    expect(food.activity, php(80000));
+    expect(food.available, php(-80000));
+    expect(food.isOverspent, isTrue);
   });
 
-  test('actual is per category', () {
+  group('status', () {
+    PlanStatus? statusOf(MonthlyPlan plan) =>
+        rowFor(summarize(plans: [plan]), plan.categoryId).status;
+
+    test('funded when assigned equals or exceeds the target', () {
+      expect(statusOf(plan(foodId, 500000)), PlanStatus.funded);
+      expect(
+        statusOf(plan(foodId, 500000, assigned: 600000)),
+        PlanStatus.funded,
+      );
+    });
+
+    test('underfunded when assigned is below the target', () {
+      expect(
+        statusOf(plan(foodId, 500000, assigned: 499999)),
+        PlanStatus.underfunded,
+      );
+      expect(
+        statusOf(plan(foodId, 500000, assigned: 0)),
+        PlanStatus.underfunded,
+      );
+    });
+
+    test('a zero target is funded with nothing assigned', () {
+      expect(statusOf(plan(foodId, 0)), PlanStatus.funded);
+    });
+
+    test('none without a target, even with money assigned', () {
+      final food = rowFor(
+        summarize(plans: [plan(foodId, null, assigned: 100000)]),
+        foodId,
+      );
+
+      expect(food.hasPlan, isTrue);
+      expect(food.target, isNull);
+      expect(food.status, isNull);
+      expect(food.available, php(100000));
+    });
+
+    test('spending does not change it; overspending shows in available', () {
+      final food = rowFor(
+        summarize(
+          plans: [plan(foodId, 100000)],
+          transactions: [spending(amount: 125000)],
+        ),
+        foodId,
+      );
+
+      expect(food.status, PlanStatus.funded);
+      expect(food.isOverspent, isTrue);
+    });
+  });
+
+  test('activity is per category', () {
     final rows = summarize(
       transactions: [
         spending(amount: 100000),
@@ -119,11 +175,11 @@ void main() {
       ],
     );
 
-    expect(rowFor(rows, foodId).actual, php(100000));
-    expect(rowFor(rows, transportId).actual, php(40000));
+    expect(rowFor(rows, foodId).activity, php(100000));
+    expect(rowFor(rows, transportId).activity, php(40000));
   });
 
-  group('Rule 5: only Spending counts toward actual', () {
+  group('Rule 5: only Spending counts toward activity', () {
     test('inflows, refunds, transfers and card payments are ignored', () {
       final rows = summarize(
         plans: [plan(foodId, 500000)],
@@ -138,7 +194,7 @@ void main() {
         ],
       );
 
-      expect(rowFor(rows, foodId).actual, php(100000));
+      expect(rowFor(rows, foodId).activity, php(100000));
     });
 
     test('Rule 6: a card purchase counts once; paying the card adds none', () {
@@ -149,7 +205,7 @@ void main() {
         ],
       );
 
-      expect(rowFor(rows, foodId).actual, php(300000));
+      expect(rowFor(rows, foodId).activity, php(300000));
     });
   });
 
@@ -164,7 +220,7 @@ void main() {
         ],
       );
 
-      expect(rowFor(rows, foodId).actual, php(110));
+      expect(rowFor(rows, foodId).activity, php(110));
     });
 
     test('plans for other months are ignored', () {
@@ -176,8 +232,8 @@ void main() {
         ],
       );
 
-      expect(rowFor(rows, foodId).planned, php(500000));
-      expect(rowFor(rows, transportId).planned, isNull);
+      expect(rowFor(rows, foodId).target, php(500000));
+      expect(rowFor(rows, transportId).target, isNull);
     });
   });
 
@@ -198,7 +254,7 @@ void main() {
     test('an archived category with a plan this month is shown', () {
       final gifts = rowFor(summarize(plans: [plan(giftsId, 200000)]), giftsId);
 
-      expect(gifts.planned, php(200000));
+      expect(gifts.target, php(200000));
     });
 
     test('an archived category with spending this month is shown', () {
@@ -207,7 +263,7 @@ void main() {
         giftsId,
       );
 
-      expect(gifts.actual, php(5000));
+      expect(gifts.activity, php(5000));
     });
 
     test('archived spending outside the month does not show the row', () {

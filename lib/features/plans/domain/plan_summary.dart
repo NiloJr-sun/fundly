@@ -7,50 +7,80 @@ import '../../categories/domain/category.dart';
 import '../../transactions/domain/transaction.dart';
 import 'monthly_plan.dart';
 
-/// Planned versus actual spending for one category in one month.
+/// Whether a category's assigned money covers its target.
+enum PlanStatus {
+  /// Assigned is at least the target.
+  funded,
+
+  /// Assigned is below the target.
+  underfunded,
+}
+
+/// One category's target, assigned, activity and available amounts in one
+/// month. Nothing carries over between months.
 @immutable
 final class CategoryPlanSummary {
   const CategoryPlanSummary({
     required this.category,
-    required this.planned,
-    required this.actual,
+    required this.target,
+    required this.assigned,
+    required this.activity,
+    required this.hasPlan,
   });
 
   final Category category;
 
-  /// `null` when the category has no plan this month.
-  final Money? planned;
+  /// The month's budget, or `null` when no target is set.
+  final Money? target;
+
+  /// Money set aside this month; zero when nothing is assigned.
+  final Money assigned;
 
   /// Spending dated in the month with this category. Zero or positive.
-  final Money actual;
+  final Money activity;
 
-  /// `planned - actual`; negative when overspent. `null` without a plan.
-  Money? get remaining {
-    final planned = this.planned;
-    return planned == null ? null : planned - actual;
+  /// Whether a plan is saved for this month (a target, an assigned amount,
+  /// or both).
+  final bool hasPlan;
+
+  /// `assigned - activity`; negative when more was spent than assigned.
+  Money get available => assigned - activity;
+
+  bool get isOverspent => available.isNegative;
+
+  /// [PlanStatus.funded] when assigned covers the target,
+  /// [PlanStatus.underfunded] when it does not, and `null` without a target.
+  /// Spending does not change the status; overspending shows in [available].
+  PlanStatus? get status {
+    final target = this.target;
+    if (target == null) return null;
+    return assigned.minorUnits >= target.minorUnits
+        ? PlanStatus.funded
+        : PlanStatus.underfunded;
   }
-
-  bool get isOverspent => remaining?.isNegative ?? false;
 
   @override
   bool operator ==(Object other) =>
       other is CategoryPlanSummary &&
       other.category == category &&
-      other.planned == planned &&
-      other.actual == actual;
+      other.target == target &&
+      other.assigned == assigned &&
+      other.activity == activity &&
+      other.hasPlan == hasPlan;
 
   @override
-  int get hashCode => Object.hash(category, planned, actual);
+  int get hashCode =>
+      Object.hash(category, target, assigned, activity, hasPlan);
 
   @override
   String toString() =>
-      'CategoryPlanSummary(${category.name}, planned: $planned, '
-      'actual: $actual)';
+      'CategoryPlanSummary(${category.name}, target: $target, '
+      'assigned: $assigned, activity: $activity)';
 }
 
 /// One row per spending category for [month], in the order of [categories].
 ///
-/// - Actual counts only Spending transactions dated in the month (rule 5):
+/// - Activity counts only Spending transactions dated in the month (rule 5):
 ///   transfers, card payments and inflows (including refunds) are ignored.
 ///   Card purchases are Spending, so they count once (rule 6).
 /// - Rows cover active spending categories, plus any archived spending
@@ -64,13 +94,13 @@ List<CategoryPlanSummary> planSummaries({
   required Iterable<TransactionDraft> transactions,
   String currencyCode = Account.defaultCurrency,
 }) {
-  final plannedByCategory = {
+  final planByCategory = {
     for (final plan in plans)
-      if (plan.month == month) plan.categoryId: plan.target,
+      if (plan.month == month) plan.categoryId: plan,
   };
 
   final range = month.dateRange;
-  final actualByCategory = <int, Money>{};
+  final activityByCategory = <int, Money>{};
   for (final transaction in transactions) {
     final categoryId = transaction.categoryId;
     if (!transaction.type.countsAsSpending ||
@@ -78,8 +108,8 @@ List<CategoryPlanSummary> planSummaries({
         !range.contains(transaction.date)) {
       continue;
     }
-    actualByCategory[categoryId] =
-        (actualByCategory[categoryId] ?? Money.zero(currencyCode)) +
+    activityByCategory[categoryId] =
+        (activityByCategory[categoryId] ?? Money.zero(currencyCode)) +
         transaction.amount;
   }
 
@@ -87,12 +117,15 @@ List<CategoryPlanSummary> planSummaries({
     for (final category in categories)
       if (category.kind == CategoryKind.spending &&
           (!category.isArchived ||
-              plannedByCategory.containsKey(category.id) ||
-              actualByCategory.containsKey(category.id)))
+              planByCategory.containsKey(category.id) ||
+              activityByCategory.containsKey(category.id)))
         CategoryPlanSummary(
           category: category,
-          planned: plannedByCategory[category.id],
-          actual: actualByCategory[category.id] ?? Money.zero(currencyCode),
+          target: planByCategory[category.id]?.target,
+          assigned:
+              planByCategory[category.id]?.assigned ?? Money.zero(currencyCode),
+          activity: activityByCategory[category.id] ?? Money.zero(currencyCode),
+          hasPlan: planByCategory.containsKey(category.id),
         ),
   ];
 }

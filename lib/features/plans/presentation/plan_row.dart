@@ -14,9 +14,11 @@ class PlanRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final planned = summary.planned;
-    final remaining = summary.remaining;
-    final spent = MoneyFormatter.format(summary.actual);
+    // Until the row shows every column, the target reads as "planned" and
+    // available as "left".
+    final planned = summary.target;
+    final remaining = planned == null ? null : summary.available;
+    final spent = MoneyFormatter.format(summary.activity);
     final category = summary.category;
 
     return ListTile(

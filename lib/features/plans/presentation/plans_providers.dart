@@ -41,7 +41,8 @@ final monthPlansProvider =
       (ref, month) => ref.watch(planRepositoryProvider).watchForMonth(month),
     );
 
-/// Planned vs actual vs remaining per spending category for one month.
+/// Target, assigned, activity, available and status per spending category
+/// for one month.
 final planSummariesProvider =
     Provider.family<AsyncValue<List<CategoryPlanSummary>>, CalendarMonth>((
       ref,
