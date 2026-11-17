@@ -75,3 +75,21 @@ final planSummariesProvider =
         _ => const AsyncLoading(),
       };
     });
+
+/// The month's income minus everything assigned; see [readyToAssign].
+final readyToAssignProvider =
+    Provider.family<AsyncValue<ReadyToAssign>, CalendarMonth>((ref, month) {
+      final plans = ref.watch(monthPlansProvider(month));
+      final transactions = ref.watch(allTransactionsProvider);
+      return switch ((plans, transactions)) {
+        (AsyncData(value: final p), AsyncData(value: final t)) => AsyncData(
+          readyToAssign(month: month, plans: p, transactions: t),
+        ),
+        (AsyncError(:final error, :final stackTrace), _) ||
+        (
+          _,
+          AsyncError(:final error, :final stackTrace),
+        ) => AsyncError(error, stackTrace),
+        _ => const AsyncLoading(),
+      };
+    });

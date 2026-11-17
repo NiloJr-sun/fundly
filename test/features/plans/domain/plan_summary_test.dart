@@ -5,6 +5,7 @@ import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/domain/plan_summary.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 import '../../transactions/domain/transaction_fixtures.dart';
 
@@ -274,6 +275,95 @@ void main() {
       );
 
       expect(rows.map((row) => row.category.id), isNot(contains(giftsId)));
+    });
+  });
+
+  group('readyToAssign', () {
+    TransactionDraft inflowOn(CalendarDate date, int amount, {int? to}) =>
+        TransactionDraft(
+          type: TransactionType.inflow,
+          amount: php(amount),
+          date: date,
+          payee: 'Employer',
+          categoryId: salaryId,
+          destinationAccountId: to ?? bdoId,
+        );
+
+    test("is the month's income minus everything assigned", () {
+      final ready = readyToAssign(
+        month: november,
+        plans: [
+          plan(foodId, 500000, assigned: 300000),
+          plan(transportId, null, assigned: 200000),
+          // Archived categories' assigned money counts too.
+          plan(giftsId, 100000, assigned: 50000),
+        ],
+        transactions: [
+          inflowOn(CalendarDate(2026, 11, 15), 2000000),
+          inflowOn(CalendarDate(2026, 11, 30), 2000000, to: rcbcCardId),
+        ],
+      );
+
+      expect(ready.income, php(4000000));
+      expect(ready.assigned, php(550000));
+      expect(ready.amount, php(3450000));
+    });
+
+    test('only counts inflows; spending, transfers and payments are not '
+        'income', () {
+      final ready = readyToAssign(
+        month: november,
+        plans: const [],
+        transactions: [
+          inflowOn(CalendarDate(2026, 11, 1), 100000),
+          spending(amount: 999),
+          transfer(amount: 777),
+          cardPayment(amount: 555),
+        ],
+      );
+
+      expect(ready.income, php(100000));
+      expect(ready.amount, php(100000));
+    });
+
+    test('ignores other months for income and plans (no carry-over)', () {
+      final ready = readyToAssign(
+        month: november,
+        plans: [
+          plan(foodId, null, assigned: 100000),
+          plan(foodId, null, assigned: 900000, month: CalendarMonth(2026, 10)),
+        ],
+        transactions: [
+          inflowOn(CalendarDate(2026, 10, 31), 5000000),
+          inflowOn(CalendarDate(2026, 12, 1), 5000000),
+          inflowOn(CalendarDate(2026, 11, 1), 300000),
+        ],
+      );
+
+      expect(ready.income, php(300000));
+      expect(ready.assigned, php(100000));
+      expect(ready.amount, php(200000));
+    });
+
+    test('is negative when more was assigned than received', () {
+      final ready = readyToAssign(
+        month: november,
+        plans: [plan(foodId, null, assigned: 300000)],
+        transactions: [inflowOn(CalendarDate(2026, 11, 5), 100000)],
+      );
+
+      expect(ready.amount, php(-200000));
+    });
+
+    test('is zero with no income and nothing assigned', () {
+      final ready = readyToAssign(
+        month: november,
+        plans: const [],
+        transactions: const [],
+      );
+
+      expect(ready, ReadyToAssign(income: php(0), assigned: php(0)));
+      expect(ready.amount, php(0));
     });
   });
 }

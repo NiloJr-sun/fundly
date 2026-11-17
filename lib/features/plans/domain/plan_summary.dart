@@ -4,6 +4,7 @@ import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
+import '../../spending/domain/period_summary.dart';
 import '../../transactions/domain/transaction.dart';
 import 'monthly_plan.dart';
 
@@ -128,4 +129,59 @@ List<CategoryPlanSummary> planSummaries({
           hasPlan: planByCategory.containsKey(category.id),
         ),
   ];
+}
+
+/// The month's income set against what has been assigned to categories.
+@immutable
+final class ReadyToAssign {
+  const ReadyToAssign({required this.income, required this.assigned});
+
+  /// Inflow transactions dated in the month.
+  final Money income;
+
+  /// Every category's assigned amount for the month.
+  final Money assigned;
+
+  /// `income - assigned`; negative when more was assigned than received.
+  Money get amount => income - assigned;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadyToAssign &&
+      other.income == income &&
+      other.assigned == assigned;
+
+  @override
+  int get hashCode => Object.hash(income, assigned);
+
+  @override
+  String toString() => 'ReadyToAssign(income: $income, assigned: $assigned)';
+}
+
+/// How much of [month]'s income is not yet assigned (CLAUDE.md §11).
+///
+/// - Income is every Inflow transaction dated in the month, into any account
+///   (archived ones included), as in the Spending tab's inflow total.
+///   Transfers and card payments never count.
+/// - Assigned is the total of every plan's assigned amount for the month,
+///   archived categories included.
+/// - Nothing carries over between months.
+ReadyToAssign readyToAssign({
+  required CalendarMonth month,
+  required Iterable<MonthlyPlan> plans,
+  required Iterable<TransactionDraft> transactions,
+  String currencyCode = Account.defaultCurrency,
+}) {
+  var assigned = Money.zero(currencyCode);
+  for (final plan in plans) {
+    if (plan.month == month) assigned += plan.assigned;
+  }
+  return ReadyToAssign(
+    income: periodTotals(
+      transactions,
+      month.dateRange,
+      currencyCode: currencyCode,
+    ).inflow,
+    assigned: assigned,
+  );
 }

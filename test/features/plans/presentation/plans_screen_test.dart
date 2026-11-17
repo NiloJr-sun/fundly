@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/categories/domain/category.dart';
@@ -357,6 +358,91 @@ void main() {
             .map((tile) => tile.transaction.payee),
         ['Jollibee'],
       );
+    });
+  });
+
+  group('Ready to assign', () {
+    Finder card() => find.ancestor(
+      of: find.text('Ready to assign'),
+      matching: find.byType(ListTile),
+    );
+
+    Text amountText(WidgetTester tester) => tester.widget<Text>(
+      find.descendant(of: card(), matching: find.textContaining('₱')).last,
+    );
+
+    testWidgets("shows the month's income minus assigned, in green", (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
+        transactions: [saved(inflow(amount: 4000000), id: 1)],
+      );
+
+      expect(
+        find.descendant(
+          of: card(),
+          matching: find.text('Income ₱40,000.00 − Assigned ₱5,000.00'),
+        ),
+        findsOneWidget,
+      );
+      final amount = amountText(tester);
+      expect(amount.data, '₱35,000.00');
+      final context = tester.element(card());
+      expect(amount.style?.color, AppColors.of(context).positive);
+      // It sits above the category sections.
+      expect(
+        tester.getTopLeft(card()).dy,
+        lessThan(tester.getTopLeft(find.text('Spending')).dy),
+      );
+    });
+
+    testWidgets('is red when more was assigned than received', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      final amount = amountText(tester);
+      expect(amount.data, '-₱5,000.00');
+      final context = tester.element(card());
+      expect(amount.style?.color, Theme.of(context).colorScheme.error);
+    });
+
+    testWidgets('zero uses the default colour', (tester) async {
+      await pumpScreen(tester);
+
+      final amount = amountText(tester);
+      expect(amount.data, '₱0.00');
+      final context = tester.element(card());
+      expect(
+        amount.style?.color,
+        Theme.of(context).textTheme.titleLarge?.color,
+      );
+    });
+
+    testWidgets('follows the selected month', (tester) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 100000, month: october)],
+        transactions: [saved(inflow(amount: 4000000), id: 1)],
+      );
+
+      await tester.tap(find.byTooltip('Previous month'));
+      await tester.pumpAndSettle();
+
+      expect(amountText(tester).data, '-₱1,000.00');
+    });
+
+    testWidgets("tapping it opens the month's transactions", (tester) async {
+      await pumpScreen(
+        tester,
+        transactions: [saved(inflow(amount: 4000000), id: 1)],
+      );
+
+      await tester.tap(find.text('Ready to assign'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AllTransactionsScreen), findsOneWidget);
+      expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
     });
   });
 

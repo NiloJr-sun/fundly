@@ -17,10 +17,11 @@ import 'plan_editor_dialog.dart';
 import 'plan_month_bar.dart';
 import 'plan_row.dart';
 import 'plans_providers.dart';
+import 'ready_to_assign_card.dart';
 
 /// The Plans tab: target, assigned, activity, available and status per
 /// spending category for one month, in Spending, Savings and Liability
-/// sections. Tap a row to edit its target and assigned amount, or tap either
+/// sections, below the month's Ready to assign. Tap a row to edit its target and assigned amount, or tap either
 /// amount to edit just that one; tap Activity to see its transactions.
 class PlansScreen extends ConsumerWidget {
   const PlansScreen({super.key});
@@ -128,6 +129,7 @@ class _PlanList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       children: [
+        ReadyToAssignCard(month: month),
         // One section per group that has rows, in [PlanGroup] order.
         for (final group in PlanGroup.values)
           if (rows.any((row) => row.category.planGroup == group)) ...[
