@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/time/calendar_date.dart';
 import '../../../core/time/date_range.dart';
 import '../../accounts/presentation/accounts_providers.dart';
+import '../../transactions/domain/transaction.dart';
+import '../../transactions/domain/transaction_filter.dart';
 import '../../transactions/presentation/transactions_providers.dart';
 import '../domain/period_summary.dart';
 
@@ -60,6 +62,25 @@ final selectedPeriodProvider =
 /// The date range of [selectedPeriodProvider].
 final currentPeriodProvider = Provider<DateRange>(
   (ref) => ref.watch(selectedPeriodProvider).range,
+);
+
+/// The dates the Spending tab's transaction list is limited to: `null` for
+/// This month (the newest transactions overall), otherwise the selected
+/// period.
+final transactionListRangeProvider = Provider<DateRange?>((ref) {
+  final selection = ref.watch(selectedPeriodProvider);
+  return selection.preset == PeriodPreset.thisMonth ? null : selection.range;
+});
+
+/// Transactions for the Spending tab's list, newest first, limited to
+/// [transactionListRangeProvider].
+final spendingTabTransactionsProvider = Provider<AsyncValue<List<Transaction>>>(
+  (ref) {
+    final filter = TransactionFilter(
+      dateRange: ref.watch(transactionListRangeProvider),
+    );
+    return ref.watch(allTransactionsProvider).whenData(filter.apply);
+  },
 );
 
 /// Available money, Credit owed and Loans owed (D2).

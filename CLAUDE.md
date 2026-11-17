@@ -723,4 +723,16 @@ suggestions as approved decisions.
                           that month; no whole-   
                           month totals yet (tasks 
                           4.3, 4.4)               
+
+  2026-11-17              Spending tab list: This Confirmed
+                          month shows the 10      
+                          newest transactions     
+                          overall; Last month and 
+                          custom ranges show only 
+                          that period's 10        
+                          newest. See all opens   
+                          All transactions pre-   
+                          filtered to that period 
+                          (unfiltered for This    
+                          month)                  
   -----------------------------------------------------------------------

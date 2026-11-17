@@ -126,7 +126,7 @@ void main() {
     );
 
     container
-        .read(transactionFilterProvider.notifier)
+        .read(transactionFilterProvider(TransactionFilter.none).notifier)
         .set(
           TransactionFilter(
             dateRange: DateRange(

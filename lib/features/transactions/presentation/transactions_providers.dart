@@ -23,23 +23,30 @@ final transactionByIdProvider = StreamProvider.family<Transaction?, int>(
   (ref, id) => ref.watch(transactionRepositoryProvider).watchById(id),
 );
 
-/// Filters for the all-transactions list. Resets each time the list is
-/// opened.
+/// Filters for the all-transactions list. Each time the list is opened, the
+/// filters reset to the filter the list was opened with (the family key).
 class TransactionFilterNotifier extends Notifier<TransactionFilter> {
+  TransactionFilterNotifier(this.initial);
+
+  final TransactionFilter initial;
+
   @override
-  TransactionFilter build() => TransactionFilter.none;
+  TransactionFilter build() => initial;
 
   void set(TransactionFilter filter) => state = filter;
 }
 
-final transactionFilterProvider =
-    NotifierProvider.autoDispose<TransactionFilterNotifier, TransactionFilter>(
+/// Keyed by the filter the list was opened with; usually
+/// [TransactionFilter.none].
+final transactionFilterProvider = NotifierProvider.autoDispose
+    .family<TransactionFilterNotifier, TransactionFilter, TransactionFilter>(
       TransactionFilterNotifier.new,
     );
 
-/// Every transaction matching [transactionFilterProvider], newest first.
-final filteredTransactionsProvider =
-    Provider.autoDispose<AsyncValue<List<Transaction>>>((ref) {
-      final filter = ref.watch(transactionFilterProvider);
+/// Every transaction matching [transactionFilterProvider] for the same key,
+/// newest first.
+final filteredTransactionsProvider = Provider.autoDispose
+    .family<AsyncValue<List<Transaction>>, TransactionFilter>((ref, initial) {
+      final filter = ref.watch(transactionFilterProvider(initial));
       return ref.watch(allTransactionsProvider).whenData(filter.apply);
     });

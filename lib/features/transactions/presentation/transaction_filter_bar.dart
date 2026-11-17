@@ -13,12 +13,20 @@ import 'transactions_providers.dart';
 
 /// Date, account and category filter chips for the all-transactions list.
 class TransactionFilterBar extends ConsumerWidget {
-  const TransactionFilterBar({super.key});
+  const TransactionFilterBar({
+    super.key,
+    this.initialFilter = TransactionFilter.none,
+  });
+
+  /// The key of [transactionFilterProvider] this bar edits.
+  final TransactionFilter initialFilter;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filter = ref.watch(transactionFilterProvider);
-    final notifier = ref.read(transactionFilterProvider.notifier);
+    final filter = ref.watch(transactionFilterProvider(initialFilter));
+    final notifier = ref.read(
+      transactionFilterProvider(initialFilter).notifier,
+    );
     final accounts = ref.watch(accountsByIdProvider);
     final categories = ref.watch(categoriesByIdProvider);
     final range = filter.dateRange;
@@ -31,7 +39,7 @@ class TransactionFilterBar extends ConsumerWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _FilterChip(
-            label: range == null ? 'Any date' : _rangeLabel(range),
+            label: range == null ? 'Any date' : DateFormatter.dateRange(range),
             icon: Icons.date_range_outlined,
             active: range != null,
             onPressed: () => _pickDateRange(context, ref),
@@ -61,12 +69,10 @@ class TransactionFilterBar extends ConsumerWidget {
     );
   }
 
-  static String _rangeLabel(DateRange range) =>
-      '${DateFormatter.localDate(range.start.toLocalDateTime())} – '
-      '${DateFormatter.localDate(range.end.toLocalDateTime())}';
-
   Future<void> _pickDateRange(BuildContext context, WidgetRef ref) async {
-    final current = ref.read(transactionFilterProvider).dateRange;
+    final current = ref
+        .read(transactionFilterProvider(initialFilter))
+        .dateRange;
     final picked = await showDateRangePicker(
       context: context,
       initialDateRange: current == null
@@ -79,10 +85,12 @@ class TransactionFilterBar extends ConsumerWidget {
       lastDate: DateTime(2100),
     );
     if (picked == null) return;
-    final notifier = ref.read(transactionFilterProvider.notifier);
+    final notifier = ref.read(
+      transactionFilterProvider(initialFilter).notifier,
+    );
     notifier.set(
       ref
-          .read(transactionFilterProvider)
+          .read(transactionFilterProvider(initialFilter))
           .withDateRange(
             DateRange(
               CalendarDate.fromDateTime(picked.start),
@@ -106,8 +114,12 @@ class TransactionFilterBar extends ConsumerWidget {
         ),
     ]);
     if (picked == null) return;
-    final notifier = ref.read(transactionFilterProvider.notifier);
-    notifier.set(ref.read(transactionFilterProvider).withAccount(picked));
+    final notifier = ref.read(
+      transactionFilterProvider(initialFilter).notifier,
+    );
+    notifier.set(
+      ref.read(transactionFilterProvider(initialFilter)).withAccount(picked),
+    );
   }
 
   Future<void> _pickCategory(BuildContext context, WidgetRef ref) async {
@@ -122,8 +134,12 @@ class TransactionFilterBar extends ConsumerWidget {
         ),
     ]);
     if (picked == null) return;
-    final notifier = ref.read(transactionFilterProvider.notifier);
-    notifier.set(ref.read(transactionFilterProvider).withCategory(picked));
+    final notifier = ref.read(
+      transactionFilterProvider(initialFilter).notifier,
+    );
+    notifier.set(
+      ref.read(transactionFilterProvider(initialFilter)).withCategory(picked),
+    );
   }
 }
 
