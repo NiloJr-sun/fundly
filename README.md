@@ -31,8 +31,11 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Plans:** per spending category per month, a Target and an Assigned
   amount, the month's Activity (spending; tap to see the transactions),
   Available (Assigned − Activity) and a Funded / Underfunded status. Tap
-  Target or Assigned to edit just that amount. Categories can be added,
-  renamed, archived and deleted when unused.
+  Target or Assigned to edit just that amount. Categories are listed in
+  Spending, Savings and Liability sections (set the group in the category
+  form). At the top, Ready to assign shows the month's income minus
+  everything assigned. Categories can be added, renamed, archived and
+  deleted when unused.
 - **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
   is plain text, so keep it private. ⋮ → Restore from backup picks a backup
@@ -140,13 +143,13 @@ lib/
     plans/
       data/                 # monthly_plans table, repository
       domain/               # MonthlyPlan, plan summaries
-      presentation/         # Plans tab
+      presentation/         # Plans tab, Ready to assign card
     backup/
       data/                 # BackupExporter and BackupImporter: JSON backup
                             # format (version 1), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v7)
+drift_schemas/              # schema snapshot per version (currently v8)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

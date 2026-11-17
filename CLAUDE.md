@@ -325,9 +325,10 @@ them:
 -   Notifications.
 -   Currency conversion.
 -   Full YNAB-style envelope budgeting and automatic money allocation.
-    (Approved 2026-11-17: a manual Assigned amount per category per month.
-    A "ready to assign" income pool, automatic allocation and carry-over
-    between months remain out of scope.)
+    (Approved 2026-11-17: a manual Assigned amount per category per month,
+    and a Ready to assign figure: the month's income minus the total
+    Assigned. Automatic allocation and carry-over between months remain
+    out of scope.)
 
 Keep future extension in mind, but do not build abstractions for
 hypothetical requirements.
@@ -869,4 +870,34 @@ suggestions as approved decisions.
                           to export first; one    
                           transaction, so a       
                           failure changes nothing 
+
+  2026-11-17              Plans groups (schema    Confirmed
+                          v8): each spending      
+                          category is in a fixed  
+                          group: Spending         
+                          (default), Savings or   
+                          Liability, set in the   
+                          category form; Plans    
+                          shows a section per     
+                          group (empty hidden).   
+                          Grouping only, no math  
+                          change; inflow          
+                          categories have none.   
+                          Backup format 2 adds    
+                          planGroup; format 1     
+                          still restores          
+
+  2026-11-17              Ready to assign on      Confirmed
+                          Plans (reprioritised    
+                          from §6): the month's   
+                          Inflow transactions     
+                          (any account, incl.     
+                          archived) minus the     
+                          total Assigned that     
+                          month (incl. archived   
+                          categories). No carry-  
+                          over; red when          
+                          negative; tap opens     
+                          the month's             
+                          transactions            
   -----------------------------------------------------------------------
