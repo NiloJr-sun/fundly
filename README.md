@@ -127,6 +127,12 @@ flutter devices          # list available devices
 flutter run              # run on the only device, or pick one with -d <id>
 ```
 
+For Chrome, run `flutter run -d chrome --web-port=7357`.
+Browser data is stored locally for that origin, separately from iOS data.
+Keep the same port between runs to reuse it. Clearing site data removes it.
+The files `web/sqlite3.wasm` and `web/drift_worker.js` come from the official
+Drift 2.35.4 release; update both together when upgrading Drift.
+
 ## Before each commit
 
 Run all three. Each must finish with no issues and no failures.

@@ -13,6 +13,7 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    - web/**
   language:
     # Catch implicit dynamic casts and missing type information early; this
     # matters for money and persistence code where a wrong type is a bug.

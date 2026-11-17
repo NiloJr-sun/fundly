@@ -36,9 +36,18 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  /// Opens the on-device database, or [executor] if given (e.g. in tests).
+  /// Opens the platform's local database, or [executor] if given in tests.
   AppDatabase([QueryExecutor? executor])
-    : super(executor ?? driftDatabase(name: 'fundly'));
+    : super(
+        executor ??
+            driftDatabase(
+              name: 'fundly',
+              web: DriftWebOptions(
+                sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+                driftWorker: Uri.parse('drift_worker.js'),
+              ),
+            ),
+      );
 
   @override
   int get schemaVersion => 12;
