@@ -13,6 +13,7 @@ void main() {
       final theme = AppTheme.light();
 
       expect(theme.brightness, Brightness.light);
+      expect(theme.useMaterial3, isTrue);
       expect(
         theme.colorScheme.primary,
         ColorScheme.fromSeed(seedColor: AppTheme.seedColor).primary,
@@ -23,6 +24,7 @@ void main() {
       final theme = AppTheme.dark();
 
       expect(theme.brightness, Brightness.dark);
+      expect(theme.useMaterial3, isTrue);
       expect(
         theme.colorScheme.primary,
         ColorScheme.fromSeed(
@@ -32,6 +34,30 @@ void main() {
       );
     });
   });
+
+  for (final brightness in Brightness.values) {
+    test(
+      '${brightness.name} theme keeps readable text on teal and neutral surfaces',
+      () {
+        final theme = brightness == Brightness.light
+            ? AppTheme.light()
+            : AppTheme.dark();
+        final colors = theme.colorScheme;
+        for (final (foreground, background) in [
+          (colors.onSurface, colors.surface),
+          (colors.onSurface, theme.cardTheme.color!),
+          (colors.onPrimary, colors.primary),
+          (colors.onPrimaryContainer, colors.primaryContainer),
+        ]) {
+          final a = foreground.computeLuminance();
+          final b = background.computeLuminance();
+          final lighter = a > b ? a : b;
+          final darker = a > b ? b : a;
+          expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(4.5));
+        }
+      },
+    );
+  }
 
   group('FundlyApp follows the device brightness', () {
     Future<Brightness> pumpWithDeviceBrightness(
