@@ -143,4 +143,30 @@ void main() {
       expect(currentBalance(account, const []), php(-100), reason: type.name);
     }
   });
+
+  group('totalsByType', () {
+    test('sums signed balances per type, zero for types without accounts', () {
+      final totals = totalsByType(
+        [bdo, wallet, rcbc],
+        {bdoId: php(1500000), walletId: php(250050), rcbcCardId: php(-300000)},
+      );
+
+      expect(totals, {
+        AccountType.savingsCash: php(1750050),
+        AccountType.credit: php(-300000),
+        AccountType.loan: php(0),
+      });
+    });
+
+    test('only counts the given accounts; missing balances are skipped', () {
+      final totals = totalsByType(
+        [bdo, carLoan],
+        {bdoId: php(100), walletId: php(999), rcbcCardId: php(-999)},
+      );
+
+      expect(totals[AccountType.savingsCash], php(100));
+      expect(totals[AccountType.credit], php(0));
+      expect(totals[AccountType.loan], php(0));
+    });
+  });
 }

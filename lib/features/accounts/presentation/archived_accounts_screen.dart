@@ -18,7 +18,10 @@ class ArchivedAccountsScreen extends ConsumerWidget {
         AsyncData(value: final list) when list.isEmpty => const CenteredMessage(
           'No archived accounts.',
         ),
-        AsyncData(value: final list) => AccountList(accounts: list),
+        AsyncData(value: final list) => AccountList(
+          accounts: list,
+          showTotals: false,
+        ),
         AsyncError() => const CenteredMessage(
           'Archived accounts could not be loaded.',
         ),

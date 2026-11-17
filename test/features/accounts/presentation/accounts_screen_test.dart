@@ -80,6 +80,59 @@ void main() {
     );
   });
 
+  group('sections', () {
+    final mixed = [
+      account(1, 'BDO Savings', AccountType.savingsCash, 1500000),
+      account(2, 'Cash Wallet', AccountType.savingsCash, 250050),
+      account(3, 'RCBC Credit', AccountType.credit, -300000),
+      account(4, 'BPI Credit', AccountType.credit, -125000),
+      account(5, 'Car Loan', AccountType.loan, -5000000),
+    ];
+
+    /// The text on the right of the [title] section header.
+    String headerTotal(WidgetTester tester, String title) {
+      final header = find.ancestor(
+        of: find.text(title),
+        matching: find.byType(ListTile),
+      );
+      return tester
+          .widgetList<Text>(
+            find.descendant(of: header, matching: find.byType(Text)),
+          )
+          .map((text) => text.data)
+          .singleWhere((data) => data != title)!;
+    }
+
+    testWidgets('show the total of their accounts', (tester) async {
+      await pumpScreen(tester, fakeAccounts(mixed));
+      await tester.pumpAndSettle();
+
+      expect(headerTotal(tester, 'Savings / Cash'), '₱17,500.50');
+      expect(headerTotal(tester, 'Credit'), 'Owed ₱4,250.00');
+      expect(headerTotal(tester, 'Loan'), 'Owed ₱50,000.00');
+    });
+
+    testWidgets('collapse and expand, keeping the total', (tester) async {
+      await pumpScreen(tester, fakeAccounts(mixed));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Credit'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RCBC Credit'), findsNothing);
+      expect(find.text('BPI Credit'), findsNothing);
+      expect(headerTotal(tester, 'Credit'), 'Owed ₱4,250.00');
+      // Other sections stay open.
+      expect(find.text('BDO Savings'), findsOneWidget);
+      expect(find.text('Car Loan'), findsOneWidget);
+
+      await tester.tap(find.text('Credit'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RCBC Credit'), findsOneWidget);
+    });
+  });
+
   testWidgets('omits sections for types with no accounts', (tester) async {
     await pumpScreen(
       tester,

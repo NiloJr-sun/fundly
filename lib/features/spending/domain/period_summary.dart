@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/date_range.dart';
 import '../../accounts/domain/account.dart';
+import '../../accounts/domain/account_balance.dart';
 import '../../accounts/domain/account_type.dart';
 import '../../transactions/domain/transaction.dart';
 
@@ -78,14 +79,11 @@ BalanceSummary summarizeBalances(
   Map<int, Money> balances, {
   String currencyCode = Account.defaultCurrency,
 }) {
-  final totals = {
-    for (final type in AccountType.values) type: Money.zero(currencyCode),
-  };
-  for (final account in accounts) {
-    final balance = balances[account.id];
-    if (account.isArchived || balance == null) continue;
-    totals[account.type] = totals[account.type]! + balance;
-  }
+  final totals = totalsByType(
+    accounts.where((account) => !account.isArchived),
+    balances,
+    currencyCode: currencyCode,
+  );
   // Liability balances are negative when money is owed (D1); show owed
   // amounts as positive.
   return BalanceSummary(

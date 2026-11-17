@@ -36,6 +36,9 @@ void main() {
 
     expect(find.byType(ArchivedAccountsScreen), findsOneWidget);
     expect(find.text('Old Wallet'), findsOneWidget);
+    // Archived accounts are left out of totals (G7): only the row's
+    // balance shows.
+    expect(find.text('₱0.00'), findsOneWidget);
 
     await tester.tap(find.text('Old Wallet'));
     await tester.pumpAndSettle();

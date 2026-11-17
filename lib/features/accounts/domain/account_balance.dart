@@ -2,6 +2,7 @@ import '../../../core/money/money.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_effects.dart';
 import 'account.dart';
+import 'account_type.dart';
 
 /// Current balances for [accounts], keyed by account id.
 ///
@@ -26,6 +27,25 @@ Map<int, Money> balancesFor(
     }
   }
   return balances;
+}
+
+/// The signed total (D1) of [balances] for [accounts], per account type.
+/// Every type is present, zero when it has no accounts. Accounts missing
+/// from [balances] are skipped; callers choose which accounts to include.
+Map<AccountType, Money> totalsByType(
+  Iterable<Account> accounts,
+  Map<int, Money> balances, {
+  String currencyCode = Account.defaultCurrency,
+}) {
+  final totals = {
+    for (final type in AccountType.values) type: Money.zero(currencyCode),
+  };
+  for (final account in accounts) {
+    final balance = balances[account.id];
+    if (balance == null) continue;
+    totals[account.type] = totals[account.type]! + balance;
+  }
+  return totals;
 }
 
 /// Current balance of one [account]; see [balancesFor].
