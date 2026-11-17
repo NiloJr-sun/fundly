@@ -120,6 +120,25 @@ void main() {
     expect(find.text('Savings / Cash'), findsNothing);
   });
 
+  testWidgets('shows when it is the budget account', (tester) async {
+    await openDetail(
+      tester,
+      fakeAccounts([
+        Account(
+          id: 1,
+          name: 'BDO Savings',
+          type: AccountType.savingsCash,
+          openingBalance: const Money.zero('PHP'),
+          createdAt: DateTime.utc(2026, 11, 17),
+          isBudgetAccount: true,
+        ),
+      ]),
+    );
+
+    expect(find.text('Budget account'), findsOneWidget);
+    expect(find.text('Funds Ready to assign'), findsOneWidget);
+  });
+
   testWidgets('says so when the account does not exist', (tester) async {
     await openDetail(tester, noAccounts(), accountId: 42);
 

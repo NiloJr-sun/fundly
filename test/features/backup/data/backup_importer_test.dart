@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
@@ -28,6 +29,8 @@ Matcher throwsProblem(BackupImportProblem problem, [String detail = '']) =>
     );
 
 void main() {
+  // Each test uses two in-memory databases (source and target) on purpose.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   final now = DateTime.utc(2026, 11, 17, 9);
 
   /// Fills [database] with one of everything, including archived records

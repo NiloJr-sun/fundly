@@ -145,6 +145,7 @@ class AccountTile extends ConsumerWidget {
     final balance = ref.watch(accountBalancesProvider).value?[account.id];
     return ListTile(
       title: Text(account.name),
+      subtitle: account.isBudgetAccount ? const Text('Budget account') : null,
       trailing: balance == null
           ? const Text('…')
           : BalanceText(balance, style: Theme.of(context).textTheme.bodyLarge),

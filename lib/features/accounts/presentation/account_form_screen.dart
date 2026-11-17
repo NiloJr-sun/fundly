@@ -41,6 +41,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   late AccountTypeChoice _choice;
+  late bool _isBudgetAccount;
   bool _isSaving = false;
 
   /// A type created from the dropdown, shown until the custom types list
@@ -53,6 +54,12 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
 
   AccountType get _type => _choice.type;
 
+  /// Only an active Savings/Cash account (custom asset types included) can
+  /// be the budget account.
+  bool get _canBeBudgetAccount =>
+      _type == AccountType.savingsCash &&
+      !(widget.account?.isArchived ?? false);
+
   /// Error returned by the repository on the last save, shown on the name
   /// field until the name changes.
   String? _nameSaveError;
@@ -63,6 +70,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   void initState() {
     super.initState();
     final account = widget.account;
+    _isBudgetAccount = account?.isBudgetAccount ?? false;
     _choice = (
       type: account?.type ?? AccountType.savingsCash,
       customTypeId: account?.customTypeId,
@@ -107,24 +115,34 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     setState(() => _nameSaveError = null);
     if (!_formKey.currentState!.validate()) return;
 
+    final account = widget.account;
+    final wantsBudget = _isBudgetAccount && _canBeBudgetAccount;
+    final wasBudget = account?.isBudgetAccount ?? false;
+    if (wantsBudget && !wasBudget && !await _confirmMoveBudgetAccount()) {
+      return;
+    }
+    if (!mounted) return;
+
     setState(() => _isSaving = true);
     final repository = ref.read(accountRepositoryProvider);
-    final account = widget.account;
     try {
-      if (account == null) {
-        await repository.create(
-          name: _nameController.text,
-          type: _type,
-          enteredOpeningAmount: _parseAmount(),
-          customTypeId: _choice.customTypeId,
-        );
-      } else {
-        await repository.update(
-          account.id,
-          name: _nameController.text,
-          enteredOpeningAmount: _parseAmount(),
-          customType: (id: _choice.customTypeId),
-        );
+      final saved = account == null
+          ? await repository.create(
+              name: _nameController.text,
+              type: _type,
+              enteredOpeningAmount: _parseAmount(),
+              customTypeId: _choice.customTypeId,
+            )
+          : await repository.update(
+              account.id,
+              name: _nameController.text,
+              enteredOpeningAmount: _parseAmount(),
+              customType: (id: _choice.customTypeId),
+            );
+      if (wantsBudget && !wasBudget) {
+        await repository.setBudgetAccount(saved.id);
+      } else if (!wantsBudget && wasBudget) {
+        await repository.clearBudgetAccount();
       }
       if (mounted) Navigator.of(context).pop();
     } on AccountValidationException catch (exception) {
@@ -141,6 +159,35 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  /// When another account is the budget account, asks before moving the tag.
+  /// Returns whether to go ahead.
+  Future<bool> _confirmMoveBudgetAccount() async {
+    final current = ref.read(budgetAccountProvider);
+    if (current == null || current.id == widget.account?.id) return true;
+    final name = _nameController.text.trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change budget account?'),
+        content: Text(
+          'Make $name your budget account instead of ${current.name}? '
+          'Ready to assign on Plans will count money coming into $name.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _addType() async {
@@ -169,6 +216,8 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   @override
   Widget build(BuildContext context) {
     final customTypes = _customTypes();
+    // Keeps the current budget account loaded for the save confirmation.
+    ref.watch(budgetAccountProvider);
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit account' : 'New account')),
       body: Form(
@@ -213,6 +262,19 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
               ),
               validator: _validateAmount,
             ),
+            if (_canBeBudgetAccount) ...[
+              const SizedBox(height: Spacing.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Use as budget account'),
+                subtitle: const Text(
+                  'Money coming into it funds Ready to assign on Plans. '
+                  'Only one account can be the budget account.',
+                ),
+                value: _isBudgetAccount,
+                onChanged: (value) => setState(() => _isBudgetAccount = value),
+              ),
+            ],
             const SizedBox(height: Spacing.xl),
             FilledButton(
               onPressed: _isSaving ? null : _save,

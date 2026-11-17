@@ -9,6 +9,7 @@ import 'package:fundly/features/accounts/domain/account_validation_exception.dar
 import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type_validation_exception.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
+import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 
 import '../../../helpers/fake_account_repository.dart';
 import '../../../helpers/fake_custom_account_type_repository.dart';
@@ -30,12 +31,16 @@ void main() {
     WidgetTester tester, {
     Account? account,
     List<CustomAccountType> customTypes = const [],
+    List<Account> existingAccounts = const [],
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           accountRepositoryProvider.overrideWithValue(repository),
           ...fakeCustomAccountTypes(customTypes, repository: typeRepository),
+          allAccountsProvider.overrideWith(
+            (ref) => Stream.value(existingAccounts),
+          ),
         ],
         child: MaterialApp(
           home: Builder(
@@ -366,6 +371,117 @@ void main() {
       await tapSave(tester, 'Save changes');
 
       expect(repository.updated.single.customType, (id: null));
+    });
+  });
+
+  group('budget account', () {
+    final bdo = Account(
+      id: 1,
+      name: 'BDO Savings',
+      type: AccountType.savingsCash,
+      openingBalance: php(0),
+      createdAt: DateTime.utc(2026, 11, 16),
+      isBudgetAccount: true,
+    );
+    final bpi = Account(
+      id: 2,
+      name: 'BPI Savings',
+      type: AccountType.savingsCash,
+      openingBalance: php(0),
+      createdAt: DateTime.utc(2026, 11, 16),
+    );
+    Finder budgetSwitch() =>
+        find.widgetWithText(SwitchListTile, 'Use as budget account');
+
+    testWidgets('only asset accounts offer the switch', (tester) async {
+      await openForm(tester);
+      expect(budgetSwitch(), findsOneWidget);
+
+      await selectType(tester, 'Credit');
+      expect(budgetSwitch(), findsNothing);
+      await selectType(tester, 'Loan');
+      expect(budgetSwitch(), findsNothing);
+    });
+
+    testWidgets('a new account can be the first budget account', (
+      tester,
+    ) async {
+      await openForm(tester);
+
+      await tester.enterText(field('Name'), 'BDO Savings');
+      await tester.tap(budgetSwitch());
+      await tester.pumpAndSettle();
+      await tapSave(tester, 'Add account');
+
+      expect(find.byType(AlertDialog), findsNothing, reason: 'nothing to move');
+      expect(repository.budgetAccountChanges, [repository.created.length]);
+      expect(find.byType(AccountFormScreen), findsNothing);
+    });
+
+    testWidgets('moving the tag asks first, then moves it', (tester) async {
+      await openForm(tester, account: bpi, existingAccounts: [bdo, bpi]);
+
+      await tester.tap(budgetSwitch());
+      await tester.pumpAndSettle();
+      await tapSave(tester, 'Save changes');
+
+      expect(
+        find.text(
+          'Make BPI Savings your budget account instead of BDO Savings? '
+          'Ready to assign on Plans will count money coming into BPI '
+          'Savings.',
+        ),
+        findsOneWidget,
+      );
+      expect(repository.updated, isEmpty, reason: 'nothing saved yet');
+
+      await tester.tap(find.text('Change'));
+      await tester.pumpAndSettle();
+
+      expect(repository.updated.single.id, bpi.id);
+      expect(repository.budgetAccountChanges, [bpi.id]);
+      expect(find.byType(AccountFormScreen), findsNothing);
+    });
+
+    testWidgets('cancelling the move saves nothing', (tester) async {
+      await openForm(tester, account: bpi, existingAccounts: [bdo, bpi]);
+
+      await tester.tap(budgetSwitch());
+      await tester.pumpAndSettle();
+      await tapSave(tester, 'Save changes');
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(repository.updated, isEmpty);
+      expect(repository.budgetAccountChanges, isEmpty);
+      expect(find.byType(AccountFormScreen), findsOneWidget);
+    });
+
+    testWidgets('the budget account starts switched on; off clears it', (
+      tester,
+    ) async {
+      await openForm(tester, account: bdo, existingAccounts: [bdo, bpi]);
+
+      final tile = tester.widget<SwitchListTile>(budgetSwitch());
+      expect(tile.value, isTrue);
+
+      await tester.tap(budgetSwitch());
+      await tester.pumpAndSettle();
+      await tapSave(tester, 'Save changes');
+
+      expect(repository.budgetAccountChanges, [null]);
+    });
+
+    testWidgets('saving the budget account unchanged keeps the tag', (
+      tester,
+    ) async {
+      await openForm(tester, account: bdo, existingAccounts: [bdo, bpi]);
+
+      await tester.enterText(field('Name'), 'BDO Payroll');
+      await tapSave(tester, 'Save changes');
+
+      expect(repository.updated.single.name, 'BDO Payroll');
+      expect(repository.budgetAccountChanges, isEmpty);
     });
   });
 

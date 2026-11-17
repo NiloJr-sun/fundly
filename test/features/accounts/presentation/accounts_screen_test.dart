@@ -138,6 +138,30 @@ void main() {
     });
   });
 
+  testWidgets('labels the budget account', (tester) async {
+    await pumpScreen(
+      tester,
+      fakeAccounts([
+        Account(
+          id: 1,
+          name: 'BDO Savings',
+          type: AccountType.savingsCash,
+          openingBalance: const Money(minorUnits: 0, currencyCode: 'PHP'),
+          createdAt: DateTime.utc(2026, 11, 16),
+          isBudgetAccount: true,
+        ),
+        account(2, 'Cash Wallet', AccountType.savingsCash, 0),
+      ]),
+    );
+
+    String? subtitleOf(String name) =>
+        (tester.widget<ListTile>(find.widgetWithText(ListTile, name)).subtitle
+                as Text?)
+            ?.data;
+    expect(subtitleOf('BDO Savings'), 'Budget account');
+    expect(subtitleOf('Cash Wallet'), isNull);
+  });
+
   testWidgets('omits sections for types with no accounts', (tester) async {
     await pumpScreen(
       tester,

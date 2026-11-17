@@ -85,3 +85,13 @@ final customTypeAccountCountsProvider = Provider<Map<int, int>>((ref) {
   }
   return counts;
 });
+
+/// The budget account, whose incoming money funds Ready to assign, or `null`
+/// when none is chosen. `null` while loading.
+final budgetAccountProvider = Provider<Account?>((ref) {
+  final accounts = ref.watch(allAccountsProvider).value ?? const [];
+  for (final account in accounts) {
+    if (account.isBudgetAccount) return account;
+  }
+  return null;
+});

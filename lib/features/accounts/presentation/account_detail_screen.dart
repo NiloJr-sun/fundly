@@ -92,6 +92,11 @@ class _AccountDetails extends ConsumerWidget {
             ref.watch(customAccountTypesByIdProvider),
           ),
         ),
+        if (account.isBudgetAccount)
+          const _DetailRow(
+            label: 'Budget account',
+            value: 'Funds Ready to assign',
+          ),
         _DetailRow(label: 'Currency', value: account.currencyCode),
         _DetailRow(
           label: 'Created',
