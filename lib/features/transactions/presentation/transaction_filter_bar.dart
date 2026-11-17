@@ -103,13 +103,14 @@ class TransactionFilterBar extends ConsumerWidget {
   Future<void> _pickAccount(BuildContext context, WidgetRef ref) async {
     // Archived accounts are included so their history can be found.
     final accounts = ref.read(allAccountsProvider).value ?? const [];
+    final customTypes = ref.read(customAccountTypesByIdProvider);
     final picked = await _pickFromSheet<int>(context, 'Account', [
       for (final account in accounts)
         (
           value: account.id,
           label: account.name,
           detail:
-              '${accountTypeLabel(account.type)}'
+              '${accountTypeName(account, customTypes)}'
               '${account.isArchived ? ' · archived' : ''}',
         ),
     ]);

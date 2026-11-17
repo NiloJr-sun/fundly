@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
@@ -32,6 +33,8 @@ Future<void> pumpScreen(WidgetTester tester, List<Override> overrides) async {
       child: const MaterialApp(home: AccountsScreen()),
     ),
   );
+  // One frame for the accounts, one for the custom types the list waits for.
+  await tester.pump();
   await tester.pump();
 }
 
@@ -65,11 +68,13 @@ void main() {
     expect(
       texts,
       containsAllInOrder([
+        'Assets',
         'Savings / Cash',
         'BDO Savings',
         '₱15,000.00',
         'Cash Wallet',
         '₱0.00',
+        'Liabilities',
         'Credit',
         'RCBC Credit',
         '-₱3,000.00',
@@ -139,9 +144,115 @@ void main() {
       fakeAccounts([account(1, 'BDO Savings', AccountType.savingsCash, 0)]),
     );
 
+    expect(find.text('Assets'), findsOneWidget);
     expect(find.text('Savings / Cash'), findsOneWidget);
+    expect(find.text('Liabilities'), findsNothing);
     expect(find.text('Credit'), findsNothing);
     expect(find.text('Loan'), findsNothing);
+  });
+
+  group('custom account types', () {
+    final eWallet = CustomAccountType(
+      id: 10,
+      name: 'E-wallet',
+      baseType: AccountType.savingsCash,
+      createdAt: DateTime.utc(2026, 11, 17),
+    );
+    final payLater = CustomAccountType(
+      id: 11,
+      name: 'Pay later',
+      baseType: AccountType.credit,
+      createdAt: DateTime.utc(2026, 11, 17),
+    );
+    final debt = CustomAccountType(
+      id: 12,
+      name: 'Debt',
+      baseType: AccountType.loan,
+      createdAt: DateTime.utc(2026, 11, 17),
+    );
+
+    Account custom(Account account, CustomAccountType type) => Account(
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      openingBalance: account.openingBalance,
+      createdAt: account.createdAt,
+      customTypeId: type.id,
+    );
+
+    testWidgets('get their own section under their class, with a total', (
+      tester,
+    ) async {
+      // Tall enough for every section; the list builds only visible rows.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(
+        tester,
+        fakeAccounts(
+          [
+            account(1, 'BDO Savings', AccountType.savingsCash, 1500000),
+            custom(
+              account(2, 'GCash', AccountType.savingsCash, 120000),
+              eWallet,
+            ),
+            custom(account(3, 'Maya', AccountType.savingsCash, 30000), eWallet),
+            account(4, 'RCBC Credit', AccountType.credit, -300000),
+            custom(
+              account(5, 'SPayLater', AccountType.credit, -50000),
+              payLater,
+            ),
+            custom(account(6, 'From Mom', AccountType.loan, -1000000), debt),
+          ],
+          customTypes: [debt, eWallet, payLater],
+        ),
+      );
+
+      final texts = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((text) => text.data)
+          .toList();
+      expect(
+        texts,
+        containsAllInOrder([
+          'Assets',
+          'Savings / Cash',
+          '₱15,000.00',
+          'BDO Savings',
+          'E-wallet',
+          '₱1,500.00',
+          'GCash',
+          'Maya',
+          'Liabilities',
+          'Credit',
+          'RCBC Credit',
+          // Built-in types first, then custom types by name.
+          'Debt',
+          '-₱10,000.00',
+          'From Mom',
+          'Pay later',
+          '-₱500.00',
+          'SPayLater',
+        ]),
+      );
+      expect(find.text('Loan'), findsNothing, reason: 'no Loan accounts');
+    });
+
+    testWidgets('a class shows only when it has accounts', (tester) async {
+      await pumpScreen(
+        tester,
+        fakeAccounts(
+          [custom(account(1, 'GCash', AccountType.savingsCash, 0), eWallet)],
+          customTypes: [eWallet, payLater],
+        ),
+      );
+
+      expect(find.text('Assets'), findsOneWidget);
+      expect(find.text('E-wallet'), findsOneWidget);
+      expect(find.text('Savings / Cash'), findsNothing);
+      expect(find.text('Liabilities'), findsNothing);
+      expect(find.text('Pay later'), findsNothing);
+    });
   });
 
   testWidgets('shows a progress indicator while loading', (tester) async {

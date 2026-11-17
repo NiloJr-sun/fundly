@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/app/theme/app_theme.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/account_display.dart';
 
 Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
@@ -13,6 +15,39 @@ void main() {
     expect(accountTypeLabel(AccountType.savingsCash), 'Savings / Cash');
     expect(accountTypeLabel(AccountType.credit), 'Credit');
     expect(accountTypeLabel(AccountType.loan), 'Loan');
+  });
+
+  test('accountClassLabel', () {
+    expect(accountClassLabel(AccountClass.asset), 'Assets');
+    expect(accountClassLabel(AccountClass.liability), 'Liabilities');
+  });
+
+  test('accountTypeName prefers the custom type name', () {
+    final eWallet = CustomAccountType(
+      id: 10,
+      name: 'E-wallet',
+      baseType: AccountType.savingsCash,
+      createdAt: DateTime.utc(2026, 11, 17),
+    );
+    Account wallet({int? customTypeId}) => Account(
+      id: 1,
+      name: 'GCash',
+      type: AccountType.savingsCash,
+      openingBalance: const Money.zero('PHP'),
+      createdAt: DateTime.utc(2026, 11, 17),
+      customTypeId: customTypeId,
+    );
+
+    expect(
+      accountTypeName(wallet(customTypeId: 10), {10: eWallet}),
+      'E-wallet',
+    );
+    expect(accountTypeName(wallet(), {10: eWallet}), 'Savings / Cash');
+    expect(
+      accountTypeName(wallet(customTypeId: 10), const {}),
+      'Savings / Cash',
+      reason: 'while custom types load',
+    );
   });
 
   test('formatBalance shows the signed amount; money owed is negative', () {

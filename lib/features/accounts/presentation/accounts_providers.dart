@@ -4,8 +4,10 @@ import '../../../core/money/money.dart';
 import '../../transactions/presentation/transactions_providers.dart';
 
 import '../data/account_repository.dart';
+import '../data/custom_account_type_repository.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
+import '../domain/custom_account_type.dart';
 
 /// Active accounts, ordered by type then name. Updates when accounts change.
 final activeAccountsProvider = StreamProvider<List<Account>>(
@@ -56,4 +58,18 @@ final accountBalancesProvider = Provider<AsyncValue<Map<int, Money>>>((ref) {
 final accountsByIdProvider = Provider<Map<int, Account>>((ref) {
   final accounts = ref.watch(allAccountsProvider).value ?? const [];
   return {for (final account in accounts) account.id: account};
+});
+
+/// Every custom account type, ordered by name.
+final customAccountTypesProvider = StreamProvider<List<CustomAccountType>>(
+  (ref) => ref.watch(customAccountTypeRepositoryProvider).watchAll(),
+);
+
+/// Every custom account type keyed by id, for showing names. Empty while
+/// loading.
+final customAccountTypesByIdProvider = Provider<Map<int, CustomAccountType>>((
+  ref,
+) {
+  final types = ref.watch(customAccountTypesProvider).value ?? const [];
+  return {for (final type in types) type.id: type};
 });

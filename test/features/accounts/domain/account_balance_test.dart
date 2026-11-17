@@ -169,4 +169,21 @@ void main() {
       expect(totals[AccountType.loan], php(0));
     });
   });
+
+  group('totalBalance', () {
+    test('sums signed balances of the given accounts', () {
+      expect(
+        totalBalance(
+          [bdo, rcbc],
+          {bdoId: php(1500000), walletId: php(999), rcbcCardId: php(-300000)},
+        ),
+        php(1200000),
+      );
+    });
+
+    test('zero for no accounts; missing balances are skipped', () {
+      expect(totalBalance(const [], {bdoId: php(5)}), php(0));
+      expect(totalBalance([bdo, carLoan], {bdoId: php(100)}), php(100));
+    });
+  });
 }

@@ -5,6 +5,7 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/money/money.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
+import '../domain/account_groups.dart';
 import '../domain/account_type.dart';
 import 'account_detail_screen.dart';
 import 'account_display.dart';
@@ -12,14 +13,15 @@ import 'accounts_providers.dart';
 
 const double _floatingButtonClearance = 88;
 
-/// Accounts grouped into one collapsible section per [AccountType] that has
-/// accounts. Sections start expanded.
+/// Accounts under an Assets and a Liabilities heading, with one collapsible
+/// section per account type (built-in or custom) that has accounts. Sections
+/// start expanded. Headings have no totals.
 ///
 /// With [showTotals], each section header shows the total balance of its
 /// accounts. Archived lists pass `false`: archived accounts are left out of
 /// totals (G7).
 ///
-/// Expects [accounts] already ordered by type then name.
+/// Expects [accounts] already ordered by name within each type.
 class AccountList extends ConsumerWidget {
   const AccountList({
     super.key,
@@ -32,27 +34,63 @@ class AccountList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final customTypes = ref.watch(customAccountTypesProvider);
+    // Wait for custom types so accounts do not jump between sections. If
+    // they fail to load, accounts show under their built-in types.
+    if (customTypes is AsyncLoading && !customTypes.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final groups = groupAccounts(accounts, customTypes.value ?? const []);
     final balances = showTotals
         ? ref.watch(accountBalancesProvider).value
         : null;
-    final totals = balances == null ? null : totalsByType(accounts, balances);
     return ListView(
       // Keep the last row clear of the floating "Add account" button.
       padding: const EdgeInsets.only(bottom: _floatingButtonClearance),
       children: [
-        for (final type in AccountType.values)
-          if (accounts.any((account) => account.type == type))
-            _AccountSection(
-              // Keeps each section's expanded state when others appear.
-              key: ValueKey(type),
-              type: type,
-              total: totals?[type],
-              accounts: [
-                for (final account in accounts)
-                  if (account.type == type) account,
-              ],
-            ),
+        for (final accountClass in AccountClass.values)
+          if (groups.any((group) => group.accountClass == accountClass)) ...[
+            _ClassHeading(accountClass),
+            for (final group in groups)
+              if (group.accountClass == accountClass)
+                _AccountSection(
+                  // Keeps each section's expanded state when others appear.
+                  key: ValueKey((group.type, group.customType?.id)),
+                  title: group.customType?.name ?? accountTypeLabel(group.type),
+                  total: balances == null
+                      ? null
+                      : totalBalance(group.accounts, balances),
+                  accounts: group.accounts,
+                ),
+          ],
       ],
+    );
+  }
+}
+
+/// "Assets" or "Liabilities", above that class's type sections.
+class _ClassHeading extends StatelessWidget {
+  const _ClassHeading(this.accountClass);
+
+  final AccountClass accountClass;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Spacing.md,
+        Spacing.md,
+        Spacing.md,
+        Spacing.xs,
+      ),
+      child: Semantics(
+        header: true,
+        child: Text(
+          accountClassLabel(accountClass),
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 }
@@ -61,12 +99,12 @@ class AccountList extends ConsumerWidget {
 class _AccountSection extends StatelessWidget {
   const _AccountSection({
     super.key,
-    required this.type,
+    required this.title,
     required this.total,
     required this.accounts,
   });
 
-  final AccountType type;
+  final String title;
 
   /// `null` when totals are hidden or balances are still loading.
   final Money? total;
@@ -86,7 +124,7 @@ class _AccountSection extends StatelessWidget {
       shape: const Border(),
       collapsedShape: const Border(),
       tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-      title: Text(accountTypeLabel(type), style: headerStyle),
+      title: Text(title, style: headerStyle),
       trailing: total == null
           ? const SizedBox.shrink()
           // Green when positive, default colour otherwise, like the rows.

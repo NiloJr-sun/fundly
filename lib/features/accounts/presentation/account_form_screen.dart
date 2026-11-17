@@ -10,13 +10,21 @@ import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
+import '../domain/custom_account_type.dart';
 import 'account_display.dart';
 import 'account_form_messages.dart';
+import 'accounts_providers.dart';
+import 'new_account_type_dialog.dart';
+
+/// A choice in the account type dropdown: a built-in [type], or the custom
+/// type [customTypeId] based on it.
+typedef AccountTypeChoice = ({AccountType type, int? customTypeId});
 
 /// Creates a new account, or edits [account] when given.
 ///
-/// The type cannot be changed when editing. A blank opening balance means
-/// zero. Closes itself after a successful save.
+/// When editing, the type can only change to another type with the same
+/// built-in base (e.g. Savings / Cash to a custom "E-wallet"). A blank
+/// opening balance means zero. Closes itself after a successful save.
 class AccountFormScreen extends ConsumerStatefulWidget {
   const AccountFormScreen({super.key, this.account});
 
@@ -32,8 +40,18 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
-  late AccountType _type;
+  late AccountTypeChoice _choice;
   bool _isSaving = false;
+
+  /// A type created from the dropdown, shown until the custom types list
+  /// includes it.
+  CustomAccountType? _createdType;
+
+  /// Bumped to rebuild the type dropdown when its selection is reset, e.g.
+  /// after "New account type" is cancelled.
+  int _selectorGeneration = 0;
+
+  AccountType get _type => _choice.type;
 
   /// Error returned by the repository on the last save, shown on the name
   /// field until the name changes.
@@ -45,7 +63,10 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   void initState() {
     super.initState();
     final account = widget.account;
-    _type = account?.type ?? AccountType.savingsCash;
+    _choice = (
+      type: account?.type ?? AccountType.savingsCash,
+      customTypeId: account?.customTypeId,
+    );
     _nameController = TextEditingController(text: account?.name ?? '');
     // A zero opening balance starts empty, showing 0.00 only as a hint;
     // an empty field saves as zero.
@@ -95,12 +116,14 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
           name: _nameController.text,
           type: _type,
           enteredOpeningAmount: _parseAmount(),
+          customTypeId: _choice.customTypeId,
         );
       } else {
         await repository.update(
           account.id,
           name: _nameController.text,
           enteredOpeningAmount: _parseAmount(),
+          customType: (id: _choice.customTypeId),
         );
       }
       if (mounted) Navigator.of(context).pop();
@@ -120,8 +143,32 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     }
   }
 
+  Future<void> _addType() async {
+    final created = await showNewAccountTypeDialog(context);
+    if (!mounted) return;
+    setState(() {
+      _selectorGeneration++;
+      if (created != null) {
+        _createdType = created;
+        _choice = (type: created.baseType, customTypeId: created.id);
+      }
+    });
+  }
+
+  /// Custom types to offer, including one just created that the stream has
+  /// not delivered yet. `null` while loading.
+  List<CustomAccountType>? _customTypes() {
+    final loaded = ref.watch(customAccountTypesProvider);
+    final types = loaded.value ?? (loaded.hasError ? const [] : null);
+    final created = _createdType;
+    if (types == null || created == null) return types;
+    if (types.any((type) => type.id == created.id)) return types;
+    return [...types, created];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final customTypes = _customTypes();
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit account' : 'New account')),
       body: Form(
@@ -129,11 +176,17 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(Spacing.md),
           children: [
-            _AccountTypeSelector(
-              selected: _type,
-              enabled: !_isEditing,
-              onChanged: (type) => setState(() => _type = type),
-            ),
+            if (customTypes == null)
+              const LinearProgressIndicator()
+            else
+              _AccountTypeSelector(
+                key: ValueKey(_selectorGeneration),
+                selected: _choice,
+                customTypes: customTypes,
+                isEditing: _isEditing,
+                onChanged: (choice) => setState(() => _choice = choice),
+                onAddType: _addType,
+              ),
             const SizedBox(height: Spacing.lg),
             TextFormField(
               controller: _nameController,
@@ -172,33 +225,121 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   }
 }
 
+/// The dropdown value of "New account type…".
+const Object _newTypeItem = #newAccountType;
+
+/// The type dropdown: built-in and custom types under Assets and
+/// Liabilities headings, then "New account type" when creating.
+///
+/// When editing, only types with the same built-in base are offered.
 class _AccountTypeSelector extends StatelessWidget {
   const _AccountTypeSelector({
+    super.key,
     required this.selected,
-    required this.enabled,
+    required this.customTypes,
+    required this.isEditing,
     required this.onChanged,
+    required this.onAddType,
   });
 
-  final AccountType selected;
-  final bool enabled;
-  final ValueChanged<AccountType> onChanged;
+  final AccountTypeChoice selected;
+  final List<CustomAccountType> customTypes;
+  final bool isEditing;
+  final ValueChanged<AccountTypeChoice> onChanged;
+  final VoidCallback onAddType;
+
+  List<(AccountTypeChoice, String)> _options(AccountClass accountClass) => [
+    for (final type in AccountType.values)
+      if (type.accountClass == accountClass)
+        ((type: type, customTypeId: null), accountTypeLabel(type)),
+    for (final custom in customTypes)
+      if (custom.baseType.accountClass == accountClass)
+        ((type: custom.baseType, customTypeId: custom.id), custom.name),
+  ].where((option) => !isEditing || option.$1.type == selected.type).toList();
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<AccountType>(
+    final theme = Theme.of(context);
+    // Values are unique: an [AccountTypeChoice] per type, the [AccountClass]
+    // for each (disabled) heading, and [_newTypeItem].
+    final items = <DropdownMenuItem<Object>>[];
+    final labels = <String>[];
+    var optionCount = 0;
+    for (final accountClass in AccountClass.values) {
+      final options = _options(accountClass);
+      if (options.isEmpty) continue;
+      items.add(
+        DropdownMenuItem(
+          value: accountClass,
+          enabled: false,
+          child: Text(
+            accountClassLabel(accountClass),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
+      );
+      labels.add('');
+      for (final (choice, label) in options) {
+        items.add(
+          DropdownMenuItem(
+            value: choice,
+            child: Padding(
+              padding: const EdgeInsets.only(left: Spacing.md),
+              child: Text(label, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+        );
+        labels.add(label);
+        optionCount++;
+      }
+    }
+    if (!isEditing) {
+      items.add(
+        DropdownMenuItem(
+          value: _newTypeItem,
+          child: Row(
+            children: [
+              Icon(Icons.add, size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: Spacing.sm),
+              Text(
+                'New account type…',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ],
+          ),
+        ),
+      );
+      labels.add('');
+    }
+
+    final enabled = optionCount > 1 || !isEditing;
+    return DropdownButtonFormField<Object>(
       initialValue: selected,
+      isExpanded: true,
       decoration: InputDecoration(
         labelText: 'Type',
-        helperText: enabled ? null : "An account's type can't be changed.",
+        helperText: !isEditing
+            ? accountTypeDescription(selected.type)
+            : enabled
+            ? 'Can change only to a type that works the same way.'
+            : "An account's type can't be changed.",
       ),
-      items: [
-        for (final type in AccountType.values)
-          DropdownMenuItem(value: type, child: Text(accountTypeLabel(type))),
+      items: items,
+      // The closed field shows just the name, without the indent.
+      selectedItemBuilder: (_) => [
+        for (final label in labels)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(label, overflow: TextOverflow.ellipsis),
+          ),
       ],
       // A null callback disables the field.
       onChanged: enabled
-          ? (type) {
-              if (type != null) onChanged(type);
+          ? (value) => switch (value) {
+              final AccountTypeChoice choice => onChanged(choice),
+              _ => onAddType(),
             }
           : null,
     );

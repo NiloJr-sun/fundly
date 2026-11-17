@@ -386,7 +386,7 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class _AccountField extends StatelessWidget {
+class _AccountField extends ConsumerWidget {
   const _AccountField({
     required this.label,
     required this.accounts,
@@ -402,7 +402,8 @@ class _AccountField extends StatelessWidget {
   final FormFieldValidator<int> validator;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customTypes = ref.watch(customAccountTypesByIdProvider);
     return DropdownButtonFormField<int>(
       initialValue: value,
       // Lets long account names shrink with an ellipsis instead of
@@ -414,7 +415,7 @@ class _AccountField extends StatelessWidget {
           DropdownMenuItem(
             value: account.id,
             child: Text(
-              '${account.name} · ${accountTypeLabel(account.type)}'
+              '${account.name} · ${accountTypeName(account, customTypes)}'
               '${account.isArchived ? ' (archived)' : ''}',
               overflow: TextOverflow.ellipsis,
             ),

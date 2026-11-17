@@ -3,6 +3,7 @@ import '../../../core/money/money_parser.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
+import '../domain/custom_account_type_validation_exception.dart';
 
 /// User-facing text for account form validation errors.
 
@@ -37,3 +38,15 @@ String accountValidationErrorText(AccountValidationError error) =>
 /// liabilities (D1).
 String openingBalanceLabel(AccountType type) =>
     type.isLiability ? 'Amount owed' : 'Opening balance';
+
+/// Message for an error reported when saving or deleting a custom type.
+String customAccountTypeErrorText(CustomAccountTypeValidationError error) =>
+    switch (error) {
+      CustomAccountTypeValidationError.nameEmpty => 'Enter a name.',
+      CustomAccountTypeValidationError.nameTooLong =>
+        'Use $maxAccountNameLength characters or fewer.',
+      CustomAccountTypeValidationError.nameTaken =>
+        'An account type with this name already exists.',
+      CustomAccountTypeValidationError.inUse =>
+        'Accounts use this type, so it cannot be deleted.',
+    };

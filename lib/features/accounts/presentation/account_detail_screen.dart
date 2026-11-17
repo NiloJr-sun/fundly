@@ -55,7 +55,7 @@ class AccountDetailScreen extends ConsumerWidget {
   }
 }
 
-class _AccountDetails extends StatelessWidget {
+class _AccountDetails extends ConsumerWidget {
   const _AccountDetails({required this.account, required this.balance});
 
   final Account account;
@@ -64,7 +64,7 @@ class _AccountDetails extends StatelessWidget {
   final Money? balance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
@@ -83,7 +83,13 @@ class _AccountDetails extends StatelessWidget {
           ),
         ],
         const SizedBox(height: Spacing.md),
-        _DetailRow(label: 'Type', value: accountTypeLabel(account.type)),
+        _DetailRow(
+          label: 'Type',
+          value: accountTypeName(
+            account,
+            ref.watch(customAccountTypesByIdProvider),
+          ),
+        ),
         _DetailRow(label: 'Currency', value: account.currencyCode),
         _DetailRow(
           label: 'Created',

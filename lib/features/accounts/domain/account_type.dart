@@ -1,3 +1,7 @@
+/// Whether an account holds money or represents money owed. The Account tab
+/// groups account types under these.
+enum AccountClass { asset, liability }
+
 /// The kinds of account Fundly supports.
 enum AccountType {
   /// Bank savings, cash wallet, emergency fund and other asset accounts.
@@ -18,4 +22,8 @@ enum AccountType {
     AccountType.savingsCash => false,
     AccountType.credit || AccountType.loan => true,
   };
+
+  /// The class this type is grouped under, from [isLiability].
+  AccountClass get accountClass =>
+      isLiability ? AccountClass.liability : AccountClass.asset;
 }

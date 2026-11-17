@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
+import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_balance.dart';
+import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
@@ -16,6 +18,7 @@ import 'package:fundly/features/transactions/presentation/transactions_providers
 
 import 'fake_account_repository.dart';
 import 'fake_category_repository.dart';
+import 'fake_custom_account_type_repository.dart';
 import 'fake_plan_repository.dart';
 import 'fake_transaction_repository.dart';
 
@@ -24,8 +27,9 @@ import 'fake_transaction_repository.dart';
 /// Account lookups by id search both [accounts] and [archived]. Balances come
 /// from [balancesFor] over [transactions], exactly as in the app. Pass
 /// [plans] are returned for whichever month they belong to. Pass
-/// [repository], [categoryRepository], [planRepository] or
-/// [transactionRepository] to inspect what screens asked them to do.
+/// [repository], [categoryRepository], [planRepository],
+/// [transactionRepository] or [customTypeRepository] to inspect what screens
+/// asked them to do.
 List<Override> fakeAccounts(
   List<Account> accounts, {
   List<Account> archived = const [],
@@ -36,6 +40,8 @@ List<Override> fakeAccounts(
   List<MonthlyPlan> plans = const [],
   FakePlanRepository? planRepository,
   FakeTransactionRepository? transactionRepository,
+  List<CustomAccountType> customTypes = const [],
+  FakeCustomAccountTypeRepository? customTypeRepository,
 }) {
   final everyAccount = [...accounts, ...archived];
   Account? accountById(int id) {
@@ -65,6 +71,7 @@ List<Override> fakeAccounts(
     accountRepositoryProvider.overrideWithValue(
       repository ?? FakeAccountRepository(),
     ),
+    ...fakeCustomAccountTypes(customTypes, repository: customTypeRepository),
     allCategoriesProvider.overrideWith((ref) => Stream.value(categories)),
     categoryRepositoryProvider.overrideWithValue(
       categoryRepository ?? FakeCategoryRepository(),
@@ -98,3 +105,14 @@ List<Override> fakeAccounts(
 
 /// No accounts or transactions at all.
 List<Override> noAccounts() => fakeAccounts(const []);
+
+/// Custom account types for widget tests that do not need [fakeAccounts].
+List<Override> fakeCustomAccountTypes(
+  List<CustomAccountType> types, {
+  FakeCustomAccountTypeRepository? repository,
+}) => [
+  customAccountTypesProvider.overrideWith((ref) => Stream.value(types)),
+  customAccountTypeRepositoryProvider.overrideWithValue(
+    repository ?? FakeCustomAccountTypeRepository(),
+  ),
+];

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
+import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 
@@ -84,6 +85,34 @@ void main() {
     expect(find.text('Nov 16, 2026'), findsOneWidget);
     expect(find.text('No transactions yet.'), findsOneWidget);
     expect(find.text('Archived'), findsNothing);
+  });
+
+  testWidgets('shows a custom type by name', (tester) async {
+    final eWallet = CustomAccountType(
+      id: 10,
+      name: 'E-wallet',
+      baseType: AccountType.savingsCash,
+      createdAt: DateTime.utc(2026, 11, 17),
+    );
+    await openDetail(
+      tester,
+      fakeAccounts(
+        [
+          Account(
+            id: 1,
+            name: 'GCash',
+            type: AccountType.savingsCash,
+            openingBalance: const Money.zero('PHP'),
+            createdAt: DateTime.utc(2026, 11, 17),
+            customTypeId: eWallet.id,
+          ),
+        ],
+        customTypes: [eWallet],
+      ),
+    );
+
+    expect(find.text('E-wallet'), findsOneWidget);
+    expect(find.text('Savings / Cash'), findsNothing);
   });
 
   testWidgets('says so when the account does not exist', (tester) async {

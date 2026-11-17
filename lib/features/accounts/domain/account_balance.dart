@@ -48,6 +48,21 @@ Map<AccountType, Money> totalsByType(
   return totals;
 }
 
+/// The signed total (D1) of [balances] for [accounts]. Accounts missing from
+/// [balances] are skipped.
+Money totalBalance(
+  Iterable<Account> accounts,
+  Map<int, Money> balances, {
+  String currencyCode = Account.defaultCurrency,
+}) {
+  var total = Money.zero(currencyCode);
+  for (final account in accounts) {
+    final balance = balances[account.id];
+    if (balance != null) total += balance;
+  }
+  return total;
+}
+
 /// Current balance of one [account]; see [balancesFor].
 Money currentBalance(
   Account account,

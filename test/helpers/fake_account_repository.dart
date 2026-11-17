@@ -9,8 +9,12 @@ import 'package:fundly/features/accounts/domain/account_validation_exception.dar
 /// under the fake test clock. Repository behaviour itself is covered by
 /// `account_repository_test.dart` against an in-memory database.
 class FakeAccountRepository implements AccountRepository {
-  final List<({String name, AccountType type, Money entered})> created = [];
-  final List<({int id, String? name, Money? entered})> updated = [];
+  final List<
+    ({String name, AccountType type, Money entered, int? customTypeId})
+  >
+  created = [];
+  final List<({int id, String? name, Money? entered, ({int? id})? customType})>
+  updated = [];
   final List<({int id, bool archived})> archivedChanges = [];
 
   /// When set, the next create/update throws this instead of saving.
@@ -24,13 +28,19 @@ class FakeAccountRepository implements AccountRepository {
     int? customTypeId,
   }) async {
     _maybeFail();
-    created.add((name: name, type: type, entered: enteredOpeningAmount));
+    created.add((
+      name: name,
+      type: type,
+      entered: enteredOpeningAmount,
+      customTypeId: customTypeId,
+    ));
     return Account(
       id: created.length,
       name: name.trim(),
       type: type,
       openingBalance: openingBalanceFor(type, enteredOpeningAmount),
       createdAt: DateTime.utc(2026, 11, 16),
+      customTypeId: customTypeId,
     );
   }
 
@@ -42,7 +52,12 @@ class FakeAccountRepository implements AccountRepository {
     ({int? id})? customType,
   }) async {
     _maybeFail();
-    updated.add((id: id, name: name, entered: enteredOpeningAmount));
+    updated.add((
+      id: id,
+      name: name,
+      entered: enteredOpeningAmount,
+      customType: customType,
+    ));
     return Account(
       id: id,
       name: name ?? '',
