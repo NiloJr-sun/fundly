@@ -46,8 +46,8 @@ versioned migrations to the hosted project, unchanged:
 
 ```sh
 npx --yes supabase@3.2.0 link --project-ref <ref>      # owner; prompts for DB password
-npx --yes supabase@3.2.0 db push --dry-run             # review: exactly the 5 Fundly files
-npx --yes supabase@3.2.0 db push                       # owner, after review
+npx --yes supabase@3.2.0 db push --remote --dry-run    # review: exactly the 5 Fundly files
+npx --yes supabase@3.2.0 db push --remote              # owner, after review
 ```
 
 - No migration history exists on the hosted project (the probe used the SQL
@@ -55,7 +55,7 @@ npx --yes supabase@3.2.0 db push                       # owner, after review
 - This only creates empty tables, private functions and the RPC, with direct
   client writes denied. No personal data is imported (that is S6).
 - Afterwards, run the Supabase security and performance advisors
-  (`db lint --linked`) and record the result.
+  (`db lint --remote`) and record the result.
 - If something fails, the tables are empty, so rollback is a reviewed drop
   script. No automatic down migration is added.
 

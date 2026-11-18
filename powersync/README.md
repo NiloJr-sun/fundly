@@ -41,8 +41,11 @@ From the repository root:
 
 ```sh
 npx --yes supabase@3.2.0 link --project-ref <ref>     # prompts for the DB password
-npx --yes supabase@3.2.0 db push --dry-run
+npx --yes supabase@3.2.0 db push --remote --dry-run
 ```
+
+CLI v3 targets the local stack unless `--remote` is given; a dry run that says
+"Target: local stack" did not check the hosted project.
 
 Stop unless the dry run lists exactly these five files, in order:
 `20261118010000_fundly_schema.sql`, `20261118020000_transaction_write_api.sql`,
@@ -50,8 +53,8 @@ Stop unless the dry run lists exactly these five files, in order:
 and `20261118050000_sync_protocol.sql`. Then:
 
 ```sh
-npx --yes supabase@3.2.0 db push
-npx --yes supabase@3.2.0 db lint --linked --schema public,fundly_private --fail-on warning
+npx --yes supabase@3.2.0 db push --remote
+npx --yes supabase@3.2.0 db lint --remote --schema public,fundly_private --fail-on warning
 ```
 
 Record the lint result below. Also open Supabase → Advisors (security and
