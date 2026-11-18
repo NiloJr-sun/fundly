@@ -1,11 +1,12 @@
-# Fundly cloud database — S2.1, S2.2A and S2.2B
+# Fundly cloud database — S2.1 and S2.2
 
-The schema foundation, transaction API, and account/custom-type API are verified **locally only**.
+The schema foundation and the transaction, account/custom-type and category/Plans APIs are verified **locally only**.
 Hosted Supabase, the working PowerSync probe, Flutter dependencies, SQLite v12,
 and backup format 6 are unchanged. Owner-only reads and denied direct client
 writes remain in place. Authenticated transaction operations now use the
 atomic RPC described in [WRITE_API.md](WRITE_API.md), with account operations
-documented in [ACCOUNT_API.md](ACCOUNT_API.md).
+documented in [ACCOUNT_API.md](ACCOUNT_API.md) and category/Plans operations in
+[PLANS_API.md](PLANS_API.md).
 
 ## Files
 
@@ -17,13 +18,17 @@ documented in [ACCOUNT_API.md](ACCOUNT_API.md).
   validation helpers, and a backend-only receipt table. No replication changes.
 - `migrations/20261118030000_account_write_api.sql`: account/custom-type operations,
   guarded budget selection and managed liability categories, using the same receipts.
-- `tests/database/`: **435 pgTAP assertions**, run in
+- `migrations/20261118040000_category_plan_write_api.sql`: category, monthly-plan,
+  plan archive (timezone-aware) and permanent-deletion operations. No table changes.
+- `tests/database/`: **610 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
   and one SQL/Dart text-contract check, using Python's standard library only.
 - `tests/concurrency/account_write_api_test.py`: seven overlapping-session budget,
   account, custom-type and managed-row checks, reusing that session harness.
+- `tests/concurrency/category_plan_write_api_test.py`: nine overlapping-session
+  plan-save, plan-archive, plan-deletion and category-deletion checks.
 
 ## Run locally
 
@@ -37,6 +42,7 @@ npx --yes supabase@3.2.0 test db
 npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
 python3 supabase/tests/concurrency/write_api_test.py
 python3 supabase/tests/concurrency/account_write_api_test.py
+python3 supabase/tests/concurrency/category_plan_write_api_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -81,8 +87,8 @@ To stop this local stack, use `npx --yes supabase@3.2.0 stop`.
 Transaction row CHECKs enforce valid types and field combinations, different
 transfer endpoints, payee/note limits, and required spending/inflow payees.
 The transaction RPC enforces account roles, archived-reference rules, category
-kinds and linked-category eligibility. Account/custom-type workflows are implemented;
-category/Plans writes remain a later slice. Do not use privileged direct writes as a production workaround.
+kinds and linked-category eligibility. Account/custom-type and category/Plans
+workflows are implemented. Do not use privileged direct writes as a production workaround.
 
 PostgreSQL `bigint` can exceed browser/Dart transport limits. The future client
 boundary must validate supported numeric ranges without rounding. No range was
@@ -130,6 +136,13 @@ budget snapshots, canonical side effects and whole-batch rollback. Seven additio
 real-session races verify budget selection, archival/spending order, type changes
 versus usage, and stable linked-row creation on retries.
 
+S2.2C brings the total to **610 passing SQL assertions**, adding category rules,
+managed-row refusals, plan save/clear with observed snapshots, null versus zero
+Targets, the archive allocation guard by timezone month and budget source, unarchive
+and permanent-deletion rules, rollback, replay and denied direct writes. Nine more
+real-session races cover concurrent plan creation, archive versus spending and
+assignment, and deletion versus spending.
+
 No hosted deployment, client integration, rejection recovery, tombstones,
-PowerSync production stream, or real-data migration is claimed. Next is S2.2C
-(category/Plans workflows), followed by S2.3 recovery.
+PowerSync production stream, or real-data migration is claimed. Next is S2.3
+recovery.

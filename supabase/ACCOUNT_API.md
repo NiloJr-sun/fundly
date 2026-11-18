@@ -107,7 +107,8 @@ Additional `P0001` messages: `invalid_name`, `name_taken`, `invalid_custom_type`
 `custom_type_in_use`, `invalid_account`, `account_not_archived`,
 `account_has_transactions`, `record_id_unavailable`, and `budget_conflict`.
 Shared request, authentication, inaccessible-record, revision and idempotency
-errors retain the S2.2A contract. Category/Plans mutations remain unsupported.
+errors retain the S2.2A contract. Category/Plans operations are in
+[PLANS_API.md](PLANS_API.md).
 Deletion tombstones and durable rejection recovery are still S2.3 work.
 
 Tests use only the disposable local database:

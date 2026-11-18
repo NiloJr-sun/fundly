@@ -33,7 +33,7 @@ Call `fundly_apply_operations` with these PostgreSQL RPC argument names:
 ```
 
 The example IDs must refer to the caller's own records. Account creation is
-supported by S2.2B; category creation remains a later slice. `transaction.update` requires an
+supported by S2.2B and category creation by S2.2C ([PLANS_API.md](PLANS_API.md)). `transaction.update` requires an
 `expected_revision` decimal string and a nonempty partial `data` object.
 `transaction.delete` requires the revision and omits `data` (or supplies `{}`).
 

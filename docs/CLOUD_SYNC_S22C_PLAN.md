@@ -1,7 +1,10 @@
 # S2.2C — Categories and Plans write API proposal
 
 Date: 2026-11-18
-Status: proposed for approval; no SQL, deployment or client change in this task.
+Status: approved 2026-11-18 as one slice; implemented and verified locally.
+The contract is [supabase/PLANS_API.md](../supabase/PLANS_API.md), which records two
+refinements: when `previous` is set the item `id` must equal `previous.id`, and
+clearing a month with no record returns `"record": null`.
 
 ## Starting point
 
