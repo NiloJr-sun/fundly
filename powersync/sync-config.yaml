@@ -1,0 +1,27 @@
+# Fundly Sync Streams (S3). Deploy in the PowerSync dashboard after validating.
+# Every query is filtered by the authenticated Supabase user. Columns are listed
+# explicitly so a future backend-only column is never downloaded; owner_id is
+# implied by the filter and not sent. Backend-only tables (fundly_write_receipts,
+# fundly_deleted_records) are not published and must never be added here.
+# One stream keeps all five tables at the same priority, which the client's
+# deferred foreign keys require.
+config:
+  edition: 3
+streams:
+  fundly_user_data:
+    auto_subscribe: true
+    queries:
+      - SELECT id, name, base_type, created_at, updated_at, revision
+        FROM custom_account_types WHERE owner_id = auth.user_id()
+      - SELECT id, name, type, opening_balance_minor, currency_code, is_archived,
+          custom_type_id, is_budget_account, created_at, updated_at, revision
+        FROM accounts WHERE owner_id = auth.user_id()
+      - SELECT id, name, kind, is_archived, is_plan_archived, is_plan_deleted,
+          plan_group, linked_account_id, created_at, updated_at, revision
+        FROM categories WHERE owner_id = auth.user_id()
+      - SELECT id, type, amount_minor, currency_code, date, payee, category_id,
+          source_account_id, destination_account_id, note, created_at, updated_at, revision
+        FROM transactions WHERE owner_id = auth.user_id()
+      - SELECT id, month, category_id, target_amount_minor, assigned_amount_minor,
+          currency_code, created_at, updated_at, revision
+        FROM monthly_plans WHERE owner_id = auth.user_id()

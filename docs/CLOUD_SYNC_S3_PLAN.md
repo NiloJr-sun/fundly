@@ -1,8 +1,11 @@
 # S3 — Connect PowerSync and configure authentication: proposal
 
 Date: 2026-11-18
-Status: proposed for approval. Nothing is deployed and no hosted setting is
-changed by this proposal.
+Status: approved 2026-11-18. Agent files are done and rehearsed locally; the
+hosted steps are pending the owner. Procedure and verification record:
+[powersync/README.md](../powersync/README.md). The stream check lives at
+`tool/sync_probe/test/fundly_stream_test.dart` (host VM test, skipped without
+credentials) rather than `integration_test/`, so it needs no device.
 
 ## Starting point
 
@@ -143,7 +146,7 @@ Download types, recorded for S5 rather than changed now:
 | `powersync/probe_cleanup.sql` | New: drops probe cloud objects after S3 checks pass |
 | `powersync/README.md` | New: deployment steps, public configuration, verification record |
 | `tool/cloud_checks/api_isolation.py` | New: hosted API isolation check |
-| `tool/sync_probe/integration_test/fundly_stream_test.dart` | New: live stream isolation check |
+| `tool/sync_probe/test/fundly_stream_test.dart` | New: live stream isolation check |
 | `docs/CLOUD_SYNC_PLAN.md` | Next-task pointer |
 
 ## Not included
