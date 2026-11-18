@@ -151,5 +151,7 @@ is one hour, and session refresh belongs to S4.
 | 2026-11-18 | `fundly_stream_test.dart` against the local stack with no PowerSync service | Sign-in, RPC setup and cleanup worked; failed as expected at the first-sync wait. No rows left behind |
 | 2026-11-18 | Step 1: `db push --remote --dry-run`, then owner-run `db push --remote` (project ref `jiiuukimazvcxautvmya`, Tokyo) | Dry run listed exactly the five Fundly migrations, with no seeds or roles; after the push, a second dry run reported "Remote database is up to date" |
 | 2026-11-18 | Step 1: `db lint --remote --schema public,fundly_private --fail-on warning` | No schema errors found |
-| _pending_ | Step 1: Supabase Advisors (security, performance) in the dashboard | Not yet recorded |
-| _pending_ | Steps 2–6 on the hosted projects | Not yet run |
+| 2026-11-18 | Step 1: `db advisors --remote` | Three warnings: (1) `fundly_apply_operations` is a SECURITY DEFINER function executable by `authenticated`: intended, it is the only write path and checks ownership on every read and write; (2) the same for `probe_apply_batch`: removed by step 6; (3) leaked password protection is disabled: an Auth setting for the owner to review. No performance findings |
+| 2026-11-18 | Step 2: read-only check of `pg_publication_tables` after the owner reported running `publication.sql` | Not applied: `powersync` still listed only `probe_entries, probe_parents` |
+| 2026-11-18 | Step 2: agent ran `publication.sql` with `db query --remote --file` at the owner's request, then a separate read-only check | `powersync` lists exactly `accounts, categories, custom_account_types, monthly_plans, transactions`; probe tables removed; not FOR ALL TABLES |
+| _pending_ | Steps 2 (PowerSync connection refresh) to 6 on the hosted projects | Not yet run |
