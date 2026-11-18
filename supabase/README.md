@@ -1,9 +1,11 @@
-# Fundly cloud database — S2.1
+# Fundly cloud database — S2.1, S2.2A and S2.2B
 
-The production schema foundation is implemented and verified **locally only**.
+The schema foundation, transaction API, and account/custom-type API are verified **locally only**.
 Hosted Supabase, the working PowerSync probe, Flutter dependencies, SQLite v12,
-and backup format 6 are unchanged. This stage provides owner-only reads and
-denies all direct client writes; the write API is the separate S2.2 task.
+and backup format 6 are unchanged. Owner-only reads and denied direct client
+writes remain in place. Authenticated transaction operations now use the
+atomic RPC described in [WRITE_API.md](WRITE_API.md), with account operations
+documented in [ACCOUNT_API.md](ACCOUNT_API.md).
 
 ## Files
 
@@ -11,9 +13,17 @@ denies all direct client writes; the write API is the separate S2.2 task.
   database port **55322**. No hosted project is linked by this task.
 - `migrations/20261118010000_fundly_schema.sql`: five tables, constraints,
   indexes, server-controlled revisions, table grants and read policies.
-- `tests/database/schema_test.sql`: **173 pgTAP assertions**, run in a transaction
-  that rolls back both fixtures and mutations. Test Auth rows are local and do
+- `migrations/20261118020000_transaction_write_api.sql`: secure RPC, private
+  validation helpers, and a backend-only receipt table. No replication changes.
+- `migrations/20261118030000_account_write_api.sql`: account/custom-type operations,
+  guarded budget selection and managed liability categories, using the same receipts.
+- `tests/database/`: **435 pgTAP assertions**, run in
+  transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
+- `tests/concurrency/write_api_test.py`: four real overlapping-session tests
+  and one SQL/Dart text-contract check, using Python's standard library only.
+- `tests/concurrency/account_write_api_test.py`: seven overlapping-session budget,
+  account, custom-type and managed-row checks, reusing that session harness.
 
 ## Run locally
 
@@ -24,7 +34,9 @@ cache; it does not change Fundly's Flutter dependencies.
 ```sh
 npx --yes supabase@3.2.0 db start
 npx --yes supabase@3.2.0 test db
-npx --yes supabase@3.2.0 db lint --schema public --fail-on warning
+npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
+python3 supabase/tests/concurrency/write_api_test.py
+python3 supabase/tests/concurrency/account_write_api_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -35,6 +47,11 @@ development database, rebuild it to apply the current migration set:
 npx --yes supabase@3.2.0 db reset --yes
 npx --yes supabase@3.2.0 test db
 ```
+
+The Python runner requires Dart in PATH, hardcodes the disposable local
+container, creates randomly identified test users/records, and removes them in
+cleanup. It never reads `.env` or hosted credentials. Test fixture includes use
+the `.inc` extension so the CLI does not discover them as standalone tests.
 
 These commands target the local stack by default in CLI 3.2.0. Do not add
 `--remote`, link a hosted project, or run a hosted deployment as part of S2.1.
@@ -51,9 +68,9 @@ To stop this local stack, use `npx --yes supabase@3.2.0 stop`.
 | Shared identity | Explicit UUID `id`; no local auto-increment ID is treated as globally unique. Identity and owner cannot change after insertion. |
 | Ownership | Non-null `owner_id` references Supabase Auth; all financial references use owner-qualified foreign keys. |
 | Reads | Authenticated users see their own rows through RLS. Missing user claims see no rows. Anonymous reads are denied. |
-| Writes | Client INSERT, UPDATE, DELETE and TRUNCATE are denied. Trusted backend `service_role` access remains privileged; never ship that key to Flutter. |
-| Revisions | Trigger sets initial revision to 1 and increments on updates, overriding supplied revision values. Expected-revision checking comes in S2.2. |
-| Audit metadata | `created_at` / `updated_at` are `timestamptz`, defaulting to now on insert. Future RPCs control update timestamps; explicit insert timestamps support history import. |
+| Writes | Direct client INSERT, UPDATE, DELETE and TRUNCATE are denied. The RPC permits validated transaction/account/custom-type operations. Trusted backend access remains privileged; never ship that key to Flutter. |
+| Revisions | Trigger sets initial revision to 1 and increments on updates. Transaction update/delete RPCs require the exact expected revision. |
+| Audit metadata | `created_at` / `updated_at` are `timestamptz`. The transaction RPC supplies server time and preserves creation time on edits; clients cannot set audit fields. |
 | Money | PostgreSQL `bigint` minor units; PHP only. Asset/liability opening signs, positive transactions, and nonnegative plan amounts are enforced. No floating-point columns. |
 | Names | 1–40 characters; owner-scoped uniqueness folds ASCII A–Z only, matching SQLite NOCASE rather than a locale-dependent Unicode fold. |
 | Budget account | At most one per owner; active asset accounts only. Switching it atomically is an S2.2 operation. |
@@ -63,9 +80,9 @@ To stop this local stack, use `npx --yes supabase@3.2.0 stop`.
 
 Transaction row CHECKs enforce valid types and field combinations, different
 transfer endpoints, payee/note limits, and required spending/inflow payees.
-Cross-table rules (such as allowed account roles, archived references, linked
-category eligibility, and valid plan category kinds) still require S2.2's
-transactional API. Do not use privileged direct writes as a production workaround.
+The transaction RPC enforces account roles, archived-reference rules, category
+kinds and linked-category eligibility. Account/custom-type workflows are implemented;
+category/Plans writes remain a later slice. Do not use privileged direct writes as a production workaround.
 
 PostgreSQL `bigint` can exceed browser/Dart transport limits. The future client
 boundary must validate supported numeric ranges without rounding. No range was
@@ -85,7 +102,7 @@ Do not feed BC date strings into the existing `CalendarDate.parse` unchanged.
 
 - Clean `db start` and `db reset --yes` applied the migration on PostgreSQL
   **17.12** without touching other local projects.
-- `test db`: **173 assertions passed**, including all four transaction shapes,
+- S2.1 `test db`: **173 assertions passed**, including all four transaction shapes,
   null/zero Targets, UUID/money/time types, invalid row values, uniqueness,
   cross-owner references, referential delete actions, revision handling, two
   authenticated users, missing claims, anonymous access and denied client writes.
@@ -94,6 +111,25 @@ Do not feed BC date strings into the existing `CalendarDate.parse` unchanged.
   issues; `flutter test`: **844 passed**. No app code changed, so no iOS build
   was required for this SQL/configuration task.
 
-No hosted deployment, production RPC, concurrency workflow, rejection recovery,
-PowerSync production stream, or real-data migration is claimed. The next
-reviewed task is S2.2, followed by S2.3's durable rejection/retry protocol.
+S2.2A added **147 API assertions**, for **320 total passing SQL assertions**.
+These verify strict input fields/types, transaction rules, partial edits,
+archived references, Unicode/UTF-16 limits, exact bigint/year-zero serialization,
+atomic create/update/delete rollback, revision conflicts, retry receipts and
+access restrictions. Lint of both `public` and `fundly_private` is clean.
+
+The Python runner passed all five checks: identical concurrent retries commit
+once; changed-payload key reuse fails; competing same-revision edits have one
+winner; different users commit independently; SQL text normalization and UTF-16
+length agree with the installed Dart VM on 31 samples. Each same-user race
+observes a real advisory-lock wait in `pg_stat_activity` before releasing the
+first session's open transaction. This is not a sequential simulation.
+
+S2.2B brings the total to **435 passing SQL assertions**, including account/custom-type
+rules, signed openings, archived usage, linked-row flags/history, name collisions,
+budget snapshots, canonical side effects and whole-batch rollback. Seven additional
+real-session races verify budget selection, archival/spending order, type changes
+versus usage, and stable linked-row creation on retries.
+
+No hosted deployment, client integration, rejection recovery, tombstones,
+PowerSync production stream, or real-data migration is claimed. Next is S2.2C
+(category/Plans workflows), followed by S2.3 recovery.
