@@ -23,7 +23,7 @@ or replication password into this repository, a config file or a chat.
 
 | Setting | Value |
 |---|---|
-| Supabase project ref / region | _to record_ / Tokyo |
+| Supabase project ref / region | `jiiuukimazvcxautvmya` / Tokyo |
 | PowerSync instance / region | _to record_ / JP |
 | PowerSync publication name | `powersync` (confirm in the PowerSync dashboard) |
 | Google OAuth web client ID | _to record_ |
@@ -149,4 +149,7 @@ is one hour, and session refresh belongs to S4.
 | 2026-11-18 | `publication.sql` and `probe_cleanup.sql` rehearsed on the local database, with stand-in probe tables in a `powersync` publication | Cleanup refused while probe tables were published; publication ran twice and listed exactly the five tables; cleanup then dropped the probe tables and function; a `FOR ALL TABLES` publication was refused |
 | 2026-11-18 | `api_isolation.py` against the full local Supabase stack (local API, Auth and two local users; `FUNDLY_CHECK_CONFIG`) | All 15 checks passed |
 | 2026-11-18 | `fundly_stream_test.dart` against the local stack with no PowerSync service | Sign-in, RPC setup and cleanup worked; failed as expected at the first-sync wait. No rows left behind |
-| _pending_ | Steps 1–6 on the hosted projects | Not yet run |
+| 2026-11-18 | Step 1: `db push --remote --dry-run`, then owner-run `db push --remote` (project ref `jiiuukimazvcxautvmya`, Tokyo) | Dry run listed exactly the five Fundly migrations, with no seeds or roles; after the push, a second dry run reported "Remote database is up to date" |
+| 2026-11-18 | Step 1: `db lint --remote --schema public,fundly_private --fail-on warning` | No schema errors found |
+| _pending_ | Step 1: Supabase Advisors (security, performance) in the dashboard | Not yet recorded |
+| _pending_ | Steps 2–6 on the hosted projects | Not yet run |
