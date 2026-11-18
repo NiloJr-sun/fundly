@@ -43,7 +43,8 @@ returns jsonb language sql as $$ select pg_temp.calls(jsonb_build_array(item),ba
 create function pg_temp.first(item jsonb) returns jsonb language sql as $$
   select pg_temp.call(item)#>'{results,0}'
 $$;
--- Message plus parsed JSON detail of a rejected item.
+-- Message plus parsed JSON detail of a rejected item, without the item identity
+-- keys added by S2.3 (tested in sync_protocol_test.sql).
 create function pg_temp.failure(item jsonb) returns jsonb language plpgsql as $$
 declare message text; detail text;
 begin
@@ -51,7 +52,7 @@ begin
   return null;
 exception when others then
   get stacked diagnostics message = message_text, detail = pg_exception_detail;
-  return jsonb_build_object('message',message,'detail',nullif(detail,'')::jsonb);
+  return jsonb_build_object('message',message,'detail',nullif(detail,'')::jsonb - array['index','operation','id']);
 end;
 $$;
 create function pg_temp.revision(record_id uuid) returns text language sql as $$

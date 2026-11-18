@@ -1,7 +1,8 @@
 # S2.3 — Rejection, retry and deletion protocol proposal
 
 Date: 2026-11-18
-Status: proposed for approval; no SQL, deployment or client change in this task.
+Status: approved 2026-11-18; implemented and verified locally. The contract is
+[supabase/SYNC_PROTOCOL.md](../supabase/SYNC_PROTOCOL.md).
 
 ## Starting point
 

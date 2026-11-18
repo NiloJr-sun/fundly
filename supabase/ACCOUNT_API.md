@@ -109,7 +109,7 @@ Additional `P0001` messages: `invalid_name`, `name_taken`, `invalid_custom_type`
 Shared request, authentication, inaccessible-record, revision and idempotency
 errors retain the S2.2A contract. Category/Plans operations are in
 [PLANS_API.md](PLANS_API.md).
-Deletion tombstones and durable rejection recovery are still S2.3 work.
+Deleted account and custom-type UUIDs are retired; see [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 
 Tests use only the disposable local database:
 

@@ -1,12 +1,14 @@
-# Fundly cloud database — S2.1 and S2.2
+# Fundly cloud database — S2.1 to S2.3
 
-The schema foundation and the transaction, account/custom-type and category/Plans APIs are verified **locally only**.
+The schema foundation, the transaction, account/custom-type and category/Plans APIs,
+and the rejection/deletion protocol are verified **locally only**.
 Hosted Supabase, the working PowerSync probe, Flutter dependencies, SQLite v12,
 and backup format 6 are unchanged. Owner-only reads and denied direct client
 writes remain in place. Authenticated transaction operations now use the
 atomic RPC described in [WRITE_API.md](WRITE_API.md), with account operations
-documented in [ACCOUNT_API.md](ACCOUNT_API.md) and category/Plans operations in
-[PLANS_API.md](PLANS_API.md).
+documented in [ACCOUNT_API.md](ACCOUNT_API.md), category/Plans operations in
+[PLANS_API.md](PLANS_API.md), and rejection details, deleted-record retirement and
+the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 
 ## Files
 
@@ -20,7 +22,9 @@ documented in [ACCOUNT_API.md](ACCOUNT_API.md) and category/Plans operations in
   guarded budget selection and managed liability categories, using the same receipts.
 - `migrations/20261118040000_category_plan_write_api.sql`: category, monthly-plan,
   plan archive (timezone-aware) and permanent-deletion operations. No table changes.
-- `tests/database/`: **610 pgTAP assertions**, run in
+- `migrations/20261118050000_sync_protocol.sql`: backend-only `fundly_deleted_records`
+  with delete triggers, retired-UUID checks and structured rejection details.
+- `tests/database/`: **666 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -29,6 +33,7 @@ documented in [ACCOUNT_API.md](ACCOUNT_API.md) and category/Plans operations in
   account, custom-type and managed-row checks, reusing that session harness.
 - `tests/concurrency/category_plan_write_api_test.py`: nine overlapping-session
   plan-save, plan-archive, plan-deletion and category-deletion checks.
+- `tests/concurrency/sync_protocol_test.py`: three delete/edit/re-create races.
 
 ## Run locally
 
@@ -43,6 +48,7 @@ npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warnin
 python3 supabase/tests/concurrency/write_api_test.py
 python3 supabase/tests/concurrency/account_write_api_test.py
 python3 supabase/tests/concurrency/category_plan_write_api_test.py
+python3 supabase/tests/concurrency/sync_protocol_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -143,6 +149,13 @@ and permanent-deletion rules, rollback, replay and denied direct writes. Nine mo
 real-session races cover concurrent plan creation, archive versus spending and
 assignment, and deletion versus spending.
 
-No hosted deployment, client integration, rejection recovery, tombstones,
-PowerSync production stream, or real-data migration is claimed. Next is S2.3
-recovery.
+S2.3 brings the total to **666 passing SQL assertions**, adding tombstones for every
+entity and cascade, retired-UUID refusal for the same and other owners, deleted
+references, rejection positions and current conflict values, merged details,
+rollback without tombstones, replay and backend-only access. Three more races cover
+delete versus edit in both orders and delete versus re-create. All runners remove
+their fixtures' tombstones before deleting test users.
+
+No hosted deployment, client integration, PowerSync production stream, or
+real-data migration is claimed. The client recovery contract is defined for S5,
+not implemented. S2 is complete; S3 needs its own approval.

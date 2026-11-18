@@ -191,6 +191,7 @@ def main():
                 f'DELETE FROM public.transactions WHERE owner_id IN ({owners}); '
                 f'DELETE FROM public.categories WHERE owner_id IN ({owners}); '
                 f'DELETE FROM public.accounts WHERE owner_id IN ({owners}); '
+                f'DELETE FROM public.fundly_deleted_records WHERE owner_id IN ({owners}); '
                 f'DELETE FROM auth.users WHERE id IN ({owners}); COMMIT;')
     print('All 5 concurrency/text-contract checks passed; disposable fixtures removed.', flush=True)
 

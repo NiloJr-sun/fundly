@@ -244,8 +244,9 @@ SQLite integrity/foreign keys after any local schema migration.
 
 ## Next task
 
-Review [S2's concrete implementation proposal](CLOUD_SYNC_S2_PLAN.md), then
-implement only its approved task. The owner accepted the connection checks and
+S2 (S2.1–S2.3) is implemented and verified locally; see
+[supabase/README.md](../supabase/README.md). S3 needs its own proposal and
+approval before work starts. The owner accepted the connection checks and
 requested development to proceed; unverified rejection/conflict cases remain
 explicit development and release requirements. See
 [S1 findings](CLOUD_SYNC_S1_FINDINGS.md) for evidence and gaps. Keep the probe

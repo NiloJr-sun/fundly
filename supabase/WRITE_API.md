@@ -106,10 +106,9 @@ locks also protect referenced accounts/categories during validation and commit.
 
 Database availability/serialization failures can still occur; retry the whole
 request with the original key after transient errors. Do not silently retire a
-client queue item because a domain error occurred. Durable rejection storage,
-dependency-aware reconciliation and deletion tombstones belong to S2.3.
-Currently a deleted UUID can be reused under a new batch key; cached retries
-are protected, but stale-create resurrection prevention is not yet implemented.
+client queue item because a domain error occurred. Error classes, rejection
+details, deleted-UUID retirement (`record_deleted`) and the client recovery
+contract are defined in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 Keep the production client disconnected until the remaining slices are ready.
 
 ## Verification

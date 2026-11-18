@@ -123,7 +123,7 @@ def main():
         overlap(actor, rpc(str(uuid.uuid4()), {'operation': 'category.delete', 'id': target,
                                                'expected_revision': '1'}), actor,
                 rpc(str(uuid.uuid4()), spending(target, MONTH, record_id=entry)),
-                run_name + '_remove', 'record_not_accessible')
+                run_name + '_remove', 'record_deleted')
         assert count(f'public.transactions WHERE id={literal(entry)}') == '0'
         print('PASS: a committed category deletion prevents concurrent spending in it', flush=True)
 
@@ -139,6 +139,7 @@ def main():
                 f'DELETE FROM public.monthly_plans WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.accounts WHERE owner_id={literal(actor)}; '
+                f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
     print('All 9 category/plan concurrency checks passed; disposable fixtures removed.', flush=True)
 

@@ -102,6 +102,7 @@ def main():
                 f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.accounts WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
+                f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
     print('All 7 account concurrency checks passed; disposable fixtures removed.', flush=True)
 

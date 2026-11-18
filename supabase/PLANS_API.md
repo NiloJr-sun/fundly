@@ -111,12 +111,13 @@ Results contain `operation`, `entity` (`categories` or `monthly_plans`), `id`,
 decimal-string `revision`, canonical `record` (or `deleted: true` with the prior
 revision) and `changes`. Plan records carry `target_amount_minor` (string or
 null) and `assigned_amount_minor` as strings; audit times use UTC `Z`. Removed
-rows have no tombstone yet (S2.3).
+categories and plans are retired (`record_deleted`); see [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 
 New `P0001` messages: `managed_category`, `category_in_use`,
 `category_not_spending`, `category_archived`, `plan_archived`, `plan_deleted`,
 `plan_conflict`, `plan_allocation_remaining`, `plan_delete_blocked` and
-`invalid_timezone`. Two carry a JSON error detail:
+`invalid_timezone`. Two carry domain fields in their JSON error detail, alongside
+the item position and identity that S2.3 adds to every rejection:
 
 ```json
 {"months": [{"month": "2026-11", "remaining_minor": "30000"}]}
