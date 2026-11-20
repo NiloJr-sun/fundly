@@ -245,9 +245,13 @@ SQLite integrity/foreign keys after any local schema migration.
 ## Next task
 
 S2 (S2.1–S2.3) is implemented and verified locally; see
-[supabase/README.md](../supabase/README.md). S3 is approved: its files are
-ready and the owner's hosted steps are in [powersync/README.md](../powersync/README.md).
-S3 is complete only after those steps and the hosted checks pass. The owner accepted the connection checks and
+[supabase/README.md](../supabase/README.md). S3 is complete (2026-11-20): the
+hosted Supabase project and JP PowerSync instance replicate exactly the five
+Fundly tables, Google OAuth is configured, both isolation checks pass on the
+hosted services and the probe objects are removed; see
+[powersync/README.md](../powersync/README.md). The next task is S4
+(authentication and isolated local stores), which needs its own proposal and
+approval before work starts. The owner accepted the connection checks and
 requested development to proceed; unverified rejection/conflict cases remain
 explicit development and release requirements. See
 [S1 findings](CLOUD_SYNC_S1_FINDINGS.md) for evidence and gaps. Keep the probe

@@ -1,8 +1,9 @@
 # S3 — Connect PowerSync and configure authentication: proposal
 
 Date: 2026-11-18
-Status: approved 2026-11-18. Agent files are done and rehearsed locally; the
-hosted steps are pending the owner. Procedure and verification record:
+Status: **complete 2026-11-20.** All six hosted steps are done and the hosted
+API and stream isolation checks pass; the probe objects are removed.
+Procedure and verification record:
 [powersync/README.md](../powersync/README.md). The stream check lives at
 `tool/sync_probe/test/fundly_stream_test.dart` (host VM test, skipped without
 credentials) rather than `integration_test/`, so it needs no device.
