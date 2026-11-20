@@ -250,8 +250,8 @@ hosted Supabase project and JP PowerSync instance replicate exactly the five
 Fundly tables, Google OAuth is configured, both isolation checks pass on the
 hosted services and the probe objects are removed; see
 [powersync/README.md](../powersync/README.md). The next task is S4
-(authentication and isolated local stores), which needs its own proposal and
-approval before work starts. The owner accepted the connection checks and
+(authentication and isolated local stores); its proposal is
+[CLOUD_SYNC_S4_PLAN.md](CLOUD_SYNC_S4_PLAN.md), awaiting approval. The owner accepted the connection checks and
 requested development to proceed; unverified rejection/conflict cases remain
 explicit development and release requirements. See
 [S1 findings](CLOUD_SYNC_S1_FINDINGS.md) for evidence and gaps. Keep the probe
