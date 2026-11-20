@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_identity.dart';
 import '../data/backup_importer.dart';
 import 'export_backup.dart';
 
@@ -27,6 +29,27 @@ Future<String?> _pickWithFilesApp() async {
   return utf8.decode(await file.readAsBytes());
 }
 
+/// Restore replaces all data, and doing that to a signed-in (cloud) dataset
+/// needs its own design (cloud sync S6). Until then it only works signed out.
+Future<void> _explainRestoreUnavailable(BuildContext context) =>
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore is not available while signed in'),
+        content: const Text(
+          'Restoring a backup replaces all data. To restore, sign out first: '
+          'the backup then replaces the data on this device that is not '
+          'linked to an account. Export backup still works while signed in.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
 /// Picks a backup, checks it, asks the user to confirm replacing all data
 /// (offering to export the current data first), then restores it.
 ///
@@ -37,6 +60,11 @@ Future<void> restoreBackup(
   WidgetRef ref, {
   Rect? origin,
 }) async {
+  if (ref.read(authIdentityProvider) is SignedIn) {
+    await _explainRestoreUnavailable(context);
+    return;
+  }
+
   final messenger = ScaffoldMessenger.of(context);
   void tell(String message) =>
       messenger.showSnackBar(SnackBar(content: Text(message)));

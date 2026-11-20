@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/centered_message.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_identity.dart';
+import '../../auth/presentation/sign_in_actions.dart';
+import '../../auth/presentation/signed_in_banner.dart';
 import '../../backup/presentation/export_backup.dart';
 import '../../backup/presentation/restore_backup.dart';
 import 'account_form_screen.dart';
@@ -42,17 +46,25 @@ class AccountsScreen extends ConsumerWidget {
           const _MoreMenu(),
         ],
       ),
-      body: switch (accounts) {
-        AsyncData(value: final list) when list.isEmpty => const CenteredMessage(
-          'No accounts yet.\nAdd your savings, credit cards and loans to '
-          'start tracking your balances.',
-        ),
-        AsyncData(value: final list) => AccountList(accounts: list),
-        AsyncError() => const CenteredMessage(
-          'Your accounts could not be loaded. Please restart the app.',
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: Column(
+        children: [
+          const SignedInBanner(),
+          Expanded(
+            child: switch (accounts) {
+              AsyncData(value: final list) when list.isEmpty =>
+                const CenteredMessage(
+                  'No accounts yet.\nAdd your savings, credit cards and loans '
+                  'to start tracking your balances.',
+                ),
+              AsyncData(value: final list) => AccountList(accounts: list),
+              AsyncError() => const CenteredMessage(
+                'Your accounts could not be loaded. Please restart the app.',
+              ),
+              _ => const Center(child: CircularProgressIndicator()),
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const AccountFormScreen()),
@@ -64,14 +76,17 @@ class AccountsScreen extends ConsumerWidget {
   }
 }
 
-enum _MoreAction { exportBackup, restoreBackup }
+enum _MoreAction { exportBackup, restoreBackup, signIn, signOut }
 
-/// The ⋮ menu for app-level actions: exporting and restoring backups.
+/// The ⋮ menu for app-level actions: backups, and signing in or out when this
+/// build supports it.
 class _MoreMenu extends ConsumerWidget {
   const _MoreMenu();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final canSignIn = ref.watch(authRepositoryProvider).canSignIn;
+    final signedIn = ref.watch(authIdentityProvider) is SignedIn;
     return PopupMenuButton<_MoreAction>(
       tooltip: 'More',
       onSelected: (action) => switch (action) {
@@ -85,9 +100,11 @@ class _MoreMenu extends ConsumerWidget {
           ref,
           origin: _originOf(context),
         ),
+        _MoreAction.signIn => signInWithGoogle(context, ref),
+        _MoreAction.signOut => signOut(context, ref),
       },
-      itemBuilder: (_) => const [
-        PopupMenuItem(
+      itemBuilder: (_) => [
+        const PopupMenuItem(
           value: _MoreAction.exportBackup,
           child: ListTile(
             contentPadding: EdgeInsets.zero,
@@ -95,7 +112,7 @@ class _MoreMenu extends ConsumerWidget {
             title: Text('Export backup'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: _MoreAction.restoreBackup,
           child: ListTile(
             contentPadding: EdgeInsets.zero,
@@ -103,6 +120,24 @@ class _MoreMenu extends ConsumerWidget {
             title: Text('Restore from backup'),
           ),
         ),
+        if (signedIn)
+          const PopupMenuItem(
+            value: _MoreAction.signOut,
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.logout),
+              title: Text('Sign out'),
+            ),
+          )
+        else if (canSignIn)
+          const PopupMenuItem(
+            value: _MoreAction.signIn,
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.login),
+              title: Text('Sign in with Google'),
+            ),
+          ),
       ],
     );
   }

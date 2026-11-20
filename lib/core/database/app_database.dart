@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/accounts/data/accounts_table.dart';
 import '../../features/accounts/data/custom_account_types_table.dart';
 import '../../features/accounts/domain/account_type.dart';
+import '../../features/auth/data/auth_repository.dart';
 import '../../features/categories/data/categories_table.dart';
 import '../../features/categories/data/default_categories.dart';
 import '../../features/categories/data/liability_plan_categories.dart';
@@ -17,6 +18,7 @@ import '../time/calendar_month.dart';
 import 'app_database.steps.dart';
 import 'calendar_date_converter.dart';
 import 'calendar_month_converter.dart';
+import 'database_name.dart';
 
 part 'app_database.g.dart';
 
@@ -36,18 +38,21 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  /// Opens the platform's local database, or [executor] if given in tests.
+  /// Opens the platform's signed-out database, or [executor] if given in
+  /// tests.
   AppDatabase([QueryExecutor? executor])
-    : super(
-        executor ??
-            driftDatabase(
-              name: 'fundly',
-              web: DriftWebOptions(
-                sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-                driftWorker: Uri.parse('drift_worker.js'),
-              ),
-            ),
-      );
+    : super(executor ?? _openPlatformDatabase(localDatabaseName));
+
+  /// Opens the platform database called [name] (see [databaseNameFor]).
+  AppDatabase.named(String name) : super(_openPlatformDatabase(name));
+
+  static QueryExecutor _openPlatformDatabase(String name) => driftDatabase(
+    name: name,
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
 
   @override
   int get schemaVersion => 12;
@@ -140,9 +145,20 @@ class AppDatabase extends _$AppDatabase {
   );
 }
 
-/// The single [AppDatabase] for the app. Override it in tests.
+/// Opens the database with a given name. Override it in tests.
+final databaseOpenerProvider = Provider<AppDatabase Function(String name)>(
+  (ref) => AppDatabase.named,
+);
+
+/// The open [AppDatabase]: the signed-out one, or the signed-in user's own.
+///
+/// When the identity changes, the old database is closed and every
+/// repository and stream built on this provider rebuilds against the new one.
+/// A token refresh for the same user keeps the same name, so nothing reopens.
+/// Override it in tests.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final database = AppDatabase();
+  final name = ref.watch(authIdentityProvider.select(databaseNameFor));
+  final database = ref.watch(databaseOpenerProvider)(name);
   ref.onDispose(database.close);
   return database;
 });

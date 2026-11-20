@@ -1,7 +1,29 @@
 # S4 — Authentication and isolated local stores: proposal
 
 Date: 2026-11-20
-Status: **proposal, awaiting approval.** Nothing in this file is built yet.
+Status: **approved 2026-11-20; implemented, manual sign-in checks pending.**
+
+## Implementation record
+
+- Dependencies added: `supabase_flutter` 2.18.3, `google_sign_in` 7.2.0 and
+  `crypto` 3.0.8 (declared explicitly because the nonce hash imports it). iOS
+  Swift package pins (GoogleSignIn 10.1.0) are committed in
+  `ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`.
+- Decision 6: the preferred nonce approach works; **Skip nonce checks stays
+  off**. `GoogleSignIn.initialize` may be called only once per app run, so the
+  nonce is generated once per run and reused for each sign-in in that run;
+  Supabase checks it every time.
+- Run with cloud features:
+  `flutter run --dart-define-from-file=config/cloud.json` (web:
+  `flutter run -d chrome --web-port 7358 --dart-define-from-file=config/cloud.json`).
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-11-20 | `dart format .`, `flutter analyze` | 0 changed; no issues |
+| 2026-11-20 | `flutter test` | 869 passed (844 before, 25 new) |
+| 2026-11-20 | `flutter build ios --simulator --debug` and `flutter build web`, with `config/cloud.json` | Both built |
+| 2026-11-20 | Simulator: backed up `fundly.sqlite`, installed, launched signed out | Launches on existing data; schema 12, counts unchanged (6 accounts, 13 categories, 6 transactions, 7 monthly plans), `integrity_check` ok, no foreign-key errors |
+| _pending_ | Owner: Google sign-in on the simulator and web, restart, sign-out, offline relaunch | Not yet run |
 
 ## Starting point
 
