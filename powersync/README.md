@@ -26,8 +26,8 @@ or replication password into this repository, a config file or a chat.
 | Supabase project ref / region | `jiiuukimazvcxautvmya` / Tokyo |
 | PowerSync instance / region | _to record_ / JP |
 | PowerSync publication name | `powersync` (confirm in the PowerSync dashboard) |
-| Google OAuth web client ID | _to record_ |
-| Google OAuth iOS client ID | _to record_ (bundle ID `com.nilojr.fundly`) |
+| Google OAuth web client ID | `655206339590-4l4kulvsr3ptsmftiiu9eqlna6pbl1en.apps.googleusercontent.com` |
+| Google OAuth iOS client ID | `655206339590-gv8k3be2tshp60ucmn5s1qa0c7e86b8l.apps.googleusercontent.com` (bundle ID `com.nilojr.fundly`) |
 | Supabase allowed redirect URLs | `http://localhost:7358/**` only, until S7 picks the web origin |
 
 The project URL, publishable key and PowerSync URL used by the checks stay in
@@ -157,4 +157,9 @@ is one hour, and session refresh belongs to S4.
 | 2026-11-19 | Steps 2–3 (owner): PowerSync Database Connection shows the Supabase project as Complete (no table reconfiguration); `sync-config.yaml` validated and deployed | Owner reported done |
 | 2026-11-20 | Step 5: `api_isolation.py` against the hosted project (`jiiuukimazvcxautvmya.supabase.co`), two disposable email/password users | All 15 checks passed; check records removed |
 | 2026-11-20 | Step 5: `fundly_stream_test.dart` against the hosted JP PowerSync instance | Passed (1 test, ~15 s). Both users synced only their own rows in all five tables; the RPC change reached A only; the forged token was refused with `401 PSYNC_S2101 signature verification failed` and synced nothing |
-| _pending_ | Step 4 (Google OAuth, record client IDs) and step 6 (probe cleanup) | Not yet run |
+| 2026-11-20 | Step 4 (owner): Google OAuth Web application and iOS clients created; Google provider configured in Supabase; client IDs recorded above | Owner reported done |
+| 2026-11-20 | Step 4 (owner): manual browser sign-in via `/auth/v1/authorize?provider=google&redirect_to=http://localhost:7358` | Signed in with Google; the user appears under Supabase → Authentication → Users |
+| 2026-11-20 | Pre-cleanup read-only check of `pg_publication_tables` | Drift found: `powersync` listed 10 tables (the five Fundly tables plus `probe_entries`, `probe_parents`, `probe_receipts`, `fundly_write_receipts`, `fundly_deleted_records`); not FOR ALL TABLES. Likely cause: the PowerSync dashboard's guided table setup. Do not use **Reconfigure Tables**; manage the publication only through `publication.sql` |
+| 2026-11-20 | Agent reran `publication.sql` with `db query --remote --file` at the owner's request, then a separate read-only check | `powersync` lists exactly `accounts, categories, custom_account_types, monthly_plans, transactions` |
+| 2026-11-20 | Reran `api_isolation.py` and `fundly_stream_test.dart` on the hosted services after the reset | All 15 API checks passed; stream test passed (forged token refused with `401 PSYNC_S2101`) |
+| _pending_ | Step 6 (probe cleanup) | Not yet run |
