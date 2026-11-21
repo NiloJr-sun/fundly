@@ -37,7 +37,7 @@ Future<void> signOut(BuildContext context, WidgetRef ref) async {
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        TextButton(
+        FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Sign out'),
         ),

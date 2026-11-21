@@ -65,7 +65,7 @@ Future<void> signOutFromAccountTab(WidgetTester tester) async {
   await tapAndSettle(tester, accountTab);
   await tapAndSettle(tester, find.byTooltip('More'));
   await tapAndSettle(tester, find.text('Sign out'));
-  await tapAndSettle(tester, find.widgetWithText(TextButton, 'Sign out'));
+  await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Sign out'));
 }
 
 /// How visible [text] is: its nearest fade's opacity.

@@ -124,7 +124,7 @@ void main() {
     await openMenu(tester);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Sign out'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pumpAndSettle();
     expect(auth.signOutCalls, 1);
     expect(find.textContaining('Signed in as'), findsNothing);
