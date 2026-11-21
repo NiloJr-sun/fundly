@@ -176,6 +176,11 @@ void main() {
     tester,
   ) async {
     final auth = FakeAuthRepository();
+    // Signed out opens the login page; keep its wallet still so the screen
+    // can settle.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

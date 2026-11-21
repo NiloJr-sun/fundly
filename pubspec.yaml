@@ -69,9 +69,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Google "G" logo, cropped from Google's official sign-in button assets.
+  # Google "G" logo, cropped from Google's official sign-in button assets;
+  # login/ holds the login page's wallet and coin layers.
   assets:
     - assets/images/
+    - assets/images/login/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

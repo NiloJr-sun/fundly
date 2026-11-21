@@ -6,6 +6,7 @@ import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/data/local_use_choice.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
+import 'package:fundly/features/auth/presentation/animated_wallet.dart';
 import 'package:fundly/features/auth/presentation/login_screen.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
@@ -20,7 +21,20 @@ Future<void> pumpApp(
   WidgetTester tester, {
   AuthRepository auth = const LocalOnlyAuthRepository(),
   LocalUseChoiceStore? choice,
+  bool reduceMotion = true,
 }) async {
+  // An iPhone-sized screen, so the whole login page fits as it does on device.
+  tester.view
+    ..physicalSize = const Size(1170, 2532)
+    ..devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  // The wallet floats forever, so flows that wait for the screen to settle
+  // run with Reduce Motion on; the animation tests turn it off.
+  if (reduceMotion) {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+  }
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -54,6 +68,16 @@ Future<void> signOutFromAccountTab(WidgetTester tester) async {
   await tapAndSettle(tester, find.widgetWithText(TextButton, 'Sign out'));
 }
 
+/// How visible [text] is: its nearest fade's opacity.
+double opacityOf(WidgetTester tester, String text) => tester
+    .widget<FadeTransition>(
+      find
+          .ancestor(of: find.text(text), matching: find.byType(FadeTransition))
+          .first,
+    )
+    .opacity
+    .value;
+
 void main() {
   group('without sign-in, the login page never shows', () {
     testWidgets('a build without cloud config opens the tabs', (tester) async {
@@ -79,7 +103,7 @@ void main() {
     expect(login, findsOneWidget);
     expect(home, findsNothing);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Use without an account'), findsOneWidget);
+    expect(find.text('Explore as a guest'), findsOneWidget);
   });
 
   testWidgets('Continue with Google signs in and opens that user\'s tabs', (
@@ -127,12 +151,12 @@ void main() {
     expect(home, findsOneWidget);
   });
 
-  testWidgets('Use without an account opens local data and is remembered', (
+  testWidgets('Explore as a guest opens local data and is remembered', (
     tester,
   ) async {
     final choice = InMemoryLocalUseChoiceStore();
     await pumpApp(tester, auth: FakeAuthRepository(), choice: choice);
-    await tapAndSettle(tester, find.text('Use without an account'));
+    await tapAndSettle(tester, find.text('Explore as a guest'));
 
     expect(home, findsOneWidget);
     expect(choice.chosen, isTrue);
@@ -196,5 +220,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(login, findsOneWidget);
+  });
+
+  group('wallet animation', () {
+    testWidgets('the text fades in after the wallet, then the wallet floats', (
+      tester,
+    ) async {
+      await pumpApp(tester, auth: FakeAuthRepository(), reduceMotion: false);
+
+      expect(find.byType(AnimatedWallet), findsOneWidget);
+      expect(opacityOf(tester, 'Fundly'), 0);
+
+      await tester.pump(const Duration(milliseconds: 2600));
+      expect(opacityOf(tester, 'Fundly'), 1);
+      expect(opacityOf(tester, 'Your money, your way.'), 1);
+
+      // The gentle float keeps going after the intro.
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.hasRunningAnimations, isTrue);
+
+      // Buttons work while it moves.
+      await tester.tap(find.text('Explore as a guest'));
+      await tester.pump();
+      await tester.pump();
+      expect(home, findsOneWidget);
+    });
+
+    testWidgets('with Reduce Motion everything shows at once and stays still', (
+      tester,
+    ) async {
+      await pumpApp(tester, auth: FakeAuthRepository());
+
+      expect(opacityOf(tester, 'Fundly'), 1);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
   });
 }

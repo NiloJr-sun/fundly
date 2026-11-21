@@ -45,7 +45,7 @@ Future<AuthRepository?> _startCloudAuth(CloudConfig config) async {
   }
 }
 
-/// Loads the remembered "Use without an account" choice. If preferences are
+/// Loads the remembered "Explore as a guest" choice. If preferences are
 /// unavailable, the choice lasts for this run only.
 Future<LocalUseChoiceStore?> _loadLocalUseChoice() async {
   try {

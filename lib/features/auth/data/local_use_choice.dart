@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/auth_identity.dart';
 import 'auth_repository.dart';
 
-/// Remembers on this device that the user chose "Use without an account" on
+/// Remembers on this device that the user chose "Explore as a guest" on
 /// the login page, so later launches open the local data directly.
 abstract class LocalUseChoiceStore {
   bool get chosen;
@@ -68,7 +68,7 @@ class LocalUseChosenNotifier extends Notifier<bool> {
     return true;
   }
 
-  /// "Use without an account" on the login page.
+  /// "Explore as a guest" on the login page.
   void choose() => _save(ref.read(localUseChoiceStoreProvider), chosen: true);
 
   void _save(LocalUseChoiceStore store, {required bool chosen}) {

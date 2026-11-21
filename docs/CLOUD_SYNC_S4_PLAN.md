@@ -30,18 +30,26 @@ Status: **approved 2026-11-20; implemented, manual sign-in checks pending.**
 - In builds that can sign in (cloud config, iOS or web), a signed-out launch
   opens a login page: **Continue with Google** (the only sign-in method; a
   first-time Google user is created automatically, so there is no separate
-  sign-up) and **Use without an account**, which opens the local `fundly`
+  sign-up) and **Explore as a guest**, which opens the local `fundly`
   data as before.
-- The "Use without an account" choice is remembered on the device
+- The "Explore as a guest" choice is remembered on the device
   (`shared_preferences`, key `fundly.localUseChosen`, added as a direct
   dependency; it was already transitive through `supabase_flutter`). Signing in
   clears it, so a sign-out or a revoked session returns to the login page.
 - While using local data, Account tab ⋮ → **Sign in with Google** still works.
   Local data is not moved into the account (S6).
 - Builds without the cloud config and Android skip the login page.
-- The button is the app's teal filled button with Google's "G" logo, cropped
-  from Google's official sign-in button assets (`assets/images/`), on a small
-  white tile, as Google's branding guidelines require for the logo.
+- Layout: an animated wallet-and-coins illustration supplied by the owner,
+  "Fundly", "Your money, your way.", one line on what the app does, a
+  divider, then **Continue with Google** and **Explore as a guest →**.
+- The illustration is split into layers (`assets/images/login/`: the wallet
+  and nine coin pieces that recreate the artwork when stacked). On open the
+  wallet slides up, the coins pop out one by one, the top coin swells
+  briefly, the text fades in (2.6 s), then everything floats gently (3.5 s
+  cycle). With iOS Reduce Motion it is shown complete and still.
+- The Google button is the app's teal filled button with Google's "G" logo,
+  cropped from Google's official sign-in button assets (`assets/images/`), on
+  a small white tile, as Google's branding guidelines require for the logo.
 - No schema change (v12), no backup format change (6).
 
 | Date | Check | Result |
