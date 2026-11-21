@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
+import '../../auth/presentation/google_logo_tile.dart';
 import '../../auth/presentation/sign_in_actions.dart';
 import '../../auth/presentation/signed_in_banner.dart';
 import '../../backup/presentation/export_backup.dart';
@@ -87,8 +88,13 @@ class _MoreMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canSignIn = ref.watch(authRepositoryProvider).canSignIn;
     final signedIn = ref.watch(authIdentityProvider) is SignedIn;
+    final theme = Theme.of(context);
     return PopupMenuButton<_MoreAction>(
       tooltip: 'More',
+      // Matches the app's dialogs and the login page: rounded, panel colour.
+      color: theme.dialogTheme.backgroundColor,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       onSelected: (action) => switch (action) {
         _MoreAction.exportBackup => exportBackup(
           context,
@@ -104,43 +110,44 @@ class _MoreMenu extends ConsumerWidget {
         _MoreAction.signOut => signOut(context, ref),
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(
-          value: _MoreAction.exportBackup,
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.ios_share),
-            title: Text('Export backup'),
-          ),
-        ),
-        const PopupMenuItem(
-          value: _MoreAction.restoreBackup,
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.restore),
-            title: Text('Restore from backup'),
-          ),
-        ),
         if (signedIn)
-          const PopupMenuItem(
-            value: _MoreAction.signOut,
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.logout),
-              title: Text('Sign out'),
-            ),
-          )
+          _item(_MoreAction.signOut, const Icon(Icons.logout), 'Sign out')
         else if (canSignIn)
-          const PopupMenuItem(
-            value: _MoreAction.signIn,
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.login),
-              title: Text('Sign in with Google'),
-            ),
+          _item(
+            _MoreAction.signIn,
+            const GoogleLogoTile(size: 24),
+            'Sign in with Google',
           ),
+        if (signedIn || canSignIn) const PopupMenuDivider(),
+        _item(
+          _MoreAction.exportBackup,
+          const Icon(Icons.ios_share),
+          'Export backup',
+        ),
+        _item(
+          _MoreAction.restoreBackup,
+          const Icon(Icons.restore),
+          'Restore from backup',
+        ),
       ],
     );
   }
+
+  static PopupMenuItem<_MoreAction> _item(
+    _MoreAction action,
+    Widget leading,
+    String title,
+  ) => PopupMenuItem(
+    value: action,
+    child: Builder(
+      builder: (context) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        iconColor: Theme.of(context).colorScheme.primary,
+        leading: SizedBox(width: 24, child: Center(child: leading)),
+        title: Text(title),
+      ),
+    ),
+  );
 
   /// Where this menu button is on screen, for the iPad share sheet.
   static Rect? _originOf(BuildContext context) {

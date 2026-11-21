@@ -5,6 +5,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/spacing.dart';
 import '../data/local_use_choice.dart';
 import 'animated_wallet.dart';
+import 'google_logo_tile.dart';
 import 'sign_in_actions.dart';
 
 /// First screen while signed out in builds that can sign in.
@@ -210,20 +211,7 @@ class _GoogleButton extends StatelessWidget {
                           .withValues(alpha: 0.38),
                     ),
                   )
-                : DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(Spacing.xs),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(Spacing.xs),
-                      child: Image.asset(
-                        'assets/images/google_logo.png',
-                        // Not announced: the button text already says Google.
-                        excludeFromSemantics: true,
-                      ),
-                    ),
-                  ),
+                : const GoogleLogoTile(),
           ),
           const SizedBox(width: Spacing.sm + Spacing.xs),
           // Wraps rather than overflows with large accessibility text sizes.
