@@ -36,7 +36,8 @@ Status: **approved 2026-11-20; implemented, manual sign-in checks pending.**
   (`shared_preferences`, key `fundly.localUseChosen`, added as a direct
   dependency; it was already transitive through `supabase_flutter`). Signing in
   clears it, so a sign-out or a revoked session returns to the login page.
-- While using local data, Account tab ⋮ → **Sign in with Google** still works.
+- While using local data, the Profile tab's **Continue with Google** still
+  works.
   Local data is not moved into the account (S6).
 - Builds without the cloud config and Android skip the login page.
 - Layout: an animated wallet-and-coins illustration supplied by the owner,
@@ -57,6 +58,21 @@ Status: **approved 2026-11-20; implemented, manual sign-in checks pending.**
 | 2026-11-22 | `dart format`, `flutter analyze` | 0 changed; no issues |
 | 2026-11-22 | `flutter test` | 883 passed (869 before, 14 new) |
 | _pending_ | Owner: login page on the simulator and web | Not yet run |
+
+## Follow-up: Profile tab (approved 2026-11-22)
+
+- Navigation is now Spending, Plans, **Accounts** (renamed from Account) and
+  a new **Profile** tab. This changes the 2026-11-16 three-tab decision.
+- Profile shows a greeting card ("Good morning / afternoon / evening",
+  with the Google profile's first name when signed in), then **Your data**
+  (Export backup, Restore from backup) and, when signed in, **Sign out**.
+  As a guest the card says "Using Fundly as a guest" and offers Continue with
+  Google (builds that can sign in only).
+- The Accounts tab's ⋮ menu and signed-in banner are removed; their actions
+  live on Profile. Restore stays blocked while signed in.
+- Greeting hours: morning 05:00–11:59, afternoon 12:00–17:59, evening
+  18:00–04:59 (local time). The name comes from Supabase user metadata
+  (`full_name`, else `name`).
 
 ## Starting point
 
@@ -195,7 +211,7 @@ it and listing it as a known limitation unless you want it in S4.
 | `lib/features/auth/domain/auth_identity.dart` | New: signed-out or signed-in (user ID, email) |
 | `lib/features/auth/data/auth_repository.dart` | New: watch identity, sign in with Google, sign out; Supabase-backed, with a fake for tests |
 | `lib/features/auth/data/google_sign_in_*.dart` | New: iOS native and web redirect flows |
-| `lib/features/auth/presentation/` | New: ⋮ menu items, signed-in status line, error message |
+| `lib/features/auth/presentation/` | New: ⋮ menu items, signed-in status line, error message (moved to the Profile tab later; see "Follow-up: Profile tab") |
 | `lib/core/database/app_database.dart` | Database name parameter; provider follows the active identity |
 | `lib/app/app.dart` | Reset navigation when the identity changes |
 | `lib/features/accounts/presentation/accounts_screen.dart` | Menu entries and status line |

@@ -5,7 +5,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/spacing.dart';
 import '../data/local_use_choice.dart';
 import 'animated_wallet.dart';
-import 'google_logo_tile.dart';
+import 'google_sign_in_button.dart';
 import 'sign_in_actions.dart';
 
 /// First screen while signed out in builds that can sign in.
@@ -90,14 +90,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     const SizedBox(height: Spacing.lg),
                     const Divider(height: 1),
                     const SizedBox(height: Spacing.lg),
-                    _GoogleButton(
+                    GoogleSignInButton(
                       onPressed: _signingIn ? null : _continueWithGoogle,
                       busy: _signingIn,
                     ),
                     const SizedBox(height: Spacing.md),
                     FilledButton.tonalIcon(
                       onPressed: _signingIn ? null : _exploreAsGuest,
-                      style: _buttonStyle,
+                      style: authButtonStyle,
                       iconAlignment: IconAlignment.end,
                       icon: const Icon(Icons.arrow_forward),
                       label: const Text('Explore as a guest'),
@@ -112,14 +112,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
-
-/// Shared shape for the two login buttons.
-final _buttonStyle = FilledButton.styleFrom(
-  minimumSize: const Size.fromHeight(56),
-  padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-);
 
 /// Fades its child in while sliding it up slightly.
 class _FadeUp extends StatelessWidget {
@@ -178,48 +170,6 @@ class _Headline extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  const _GoogleButton({required this.onPressed, required this.busy});
-
-  final VoidCallback? onPressed;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: onPressed,
-      style: _buttonStyle,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Same size either way, so the label does not shift.
-          SizedBox.square(
-            dimension: 26,
-            child: busy
-                // No white tile while loading: the spinner takes the
-                // button's own (disabled) text colour.
-                ? Padding(
-                    padding: const EdgeInsets.all(Spacing.xs),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      // A disabled FilledButton's text colour.
-                      color: Theme.of(context).colorScheme.onSurface
-                          .withValues(alpha: 0.38),
-                    ),
-                  )
-                : const GoogleLogoTile(),
-          ),
-          const SizedBox(width: Spacing.sm + Spacing.xs),
-          // Wraps rather than overflows with large accessibility text sizes.
-          const Flexible(
-            child: Text('Continue with Google', textAlign: TextAlign.center),
-          ),
-        ],
-      ),
     );
   }
 }

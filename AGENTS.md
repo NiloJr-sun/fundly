@@ -72,8 +72,8 @@ simulator build for anything that changes app code. macOS has no
   `plan_group`, `linked_account_id`), `transactions`,
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
-- **Backup format 6** (JSON export and replace-all restore from the Account
-  tab ⋮ menu). Restore accepts formats 1–6.
+- **Backup format 6** (JSON export and replace-all restore from the Profile
+  tab). Restore accepts formats 1–6.
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one

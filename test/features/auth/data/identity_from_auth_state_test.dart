@@ -5,13 +5,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 const userId = '3f2b8c1e-9a4d-4e7b-8c21-5d6f7a8b9c0d';
 
-Session session({String? email = 'a@test.com', int? expiresAt}) => Session(
+Session session({
+  String? email = 'a@test.com',
+  int? expiresAt,
+  Map<String, dynamic> metadata = const {},
+}) => Session(
   accessToken: 'token',
   tokenType: 'bearer',
   user: User(
     id: userId,
     appMetadata: const {},
-    userMetadata: const {},
+    userMetadata: metadata,
     aud: 'authenticated',
     createdAt: '2026-11-20T00:00:00Z',
     email: email,
@@ -81,5 +85,21 @@ void main() {
       identityFromSession(session(email: null)),
       const SignedIn(userId: userId, email: ''),
     );
+  });
+
+  test('the name comes from the Google profile in user metadata', () {
+    expect(
+      identityFromSession(session(metadata: {'full_name': 'Nilo Castillano'})),
+      const SignedIn(
+        userId: userId,
+        email: 'a@test.com',
+        name: 'Nilo Castillano',
+      ),
+    );
+    expect(
+      identityFromSession(session(metadata: {'name': 'Nilo'})),
+      const SignedIn(userId: userId, email: 'a@test.com', name: 'Nilo'),
+    );
+    expect(identityFromSession(session()), signedIn);
   });
 }

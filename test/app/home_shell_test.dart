@@ -8,6 +8,7 @@ import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
+import 'package:fundly/features/profile/presentation/profile_screen.dart';
 import 'package:fundly/features/spending/presentation/spending_screen.dart';
 
 import '../helpers/provider_overrides.dart';
@@ -31,7 +32,12 @@ void main() {
   }
 
   void expectOnlyVisible(Type screen) {
-    for (final type in [SpendingScreen, PlansScreen, AccountsScreen]) {
+    for (final type in [
+      SpendingScreen,
+      PlansScreen,
+      AccountsScreen,
+      ProfileScreen,
+    ]) {
       expect(
         find.byType(type),
         type == screen ? findsOneWidget : findsNothing,
@@ -46,14 +52,17 @@ void main() {
     expectOnlyVisible(SpendingScreen);
   });
 
-  testWidgets('switches between all three tabs', (tester) async {
+  testWidgets('switches between all four tabs', (tester) async {
     await pumpShell(tester);
 
     await tapTab(tester, 'Plans');
     expectOnlyVisible(PlansScreen);
 
-    await tapTab(tester, 'Account');
+    await tapTab(tester, 'Accounts');
     expectOnlyVisible(AccountsScreen);
+
+    await tapTab(tester, 'Profile');
+    expectOnlyVisible(ProfileScreen);
 
     await tapTab(tester, 'Spending');
     expectOnlyVisible(SpendingScreen);
@@ -81,7 +90,7 @@ void main() {
         tester.getBottomRight(find.byType(FloatingActionButton)).dy,
         lessThan(tester.getTopLeft(navigation).dy),
       );
-      await tapTab(tester, 'Account');
+      await tapTab(tester, 'Accounts');
       expect(
         tester.getBottomRight(find.byType(FloatingActionButton)).dy,
         lessThan(tester.getTopLeft(navigation).dy),
@@ -102,7 +111,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.widgetWithText(PlanRow, 'Food'), findsNothing);
-      await tapTab(tester, 'Account');
+      await tapTab(tester, 'Accounts');
       await tapTab(tester, 'Plans');
       expect(find.widgetWithText(PlanRow, 'Food'), findsNothing);
       expect(tester.takeException(), isNull);

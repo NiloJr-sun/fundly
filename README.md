@@ -69,9 +69,9 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   that row. Confirmation removes the plan and its saved targets across all
   months, while keeping its category and account. Deleted liability rows do
   not reappear when their account changes.
-- **Backup:** Account tab ⋮ → Export backup creates a JSON file of all your
+- **Backup:** Profile tab → Export backup creates a JSON file of all your
   records and opens the share sheet (Save to Files, AirDrop, Mail…). The file
-  is plain text, so keep it private. ⋮ → Restore from backup picks a backup
+  is plain text, so keep it private. Restore from backup picks a backup
   in Files, checks it fully, shows what it holds next to what's on the phone
   (with an option to export the current data first), and on confirmation
   replaces all data in one step. An invalid file changes nothing.
@@ -154,7 +154,8 @@ lib/
   main.dart                 # entry point
   app/
     app.dart                # MaterialApp and theme setup
-    home_shell.dart         # bottom navigation: Spending, Plans, Account
+    home_shell.dart         # bottom navigation: Spending, Plans, Accounts,
+                            # Profile
     theme/                  # AppTheme (light/dark), AppColors, Spacing
   core/
     database/               # drift AppDatabase (SQLite), migrations, converters
@@ -167,7 +168,9 @@ lib/
       data/                 # accounts and custom types tables, repositories
       domain/               # Account, AccountType, custom types, grouping,
                             # rules, balance calculator
-      presentation/         # Account tab, account form, Account types screen
+      presentation/         # Accounts tab, account form, Account types screen
+    profile/
+      presentation/         # Profile tab: greeting, backups, sign-out
     categories/
       data/                 # table, seeded defaults, repository
       domain/               # Category, CategoryKind, rules

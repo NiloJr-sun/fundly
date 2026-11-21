@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
 import 'package:fundly/features/backup/presentation/export_backup.dart';
 import 'package:fundly/features/backup/presentation/restore_backup.dart';
+import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
 import '../../../helpers/provider_overrides.dart';
 
@@ -102,7 +102,7 @@ void main() {
     pickedContents = validBackup();
   });
 
-  Future<void> pumpAccountTab(WidgetTester tester) async {
+  Future<void> pumpProfileTab(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -114,22 +114,20 @@ void main() {
             shared.add(file);
           }),
         ],
-        child: const MaterialApp(home: AccountsScreen()),
+        child: const MaterialApp(home: ProfileScreen()),
       ),
     );
     await tester.pumpAndSettle();
   }
 
   Future<void> tapRestore(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Restore from backup'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('picking no file does nothing', (tester) async {
     pickedContents = null;
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapRestore(tester);
 
@@ -140,7 +138,7 @@ void main() {
 
   testWidgets('an invalid file says why and changes nothing', (tester) async {
     pickedContents = '{"app": "something else"}';
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapRestore(tester);
 
@@ -151,7 +149,7 @@ void main() {
 
   testWidgets('invalid data names the problem', (tester) async {
     pickedContents = validBackup().replaceFirst('"transfer"', '"gift"');
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapRestore(tester);
 
@@ -163,7 +161,7 @@ void main() {
   });
 
   testWidgets('confirms with both counts, then replaces', (tester) async {
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapRestore(tester);
 
@@ -193,7 +191,7 @@ void main() {
   });
 
   testWidgets('Cancel restores nothing', (tester) async {
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
     await tapRestore(tester);
 
     await tester.tap(find.text('Cancel'));
@@ -206,7 +204,7 @@ void main() {
   testWidgets('Export current data first shares, then Replace still works', (
     tester,
   ) async {
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
     await tapRestore(tester);
 
     await tester.tap(find.text('Export current data first'));
@@ -226,7 +224,7 @@ void main() {
     tester,
   ) async {
     importer.failRestore = true;
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
     await tapRestore(tester);
 
     await tester.tap(find.text('Replace'));

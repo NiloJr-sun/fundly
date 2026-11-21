@@ -25,7 +25,14 @@ AuthIdentity identityFromAuthState(AuthState state) {
 AuthIdentity identityFromSession(Session? session) {
   final user = session?.user;
   if (user == null) return const SignedOut();
-  return SignedIn(userId: user.id, email: user.email ?? '');
+  final metadata = user.userMetadata ?? const {};
+  // Google fills full_name (and name) in Supabase's user metadata.
+  final name = metadata['full_name'] ?? metadata['name'];
+  return SignedIn(
+    userId: user.id,
+    email: user.email ?? '',
+    name: name is String ? name.trim() : '',
+  );
 }
 
 /// Supabase Auth with Google: native sign-in on iOS, OAuth redirect on web.

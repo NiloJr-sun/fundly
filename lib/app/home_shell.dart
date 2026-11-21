@@ -3,11 +3,12 @@ import 'package:flutter/services.dart';
 
 import '../features/accounts/presentation/accounts_screen.dart';
 import '../features/plans/presentation/plans_screen.dart';
+import '../features/profile/presentation/profile_screen.dart';
 import '../features/spending/presentation/spending_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/spacing.dart';
 
-/// Top-level navigation: Spending, Plans and Account tabs.
+/// Top-level navigation: Spending, Plans, Accounts and Profile tabs.
 ///
 /// Uses an [IndexedStack] so each tab keeps its state (such as scroll
 /// position) when the user switches away and back.
@@ -25,6 +26,7 @@ class _HomeShellState extends State<HomeShell> {
     SpendingScreen(),
     PlansScreen(),
     AccountsScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -96,7 +98,12 @@ class _HomeShellState extends State<HomeShell> {
                 NavigationDestination(
                   icon: Icon(Icons.account_balance_wallet_outlined),
                   selectedIcon: Icon(Icons.account_balance_wallet),
-                  label: 'Account',
+                  label: 'Accounts',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person),
+                  label: 'Profile',
                 ),
               ],
             ),

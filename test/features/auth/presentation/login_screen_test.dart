@@ -51,9 +51,9 @@ Future<void> pumpApp(
 
 final login = find.byType(LoginScreen);
 final home = find.byType(HomeShell);
-final accountTab = find.descendant(
+final profileTab = find.descendant(
   of: find.byType(NavigationBar),
-  matching: find.text('Account'),
+  matching: find.text('Profile'),
 );
 
 Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
@@ -61,9 +61,8 @@ Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> signOutFromAccountTab(WidgetTester tester) async {
-  await tapAndSettle(tester, accountTab);
-  await tapAndSettle(tester, find.byTooltip('More'));
+Future<void> signOutFromProfileTab(WidgetTester tester) async {
+  await tapAndSettle(tester, profileTab);
   await tapAndSettle(tester, find.text('Sign out'));
   await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Sign out'));
 }
@@ -189,7 +188,7 @@ void main() {
 
   testWidgets('signing out returns to the login page', (tester) async {
     await pumpApp(tester, auth: FakeAuthRepository(initial: userA));
-    await signOutFromAccountTab(tester);
+    await signOutFromProfileTab(tester);
 
     expect(login, findsOneWidget);
     expect(home, findsNothing);
@@ -201,15 +200,14 @@ void main() {
     final choice = InMemoryLocalUseChoiceStore(chosen: true);
     await pumpApp(tester, auth: auth, choice: choice);
 
-    await tapAndSettle(tester, accountTab);
-    await tapAndSettle(tester, find.byTooltip('More'));
-    await tapAndSettle(tester, find.text('Sign in with Google'));
+    await tapAndSettle(tester, profileTab);
+    await tapAndSettle(tester, find.text('Continue with Google'));
     expect(choice.chosen, isFalse);
     // Signing in rebuilds the app from the first tab.
-    await tapAndSettle(tester, accountTab);
+    await tapAndSettle(tester, profileTab);
     expect(find.text('Signed in as a@test.com · Not syncing yet'), findsOne);
 
-    await signOutFromAccountTab(tester);
+    await signOutFromProfileTab(tester);
     expect(login, findsOneWidget);
   });
 
@@ -254,5 +252,39 @@ void main() {
       expect(opacityOf(tester, 'Fundly'), 1);
       expect(tester.hasRunningAnimations, isFalse);
     });
+  });
+
+  testWidgets('switching identity closes open screens and returns home', (
+    tester,
+  ) async {
+    final auth = FakeAuthRepository();
+    // Signed out opens the login page; keep its wallet still so the screen
+    // can settle.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...noAccounts(),
+          authRepositoryProvider.overrideWithValue(auth),
+        ],
+        child: const FundlyApp(),
+      ),
+    );
+    await tester.pump();
+
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Previous user screen')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Previous user screen'), findsOneWidget);
+
+    auth.emit(userA);
+    await tester.pumpAndSettle();
+    expect(find.text('Previous user screen'), findsNothing);
   });
 }

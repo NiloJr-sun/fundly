@@ -18,19 +18,30 @@ final class SignedOut extends AuthIdentity {
   int get hashCode => (SignedOut).hashCode;
 }
 
-/// Signed in to Supabase as [userId] (a UUID), with [email] for display.
+/// Signed in to Supabase as [userId] (a UUID), with [email] and [name] (from
+/// the Google profile; empty when unknown) for display.
 final class SignedIn extends AuthIdentity {
-  const SignedIn({required this.userId, required this.email});
+  const SignedIn({required this.userId, required this.email, this.name = ''});
 
   final String userId;
   final String email;
+  final String name;
+
+  /// The first word of [name], for a friendly greeting; empty when unknown.
+  String get firstName {
+    final words = name.trim().split(RegExp(r'\s+'));
+    return words.first;
+  }
 
   @override
   bool operator ==(Object other) =>
-      other is SignedIn && other.userId == userId && other.email == email;
+      other is SignedIn &&
+      other.userId == userId &&
+      other.email == email &&
+      other.name == name;
 
   @override
-  int get hashCode => Object.hash(userId, email);
+  int get hashCode => Object.hash(userId, email, name);
 }
 
 /// Sign-in was cancelled by the user; nothing changed.

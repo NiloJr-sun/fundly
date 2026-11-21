@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/presentation/export_backup.dart';
+import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
 import '../../../helpers/provider_overrides.dart';
 
@@ -35,7 +35,7 @@ void main() {
     shareFails = false;
   });
 
-  Future<void> pumpAccountTab(WidgetTester tester) async {
+  Future<void> pumpProfileTab(WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -46,21 +46,19 @@ void main() {
             shared.add(file);
           }),
         ],
-        child: const MaterialApp(home: AccountsScreen()),
+        child: const MaterialApp(home: ProfileScreen()),
       ),
     );
     await tester.pumpAndSettle();
   }
 
   Future<void> tapExport(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('More'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Export backup'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('Export backup shares the JSON file', (tester) async {
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapExport(tester);
 
@@ -75,7 +73,7 @@ void main() {
     tester,
   ) async {
     exporter.fail = true;
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapExport(tester);
 
@@ -86,7 +84,7 @@ void main() {
 
   testWidgets('a failed share shows a message', (tester) async {
     shareFails = true;
-    await pumpAccountTab(tester);
+    await pumpProfileTab(tester);
 
     await tapExport(tester);
 
