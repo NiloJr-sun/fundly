@@ -20,17 +20,17 @@ Future<void> signInWithGoogle(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// Asks for confirmation, then signs out on this device. The signed-in
-/// user's data stays on the device and reopens on the next sign-in.
+/// Asks for confirmation, then signs out on this device and returns to the
+/// login page. The signed-in user's data stays on the device and reopens on
+/// the next sign-in.
 Future<void> signOut(BuildContext context, WidgetRef ref) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Sign out?'),
       content: const Text(
-        'Fundly will switch back to the data on this device that is not '
-        'linked to an account. Your signed-in data stays on this device and '
-        'returns when you sign in again.',
+        'You will return to the login page. Your signed-in data stays on '
+        'this device and returns when you sign in again.',
       ),
       actions: [
         TextButton(

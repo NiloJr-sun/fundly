@@ -25,6 +25,31 @@ Status: **approved 2026-11-20; implemented, manual sign-in checks pending.**
 | 2026-11-20 | Simulator: backed up `fundly.sqlite`, installed, launched signed out | Launches on existing data; schema 12, counts unchanged (6 accounts, 13 categories, 6 transactions, 7 monthly plans), `integrity_check` ok, no foreign-key errors |
 | _pending_ | Owner: Google sign-in on the simulator and web, restart, sign-out, offline relaunch | Not yet run |
 
+## Follow-up: login page (approved 2026-11-22)
+
+- In builds that can sign in (cloud config, iOS or web), a signed-out launch
+  opens a login page: **Continue with Google** (the only sign-in method; a
+  first-time Google user is created automatically, so there is no separate
+  sign-up) and **Use without an account**, which opens the local `fundly`
+  data as before.
+- The "Use without an account" choice is remembered on the device
+  (`shared_preferences`, key `fundly.localUseChosen`, added as a direct
+  dependency; it was already transitive through `supabase_flutter`). Signing in
+  clears it, so a sign-out or a revoked session returns to the login page.
+- While using local data, Account tab ⋮ → **Sign in with Google** still works.
+  Local data is not moved into the account (S6).
+- Builds without the cloud config and Android skip the login page.
+- The button is the app's teal filled button with Google's "G" logo, cropped
+  from Google's official sign-in button assets (`assets/images/`), on a small
+  white tile, as Google's branding guidelines require for the logo.
+- No schema change (v12), no backup format change (6).
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-11-22 | `dart format`, `flutter analyze` | 0 changed; no issues |
+| 2026-11-22 | `flutter test` | 883 passed (869 before, 14 new) |
+| _pending_ | Owner: login page on the simulator and web | Not yet run |
+
 ## Starting point
 
 S3 is complete: the hosted Supabase project (Tokyo) and the JP PowerSync
