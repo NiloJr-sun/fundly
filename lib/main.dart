@@ -11,6 +11,7 @@ import 'core/sync/synced_store.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/local_use_choice.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
+import 'features/backup/data/device_copy_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,16 +20,20 @@ Future<void> main() async {
   final authRepository = supabase == null
       ? null
       : SupabaseAuthRepository(supabase, config);
-  final localUseChoice = authRepository == null
-      ? null
-      : await _loadLocalUseChoice();
+  final preferences = authRepository == null ? null : await _loadPreferences();
   runApp(
     ProviderScope(
       overrides: [
         if (authRepository != null)
           authRepositoryProvider.overrideWithValue(authRepository),
-        if (localUseChoice != null)
-          localUseChoiceStoreProvider.overrideWithValue(localUseChoice),
+        if (preferences != null) ...[
+          localUseChoiceStoreProvider.overrideWithValue(
+            SharedPreferencesLocalUseChoiceStore(preferences),
+          ),
+          deviceCopyStoreProvider.overrideWithValue(
+            SharedPreferencesDeviceCopyStore(preferences),
+          ),
+        ],
         if (supabase != null)
           importDatasetProvider.overrideWithValue(
             supabaseImportDataset(supabase),
@@ -64,15 +69,14 @@ Future<SupabaseClient?> _startSupabase(CloudConfig config) async {
   }
 }
 
-/// Loads the remembered "Explore as a guest" choice. If preferences are
-/// unavailable, the choice lasts for this run only.
-Future<LocalUseChoiceStore?> _loadLocalUseChoice() async {
+/// Loads the device's preferences, which keep the "Explore as a guest"
+/// choice and what this device's data was copied to (cloud sync S6.2). If
+/// they are unavailable, both last for this run only.
+Future<SharedPreferences?> _loadPreferences() async {
   try {
-    return SharedPreferencesLocalUseChoiceStore(
-      await SharedPreferences.getInstance(),
-    );
+    return await SharedPreferences.getInstance();
   } on Object catch (error) {
-    debugPrint('Login choice will not be remembered: $error');
+    debugPrint('Preferences unavailable for this run: $error');
     return null;
   }
 }

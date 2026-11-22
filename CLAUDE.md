@@ -1113,4 +1113,33 @@ suggestions as approved decisions.
                           only; refused changes
                           do not block a reset.
 
+  2026-11-22              Copy device data (S6.2, Confirmed
+                          Decisions S6.2-1 to 4):
+                          signed in, Profile and
+                          a one-time prompt per
+                          account after the first
+                          download (Not now is
+                          kept) offer to copy
+                          this device's signed-
+                          out data. Fresh UUIDs.
+                          Only defaults: Copy
+                          (into_empty). Else
+                          Replace: a saved
+                          YYYY-MM-DD_HHmm_
+                          replace_checkpoint.json
+                          then "replace my data";
+                          counts changed
+                          elsewhere refuse it.
+                          Needs online, a full
+                          download, no waiting
+                          uploads; max 8 MiB.
+                          After download, every
+                          field of every record
+                          is compared; balances
+                          shown. Device data is
+                          never changed; signed
+                          out shows "copied to
+                          <email> on <date>".
+                          No schema change.
+
   -----------------------------------------------------------------------

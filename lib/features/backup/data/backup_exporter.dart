@@ -15,6 +15,10 @@ enum BackupFileKind {
 
   /// The export required before Reset all data.
   resetCheckpoint,
+
+  /// The export of the account required before replacing its data with
+  /// this device's (cloud sync S6.2).
+  replaceCheckpoint,
 }
 
 /// A backup ready to save or share: a file name and its JSON text.
@@ -140,7 +144,8 @@ class BackupExporter {
   /// `fundly-backup-2026-11-17.json` for a [BackupFileKind.backup], and
   /// `2026-11-22_1430_reset_checkpoint.json` (with the local time, so several
   /// checkpoints in a day keep their order) for a
-  /// [BackupFileKind.resetCheckpoint]. The contents are the same.
+  /// [BackupFileKind.resetCheckpoint] (`_replace_checkpoint` for a
+  /// [BackupFileKind.replaceCheckpoint]). The contents are the same.
   Future<BackupFile> createFile({
     BackupFileKind kind = BackupFileKind.backup,
   }) async {
@@ -153,6 +158,8 @@ class BackupExporter {
         BackupFileKind.backup => 'fundly-backup-$date.json',
         BackupFileKind.resetCheckpoint =>
           '${date}_${two(now.hour)}${two(now.minute)}_reset_checkpoint.json',
+        BackupFileKind.replaceCheckpoint =>
+          '${date}_${two(now.hour)}${two(now.minute)}_replace_checkpoint.json',
       },
       contents: '${const JsonEncoder.withIndent('  ').convert(backup)}\n',
     );

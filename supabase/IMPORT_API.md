@@ -6,9 +6,14 @@ The function replaces one owner's whole dataset in a single transaction: other
 devices download either the old dataset or the complete new one. It is the
 server half of moving signed-out data or a backup into an account
 ([CLOUD_SYNC_S6_PLAN.md](../docs/CLOUD_SYNC_S6_PLAN.md)). The app calls it
-for Reset all data while signed in (`replace` with only the default
-categories, `lib/features/backup/data/cloud_data_resetter.dart`); copying
-data into an account comes in S6.2.
+for two things:
+
+- **Reset all data while signed in:** `replace` with only the default
+  categories (`lib/features/backup/data/cloud_data_resetter.dart`).
+- **Copying this device's signed-out data into the account (S6.2):**
+  `into_empty` or `replace` with fresh UUIDs
+  (`lib/features/backup/data/device_data_copier.dart`). The request mapping
+  is checked against the local server by `supabase/tests/client_contract_test.py`.
 
 The batch API ([WRITE_API.md](WRITE_API.md)) and its receipts, the tables and
 their constraints are unchanged.
@@ -179,7 +184,7 @@ A refused import changes nothing and stores no receipt.
 | `duplicate_plan` | A second plan for one category in one month. |
 | `constraint` | A table constraint caught something these rules missed. This is a server bug to fix. |
 
-## Client rules (for S6.2)
+## Client rules (implemented in S6.2)
 
 - **Before calling:** wait until no uploads are queued, so a `replace` cannot
   delete changes that have not reached the server.

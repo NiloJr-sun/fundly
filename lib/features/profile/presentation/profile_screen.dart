@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
+import '../../../core/formatting/date_formatter.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../../auth/presentation/sign_in_actions.dart';
+import '../../backup/data/device_copy_store.dart';
+import '../../backup/data/device_data_copier.dart';
+import '../../backup/presentation/copy_device_data_screen.dart';
 import '../../backup/presentation/export_backup.dart';
 import '../../backup/presentation/reset_data.dart';
 import '../../backup/presentation/restore_backup.dart';
@@ -17,6 +21,11 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final signedIn = ref.watch(authIdentityProvider) is SignedIn;
+    final deviceHasData =
+        signedIn && (ref.watch(deviceHasDataProvider).value ?? false);
+    final lastCopy = signedIn
+        ? null
+        : ref.watch(deviceCopyStateProvider).lastCopy;
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
@@ -30,8 +39,16 @@ class ProfileScreen extends ConsumerWidget {
           const ProfileGreetingCard(),
           const SizedBox(height: Spacing.lg),
           const _SectionLabel('Your data'),
+          if (lastCopy != null) _CopiedNote(lastCopy),
           _ActionGroup(
             children: [
+              if (deviceHasData)
+                _ActionTile(
+                  icon: Icons.drive_folder_upload,
+                  title: "Copy this device's data",
+                  subtitle: 'Into your account, checked record by record',
+                  onTap: (_) => openCopyDeviceData(context),
+                ),
               _ActionTile(
                 icon: Icons.ios_share,
                 title: 'Export backup',
@@ -86,6 +103,29 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text,
         style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// Says where this device's signed-out data was last copied (cloud sync
+/// S6.2), so a second copy of the same records is not a surprise.
+class _CopiedNote extends StatelessWidget {
+  const _CopiedNote(this.copy);
+
+  final DeviceCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Spacing.xs, 0, 0, Spacing.sm),
+      child: Text(
+        "This device's data was copied to ${copy.email} on "
+        '${DateFormatter.localDate(copy.copiedAt)}.',
+        style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),

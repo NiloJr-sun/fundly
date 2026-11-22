@@ -6,6 +6,7 @@ import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/local_use_choice.dart';
 import '../features/auth/domain/auth_identity.dart';
 import '../features/auth/presentation/login_screen.dart';
+import '../features/backup/presentation/device_data_prompt.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -36,7 +37,9 @@ class FundlyApp extends ConsumerWidget {
       title: 'Fundly',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      home: showLogin ? const LoginScreen() : const HomeShell(),
+      home: showLogin
+          ? const LoginScreen()
+          : const DeviceDataPrompt(child: HomeShell()),
     );
   }
 }

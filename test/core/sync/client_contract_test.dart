@@ -10,6 +10,7 @@ import 'package:fundly/features/accounts/data/synced_account_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/cloud_data_resetter.dart';
+import 'package:fundly/features/backup/data/dataset_request.dart';
 import 'package:fundly/features/categories/data/synced_category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/data/synced_plan_repository.dart';
@@ -17,6 +18,7 @@ import 'package:fundly/features/transactions/data/synced_transaction_repository.
 import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
+import '../../helpers/fake_import_server.dart';
 import '../../helpers/fake_synced_store.dart';
 
 Money php(int m) => Money(minorUnits: m, currencyCode: 'PHP');
@@ -202,10 +204,29 @@ void main() {
         newId: newRecordId,
       ),
     };
+    // The requests copying this device's data sends (S6.2): into an empty
+    // account, then replacing it with a second copy (fresh IDs).
+    final firstCopy = datasetRequestFor(sampleDeviceRecords());
+    final secondCopy = datasetRequestFor(sampleDeviceRecords());
+    final copy = {
+      'importId': newRecordId(),
+      'request': importRequest(replace: false, dataset: firstCopy.dataset),
+      'againId': newRecordId(),
+      'again': importRequest(
+        replace: true,
+        dataset: secondCopy.dataset,
+        expected: countsOf(sampleDeviceRecords()),
+      ),
+    };
     final out = Platform.environment['FUNDLY_CONTRACT_OUT'];
     if (out != null) {
       File(out).writeAsStringSync(
-        jsonEncode({'batches': batches, 'state': state, 'reset': reset}),
+        jsonEncode({
+          'batches': batches,
+          'state': state,
+          'reset': reset,
+          'copy': copy,
+        }),
       );
     }
     expect(batches, hasLength(40));

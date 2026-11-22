@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,8 +11,8 @@ import '../data/backup_exporter.dart';
 import '../data/backup_importer.dart';
 import '../data/cloud_data_resetter.dart';
 import '../data/data_resetter.dart';
+import 'checkpoint_confirm_dialog.dart';
 import 'export_backup.dart';
-import 'restore_backup.dart';
 import 'signed_in_backup.dart';
 
 /// What the user types to confirm a reset.
@@ -22,7 +21,7 @@ const resetConfirmationPhrase = 'delete my data';
 /// Whether [typed] confirms a reset: [resetConfirmationPhrase], ignoring
 /// capitals and spaces at either end.
 bool confirmsReset(String typed) =>
-    typed.trim().toLowerCase() == resetConfirmationPhrase;
+    confirmsPhrase(typed, resetConfirmationPhrase);
 
 /// How long a signed-in reset waits for this device to download the reset
 /// account before saying it will catch up later. Overridden in tests.
@@ -179,25 +178,12 @@ Future<void> _resetAccount(
   tell('All data deleted');
 }
 
-/// Why the signed-in account cannot be reset right now, or `null`. Besides
-/// the export checks (the checkpoint must match the account), the reset
-/// needs the server.
-Future<String?> _accountResetBlockerText(WidgetRef ref) async {
-  final state =
-      await ref.read(syncStateProvider.future) ??
-      const SyncState(connection: SyncConnection.connecting);
-  final blocker = signedInExportBlocker(
-    state: state,
-    pendingUploads: await ref.read(pendingUploadCountProvider.future),
-    unsafeRows: await ref.read(unsafeSyncedRowCountProvider.future),
-    isWeb: kIsWeb,
-  );
-  if (blocker != null) return signedInExportBlockerText(blocker);
-  if (state.connection != SyncConnection.connected) {
-    return "You're offline. Connect to the internet to reset your account.";
-  }
-  return null;
-}
+/// Why the signed-in account cannot be reset right now, or `null`.
+Future<String?> _accountResetBlockerText(WidgetRef ref) =>
+    signedInServerBlockerText(
+      ref,
+      offline: "You're offline. Connect to the internet to reset your account.",
+    );
 
 /// What to tell the user when a signed-in reset does not finish.
 String cloudResetErrorText(CloudResetException exception) =>
@@ -222,10 +208,13 @@ Future<bool> _confirm(
 }) async =>
     await showDialog<bool>(
       context: context,
-      builder: (_) => _ConfirmResetDialog(
+      builder: (_) => CheckpointConfirmDialog(
+        title: 'Delete all your data?',
         current: current,
         heading: heading,
         consequence: consequence,
+        phrase: resetConfirmationPhrase,
+        confirmLabel: 'Delete everything',
         exportCheckpoint: (dialogContext) => exportBackup(
           dialogContext,
           ref,
@@ -258,118 +247,4 @@ void Function() _showProgress(BuildContext context) {
     ),
   );
   return navigator.pop;
-}
-
-class _ConfirmResetDialog extends StatefulWidget {
-  const _ConfirmResetDialog({
-    required this.current,
-    required this.heading,
-    required this.consequence,
-    required this.exportCheckpoint,
-  });
-
-  final BackupCounts current;
-
-  /// Where the counts are, e.g. "On this phone now".
-  final String heading;
-
-  /// What deleting does, shown below the counts.
-  final String consequence;
-
-  /// Exports the checkpoint and returns whether it was saved or sent.
-  final Future<bool> Function(BuildContext context) exportCheckpoint;
-
-  @override
-  State<_ConfirmResetDialog> createState() => _ConfirmResetDialogState();
-}
-
-class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
-  final _controller = TextEditingController();
-  var _exported = false;
-  var _typed = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _export() async {
-    final saved = await widget.exportCheckpoint(context);
-    if (saved && mounted) setState(() => _exported = true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return AlertDialog(
-      title: const Text('Delete all your data?'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.heading, style: theme.textTheme.titleSmall),
-            Text(describeCounts(widget.current)),
-            const SizedBox(height: Spacing.md),
-            Text(widget.consequence),
-            const SizedBox(height: Spacing.md),
-            Text('1. Save a checkpoint', style: theme.textTheme.titleSmall),
-            const SizedBox(height: Spacing.xs),
-            if (_exported)
-              Row(
-                children: [
-                  Icon(Icons.check_circle, color: colorScheme.primary),
-                  const SizedBox(width: Spacing.sm),
-                  const Expanded(child: Text('Checkpoint saved')),
-                ],
-              )
-            else
-              OutlinedButton.icon(
-                icon: const Icon(Icons.ios_share),
-                label: const Text('Export checkpoint'),
-                onPressed: _export,
-              ),
-            const SizedBox(height: Spacing.md),
-            Text(
-              '2. Type "$resetConfirmationPhrase" to confirm',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: _exported ? null : theme.disabledColor,
-              ),
-            ),
-            const SizedBox(height: Spacing.sm),
-            TextField(
-              controller: _controller,
-              enabled: _exported,
-              autocorrect: false,
-              enableSuggestions: false,
-              textCapitalization: TextCapitalization.none,
-              decoration: const InputDecoration(
-                hintText: resetConfirmationPhrase,
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (text) => setState(() => _typed = confirmsReset(text)),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: colorScheme.error,
-            foregroundColor: colorScheme.onError,
-          ),
-          onPressed: _exported && _typed
-              ? () => Navigator.of(context).pop(true)
-              : null,
-          child: const Text('Delete everything'),
-        ),
-      ],
-    );
-  }
 }

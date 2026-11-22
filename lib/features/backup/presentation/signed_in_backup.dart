@@ -56,6 +56,28 @@ String signedInExportBlockerText(SignedInExportBlocker blocker) =>
             'backup from the phone app instead.',
     };
 
+/// Why a step that changes the whole account on the server (reset, or
+/// copying this device's data) cannot run now, or `null`. Besides the backup
+/// checks (the checkpoint must match the account), it needs a connection;
+/// [offline] says so.
+Future<String?> signedInServerBlockerText(
+  WidgetRef ref, {
+  required String offline,
+}) async {
+  final state =
+      await ref.read(syncStateProvider.future) ??
+      const SyncState(connection: SyncConnection.connecting);
+  final blocker = signedInExportBlocker(
+    state: state,
+    pendingUploads: await ref.read(pendingUploadCountProvider.future),
+    unsafeRows: await ref.read(unsafeSyncedRowCountProvider.future),
+    isWeb: kIsWeb,
+  );
+  if (blocker != null) return signedInExportBlockerText(blocker);
+  if (state.connection != SyncConnection.connected) return offline;
+  return null;
+}
+
 /// Shown after a signed-in backup is saved: format 7 files cannot be
 /// restored until cloud sync S6.3.
 const signedInBackupSavedMessage =

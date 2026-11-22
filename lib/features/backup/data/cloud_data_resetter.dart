@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/sync/batch_uploader.dart';
 import '../../../core/sync/dataset_import.dart';
 import '../../../core/sync/sync_queue.dart' show newRecordId;
 import '../../../core/sync/synced_database.dart';
@@ -10,6 +9,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../../categories/data/default_categories.dart';
 import 'backup_importer.dart';
+import 'cloud_dataset_import.dart';
 
 /// Why a cloud reset did not finish.
 enum CloudResetProblem {
@@ -47,20 +47,21 @@ class CloudResetException implements Exception {
 class CloudDataResetter {
   CloudDataResetter({
     required ImportDataset importDataset,
-    required this._userId,
-    this._newId = newRecordId,
-    this._wait = Future<void>.delayed,
-    this.attempts = 3,
-  }) : _import = importDataset;
+    required String userId,
+    String Function() newId = newRecordId,
+    Future<void> Function(Duration) wait = Future<void>.delayed,
+    int attempts = 3,
+  }) : _newId = newId,
+       _import = CloudDatasetImport(
+         importDataset: importDataset,
+         userId: userId,
+         newId: newId,
+         wait: wait,
+         attempts: attempts,
+       );
 
-  final ImportDataset _import;
-  final String _userId;
+  final CloudDatasetImport _import;
   final String Function() _newId;
-  final Future<void> Function(Duration) _wait;
-
-  /// How many times one request is sent before giving up on a network or
-  /// server-availability failure.
-  final int attempts;
 
   /// Resets the account if it still holds [expected] (the counts the user
   /// confirmed), and returns the counts the server reports afterwards.
@@ -70,43 +71,26 @@ class CloudDataResetter {
   /// never applies twice.
   Future<BackupCounts> resetAll({required BackupCounts expected}) async {
     final importId = _newId();
-    final request = resetRequest(expected: expected, newId: _newId);
-    for (var attempt = 1; ; attempt++) {
-      try {
-        final result = await _import(
-          userId: _userId,
-          importId: importId,
-          request: request,
-        );
-        return _countsFrom(result);
-      } on Object catch (error) {
-        final failure = classifyUploadError(error);
-        if (failure.outcome != UploadOutcome.transient) {
-          throw failure.code == 'dataset_changed'
-              ? const CloudResetException(CloudResetProblem.datasetChanged)
-              : CloudResetException(CloudResetProblem.refused, failure.code);
-        }
-        if (attempt >= attempts) {
-          throw CloudResetException(
-            CloudResetProblem.unreachable,
-            failure.code,
-          );
-        }
-        await _wait(Duration(seconds: attempt));
-      }
+    try {
+      return await _import.send(
+        resetRequest(expected: expected, newId: _newId),
+        importId: importId,
+      );
+    } on CloudImportException catch (failure) {
+      throw switch (failure.problem) {
+        CloudImportProblem.datasetChanged => const CloudResetException(
+          CloudResetProblem.datasetChanged,
+        ),
+        CloudImportProblem.unreachable => CloudResetException(
+          CloudResetProblem.unreachable,
+          failure.code,
+        ),
+        CloudImportProblem.refused => CloudResetException(
+          CloudResetProblem.refused,
+          failure.code,
+        ),
+      };
     }
-  }
-
-  static BackupCounts _countsFrom(Map<String, Object?> result) {
-    final counts = result['counts']! as Map<Object?, Object?>;
-    int count(String key) => (counts[key]! as num).toInt();
-    return BackupCounts(
-      customAccountTypes: count('custom_account_types'),
-      accounts: count('accounts'),
-      categories: count('categories'),
-      transactions: count('transactions'),
-      monthlyPlans: count('monthly_plans'),
-    );
   }
 }
 

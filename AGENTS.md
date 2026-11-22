@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 840 tests passing as of 2026-11-17
+flutter test                      # 1087 tests passing as of 2026-11-22
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -84,7 +84,22 @@ simulator build for anything that changes app code. macOS has no
   `replace` with only the defaults (same `import_id` on retry); it needs a
   connection, a full download and no waiting uploads
   (`docs/RESET_SIGNED_IN_PLAN.md`). S5.3 and S6.1 are deployed to the hosted
-  project (2026-11-22).
+  project (2026-11-22). Both reset and copy send through
+  `CloudDatasetImport` (`features/backup/data/cloud_dataset_import.dart`).
+- **Copy this device's data** (S6.2, `docs/CLOUD_SYNC_S6_PLAN.md`): signed
+  in, `DeviceDataReader` opens the signed-out `fundly` database only to read
+  it (`appDatabaseProvider` throws while signed in).
+  - `DeviceDataCopier` sends `into_empty` (account holds only untouched
+    defaults) or `replace`. Replace needs a `_replace_checkpoint.json` export
+    and "replace my data" typed.
+  - After the download it compares every field of every record
+    (`firstDifference` in `dataset_request.dart`).
+  - `DeviceCopyStore` (shared preferences) remembers the copy, a pending
+    check and "Not now".
+  - Offered from Profile and by `DeviceDataPrompt` (once per account, after
+    the first download).
+  - Widget tests drive the screen with a `settle` helper, because its
+    spinner never lets `pumpAndSettle` finish.
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one

@@ -4,7 +4,8 @@ Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S6.1
 is implemented, verified locally and deployed to the hosted project (2026-11-22).
-S6.2 and S6.3 are not started. S6 is split into three sub-slices; each is planned in more
+S6.2 is implemented and verified with automated tests (2026-11-22); the
+manual device checks remain. S6.3 is not started. S6 is split into three sub-slices; each is planned in more
 detail, implemented, verified and reviewed on its own, and the agent stops
 after each.
 
@@ -290,7 +291,30 @@ pgTAP and concurrency tests pass, `db lint` is clean, and the timing result is
 recorded in this document. Hosted deployment is not part of S6.1. It happens
 with the owner's go-ahead before S6.2 uses it.
 
-#### S6.2 detailed plan (proposal, not approved)
+#### S6.2 detailed plan (approved and implemented 2026-11-22)
+
+Approved with Decisions S6.2-1 to S6.2-4, each as recommended.
+
+**Result:**
+
+- Implemented as planned. 1,087 Flutter tests pass, 44 of them new.
+  `flutter analyze` and `dart format` are clean, and the iOS simulator build
+  succeeds.
+- The client contract runner passes 12 checks on local Supabase, including
+  the two new copy cases.
+- Not yet done: the manual checks below. That means the simulator and Chrome
+  against a test account, the owner's phone against the hosted account, and
+  the 10,000-transaction hosted size and timing measurement.
+
+**Changes from the plan:**
+
+- The send-and-retry loop is shared as `CloudDatasetImport`, as planned.
+- The checkpoint dialog is now `CheckpointConfirmDialog`, shared by Reset
+  all data and Replace. Reset's wording is unchanged.
+- A lost response after all retries is not kept as a pending check. The
+  screen says to open it again, and the account's counts then show whether
+  the copy landed. Copying again would be a full replace, so it cannot
+  duplicate records.
 
 App only. There is no server change, no local or synced schema change and
 no backup format change. It builds on work already delivered:

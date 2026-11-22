@@ -12,6 +12,9 @@ logs (S5.4). Finally the app's Reset all data request (reset plan B2) is sent
 to fundly_import_dataset: it must leave only untouched default categories,
 tombstone every earlier record, return the stored result when resent, refuse
 stale counts, and leave an account that a later into_empty import accepts.
+Then the requests that copy a device's data (S6.2) go to a second new user:
+into_empty must store every field as sent, and a replace with fresh IDs must
+swap the whole dataset and tombstone the first copy.
 Never reads .env or hosted credentials.
 """
 
@@ -22,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / 'concurrency'))
@@ -165,6 +169,66 @@ def check_reset(actor, data):
           flush=True)
 
 
+def wire_value(key, value):
+    """A server row value in the import request's wire shape."""
+    if value is None or isinstance(value, bool):
+        return value
+    if key.endswith('_minor'):
+        return str(value)
+    if key == 'date' and value.endswith(' BC'):
+        return '0000' + value[4:-3]
+    if key in ('created_at', 'updated_at'):
+        return datetime.fromisoformat(value).astimezone(timezone.utc)
+    return value
+
+
+def check_copy(data):
+    copy = data['copy']
+    actor = str(uuid.uuid4())
+    execute(f"INSERT INTO auth.users(id,email) VALUES({literal(actor)},'client-copy@example.invalid');")
+    try:
+        dataset = copy['request']['dataset']
+        result = import_dataset(actor, copy['importId'], copy['request'])
+        assert result['mode'] == 'into_empty', result
+        assert result['counts'] == {t: len(rows) for t, rows in dataset.items()}, result
+        for table, rows in dataset.items():
+            stored = {row['id']: row for row in server_rows(actor, table)}
+            for row in rows:
+                server = stored[row['id']]
+                for key, value in row.items():
+                    expected = (datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                if key in ('created_at', 'updated_at') else value)
+                    assert wire_value(key, server[key]) == expected, (table, key, server[key], value)
+        print("PASS: the app's copy request is accepted into an empty account, every field as sent",
+              flush=True)
+
+        again = import_dataset(actor, copy['againId'], copy['again'])
+        assert again['mode'] == 'replace', again
+        first_ids = {(t, row['id']) for t, rows in dataset.items() for row in rows}
+        for table, rows in copy['again']['dataset'].items():
+            assert {row['id'] for row in server_rows(actor, table)} == {row['id'] for row in rows}
+        tombstones = json.loads(execute(
+            "SELECT coalesce(json_agg(t),'[]') FROM (SELECT entity, id FROM "
+            f'public.fundly_deleted_records WHERE owner_id={literal(actor)}) t;'))
+        assert first_ids <= {(t['entity'], t['id']) for t in tombstones}
+        print('PASS: copying again with replace swaps the dataset and tombstones the first copy',
+              flush=True)
+    finally:
+        cleanup(actor)
+
+
+def cleanup(actor):
+    execute(f'BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.fundly_import_receipts WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.transactions WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.monthly_plans WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.accounts WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
+
+
 def normalized(rows, columns):
     return sorted(({key: int(row[key]) if isinstance(row[key], bool) else row[key]
                     for key in columns} for row in rows), key=lambda row: row['id'])
@@ -192,17 +256,10 @@ def main():
         print('PASS: the server rows equal the rows the device showed, revisions included', flush=True)
         check_refusals(actor, data['batches'])
         check_reset(actor, data)
+        check_copy(data)
     finally:
-        execute(f'BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.fundly_import_receipts WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.transactions WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.monthly_plans WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.accounts WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
-                f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
-    print('All 10 client-contract checks passed; disposable fixtures removed.', flush=True)
+        cleanup(actor)
+    print('All 12 client-contract checks passed; disposable fixtures removed.', flush=True)
 
 
 if __name__ == '__main__':

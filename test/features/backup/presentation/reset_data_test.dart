@@ -46,6 +46,8 @@ class FakeBackupExporter implements BackupExporter {
     fileName: switch (kind) {
       BackupFileKind.backup => 'fundly-backup-2026-11-22.json',
       BackupFileKind.resetCheckpoint => '2026-11-22_1430_reset_checkpoint.json',
+      BackupFileKind.replaceCheckpoint =>
+        '2026-11-22_1430_replace_checkpoint.json',
     },
     contents: '{}',
   );
