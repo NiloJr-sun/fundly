@@ -5,7 +5,6 @@ import 'package:fundly/core/time/clock_provider.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/presentation/restore_backup.dart';
-import 'package:fundly/features/backup/presentation/signed_in_backup.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
@@ -194,16 +193,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(picked, 1);
-  });
-
-  testWidgets('export is unavailable while signed in and explains why', (
-    tester,
-  ) async {
-    await pumpProfile(tester, auth: FakeAuthRepository(initial: userA));
-    await tester.tap(find.text('Export backup'));
-    await tester.pump();
-
-    expect(find.text(signedInBackupMessage), findsOneWidget);
-    expect(find.byType(Dialog), findsNothing);
   });
 }

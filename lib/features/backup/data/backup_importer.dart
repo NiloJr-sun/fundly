@@ -29,6 +29,10 @@ enum BackupImportProblem {
   /// Written by a newer version of Fundly, with a format this one can't read.
   newerFormat,
 
+  /// Written while signed in (format 7, UUID IDs), which can't be restored
+  /// yet (cloud sync S6.3).
+  signedInFormat,
+
   /// A Fundly backup, but a record is missing data or breaks a rule.
   invalidData,
 }
@@ -198,6 +202,9 @@ BackupSnapshot parseBackup(String contents) {
   }
   final header = _Reader(decoded, 'backup');
   final formatVersion = header.integer('formatVersion');
+  if (formatVersion == BackupExporter.syncedFormatVersion) {
+    throw const BackupImportException(BackupImportProblem.signedInFormat);
+  }
   if (formatVersion > BackupExporter.formatVersion) {
     throw const BackupImportException(BackupImportProblem.newerFormat);
   }

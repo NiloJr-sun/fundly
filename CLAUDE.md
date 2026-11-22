@@ -1087,4 +1087,25 @@ suggestions as approved decisions.
                           S6. No schema or backup
                           change.
 
+  2026-11-22              Signed-in export (reset Confirmed
+                          plan B1, Decisions
+                          1–4): Export backup
+                          works signed in and
+                          writes format 7 (format
+                          6 with UUID string IDs)
+                          from the synced store.
+                          Refused while sync is
+                          stuck, changes wait to
+                          upload, before the
+                          first full download,
+                          or (web) with
+                          unreadable rows.
+                          Signed-out export stays
+                          format 6. Format 7 is
+                          not restorable until
+                          S6.3; restore says so.
+                          Reset checks counts
+                          only; refused changes
+                          do not block a reset.
+
   -----------------------------------------------------------------------

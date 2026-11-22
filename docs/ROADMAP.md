@@ -259,7 +259,9 @@ Formats 1–3 retain their previous defaults (format 1 categories default to
 Spending; formats 1–2 have no budget account). Missing liability rows are
 generated and included in the restore preview counts. Money is integer minor units, dates
 `YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
-derived balances are left out. Field names are mapped explicitly in
+derived balances are left out. Format 7 (2026-11-22) is format 6 with UUID
+string IDs and references, written only while signed in; it is not
+restorable until cloud sync S6.3. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;
 bump `formatVersion` when the format changes.
 

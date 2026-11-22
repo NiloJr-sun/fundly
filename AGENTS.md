@@ -73,7 +73,14 @@ simulator build for anything that changes app code. macOS has no
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
 - **Backup format 6** (JSON export and replace-all restore from the Profile
-  tab). Restore accepts formats 1–6.
+  tab). Restore accepts formats 1–6. Signed in, Export backup writes
+  **format 7** (format 6 with UUID string IDs, `SyncedBackupSource`), only
+  when the synced store matches the server (`signedInExportBlocker`); format 7
+  restore is not built yet (S6.3) and is refused with its own message.
+- **Reset all data** (Profile, signed out): a saved
+  `YYYY-MM-DD_HHmm_reset_checkpoint.json` export, then "delete my data"
+  typed; `DataResetter` re-adds the defaults in one transaction. Signed-in
+  reset is planned in `docs/RESET_SIGNED_IN_PLAN.md` (B2).
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one
@@ -110,7 +117,7 @@ simulator build for anything that changes app code. macOS has no
   Sign-out with changes waiting shows a live warning (`SignOutDialog`,
   S5.5); nothing is discarded. Web behaviour (tabs, refresh, cleared
   storage) is in `powersync/README.md`.
-  Export and restore stay
+  Restore stays
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run
   `python3 supabase/tests/client_contract_test.py` (local Supabase).

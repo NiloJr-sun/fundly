@@ -145,6 +145,9 @@ String backupImportErrorText(BackupImportException exception) =>
       BackupImportProblem.newerFormat =>
         'This backup is from a newer version of Fundly. Update the app to '
             'restore it.',
+      BackupImportProblem.signedInFormat =>
+        'This backup was made while signed in. Restoring it is not available '
+            'yet.',
       BackupImportProblem.invalidData =>
         'This backup has invalid data (${exception.detail}). Nothing was '
             'changed.',

@@ -517,11 +517,22 @@ void main() {
 
     test('a newer backup format', () async {
       final backup = await sourceBackup();
-      backup['formatVersion'] = BackupExporter.formatVersion + 1;
+      backup['formatVersion'] = BackupExporter.syncedFormatVersion + 1;
 
       await expectLater(
         restore(json: backup),
         throwsProblem(BackupImportProblem.newerFormat),
+      );
+      await expectUnchanged();
+    });
+
+    test('a signed-in (format 7) backup, not restorable yet', () async {
+      final backup = await sourceBackup();
+      backup['formatVersion'] = BackupExporter.syncedFormatVersion;
+
+      await expectLater(
+        restore(json: backup),
+        throwsProblem(BackupImportProblem.signedInFormat),
       );
       await expectUnchanged();
     });

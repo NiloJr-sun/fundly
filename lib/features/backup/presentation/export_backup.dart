@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/spacing.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_identity.dart';
 import '../data/backup_exporter.dart';
 import 'signed_in_backup.dart';
 
@@ -65,7 +67,10 @@ Future<bool> exportBackup(
   BackupFileKind kind = BackupFileKind.backup,
   Rect? origin,
 }) async {
-  if (!canBackUpOrExplain(context)) return false;
+  if (!await canBackUpOrExplain(context, ref) || !context.mounted) {
+    return false;
+  }
+  final signedIn = ref.read(authIdentityProvider) is SignedIn;
   final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context);
   // Closed below once the file is ready; not awaited.
@@ -101,7 +106,13 @@ Future<bool> exportBackup(
   navigator.pop();
 
   try {
-    return await ref.read(shareBackupFileProvider)(file, origin: origin);
+    final saved = await ref.read(shareBackupFileProvider)(file, origin: origin);
+    if (saved && signedIn) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(signedInBackupSavedMessage)),
+      );
+    }
+    return saved;
   } on Object {
     messenger.showSnackBar(
       const SnackBar(content: Text('The backup could not be shared.')),
