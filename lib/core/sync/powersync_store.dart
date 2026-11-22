@@ -32,6 +32,45 @@ final syncedRawSchema = ps.Schema(
   ],
 );
 
+/// Maps PowerSync's status to the status line's [SyncState] (public for
+/// tests).
+///
+/// [lastUploadFailure] is the connector's own record of the failing upload.
+/// On web, PowerSync runs sync in a shared worker and hands [uploadError]
+/// back as plain text, so whether the server refused a change (stuck) is
+/// only known from that record. A temporary upload failure (offline, server
+/// busy) is retried with the same batch and not shown as an error: the
+/// pending count already says changes are waiting.
+SyncState syncStateFor({
+  required bool connected,
+  required bool connecting,
+  required bool hasSynced,
+  required DateTime? lastSyncedAt,
+  required Object? downloadError,
+  required Object? uploadError,
+  SyncUploadException? lastUploadFailure,
+}) {
+  final upload = uploadError is SyncUploadException
+      ? uploadError
+      : uploadError == null
+      ? null
+      : lastUploadFailure;
+  final stuck = upload != null && upload.isStuck ? upload : null;
+  final error = downloadError ?? stuck;
+  return SyncState(
+    connection: switch (error) {
+      _ when stuck != null && downloadError == null => SyncConnection.stuck,
+      _? => SyncConnection.failed,
+      _ when connected => SyncConnection.connected,
+      _ when connecting => SyncConnection.connecting,
+      _ => SyncConnection.offline,
+    },
+    hasSynced: hasSynced,
+    lastSyncedAt: lastSyncedAt,
+    error: error?.toString(),
+  );
+}
+
 /// The synchronized store on PowerSync (cloud sync S5.2, uploads in S5.3).
 ///
 /// Opening is asynchronous, but the [database] is usable at once: its
@@ -62,6 +101,7 @@ class PowerSyncStore implements SyncedStore {
         : SyncConnection.connecting,
   );
   StreamSubscription<ps.SyncStatus>? _statusSubscription;
+  _SupabaseConnector? _connector;
   bool _closed = false;
 
   @override
@@ -98,13 +138,16 @@ class PowerSyncStore implements SyncedStore {
       await database.customSelect('SELECT 1').get();
       final sync = await _sync.future;
       await sync.updateSchema(syncedRawSchema);
-      await deletePreviewDatabase(previewDatabaseNameFor(_identity.userId));
+      unawaited(_deletePreviewDatabase());
       if (_closed || _powerSyncUrl.isEmpty) return;
       final firstDownload = !(sync.currentStatus.hasSynced ?? false);
-      _statusSubscription = sync.statusStream.listen(_onStatus);
-      await sync.connect(
-        connector: _SupabaseConnector(_client, _powerSyncUrl, _identity),
+      final connector = _connector = _SupabaseConnector(
+        _client,
+        _powerSyncUrl,
+        _identity,
       );
+      _statusSubscription = sync.statusStream.listen(_onStatus);
+      await sync.connect(connector: connector);
       if (firstDownload) {
         await sync.waitForFirstSync();
         if (!_closed) await initializeDatasetIfEmpty(database);
@@ -114,27 +157,27 @@ class PowerSyncStore implements SyncedStore {
     }
   }
 
+  /// Deletes the S4 preview database in the background, so cleanup never
+  /// holds up sync: a browser delete waits while another tab has the
+  /// database open. A failure is retried on the next sign-in.
+  Future<void> _deletePreviewDatabase() async {
+    try {
+      await deletePreviewDatabase(previewDatabaseNameFor(_identity.userId));
+    } on Object catch (error) {
+      debugPrint('Could not delete the preview database: $error');
+    }
+  }
+
   void _onStatus(ps.SyncStatus status) {
-    final upload = status.uploadError;
-    // A temporary upload failure (offline, server busy) is retried with the
-    // same batch; the pending count already says changes are waiting.
-    final stuck = upload is SyncUploadException && upload.isStuck
-        ? upload
-        : null;
-    final error = status.downloadError ?? stuck;
     _emit(
-      SyncState(
-        connection: switch (status) {
-          _ when stuck != null && status.downloadError == null =>
-            SyncConnection.stuck,
-          _ when error != null => SyncConnection.failed,
-          ps.SyncStatus(connected: true) => SyncConnection.connected,
-          ps.SyncStatus(connecting: true) => SyncConnection.connecting,
-          _ => SyncConnection.offline,
-        },
+      syncStateFor(
+        connected: status.connected,
+        connecting: status.connecting,
         hasSynced: status.hasSynced ?? false,
         lastSyncedAt: status.lastSyncedAt,
-        error: error?.toString(),
+        downloadError: status.downloadError,
+        uploadError: status.uploadError,
+        lastUploadFailure: _connector?.lastUploadFailure,
       ),
     );
   }
@@ -186,6 +229,11 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
   final String _endpoint;
   final SignedIn _identity;
 
+  /// Why the last upload attempt failed, or null after one that did not
+  /// throw this. Kept here because the web sync worker passes the error back
+  /// only as text (see [syncStateFor]).
+  SyncUploadException? lastUploadFailure;
+
   @override
   Future<ps.PowerSyncCredentials?> fetchCredentials() async {
     var session = _client.auth.currentSession;
@@ -206,11 +254,17 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
   /// fails; PowerSync calls again later.
   @override
   Future<void> uploadData(ps.PowerSyncDatabase database) async {
-    // Never upload one user's changes with another user's token.
-    if (_client.auth.currentSession?.user.id != _identity.userId) {
-      throw const SyncUploadException(UploadOutcome.transient, 'signed_out');
+    lastUploadFailure = null;
+    try {
+      // Never upload one user's changes with another user's token.
+      if (_client.auth.currentSession?.user.id != _identity.userId) {
+        throw const SyncUploadException(UploadOutcome.transient, 'signed_out');
+      }
+      final apply = supabaseApplyBatch(_client);
+      while (await uploadNextBatch(database, apply)) {}
+    } on SyncUploadException catch (failure) {
+      lastUploadFailure = failure;
+      rethrow;
     }
-    final apply = supabaseApplyBatch(_client);
-    while (await uploadNextBatch(database, apply)) {}
   }
 }
