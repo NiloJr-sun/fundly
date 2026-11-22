@@ -42,8 +42,13 @@ class FakeDataResetter implements DataResetter {
 
 class FakeBackupExporter implements BackupExporter {
   @override
-  Future<BackupFile> createFile() async => const BackupFile(
-    fileName: 'fundly-backup-2026-11-22.json',
+  Future<BackupFile> createFile({
+    BackupFileKind kind = BackupFileKind.backup,
+  }) async => BackupFile(
+    fileName: switch (kind) {
+      BackupFileKind.backup => 'fundly-backup-2026-11-22.json',
+      BackupFileKind.resetCheckpoint => '2026-11-22_1430_reset_checkpoint.json',
+    },
     contents: '{}',
   );
 
@@ -71,9 +76,13 @@ void main() {
   late FakeDataResetter resetter;
   late List<BackupFile> shared;
 
+  /// Whether the share sheet reports the file as saved (false: closed).
+  late bool shareSaves;
+
   setUp(() {
     resetter = FakeDataResetter();
     shared = [];
+    shareSaves = true;
   });
 
   Future<void> pumpProfile(
@@ -90,6 +99,7 @@ void main() {
           dataResetterProvider.overrideWithValue(resetter),
           shareBackupFileProvider.overrideWithValue((file, {origin}) async {
             shared.add(file);
+            return shareSaves;
           }),
         ],
         child: const MaterialApp(home: ProfileScreen()),
@@ -113,7 +123,15 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('shows what will be deleted, with Delete disabled', (
+  Future<void> exportCheckpoint(WidgetTester tester) async {
+    await tester.tap(find.text('Export checkpoint'));
+    await tester.pumpAndSettle();
+  }
+
+  bool fieldEnabled(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField)).enabled ?? true;
+
+  testWidgets('shows what will be deleted, with everything locked', (
     tester,
   ) async {
     await pumpProfile(tester);
@@ -128,8 +146,46 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Type "delete my data" to confirm.'), findsOneWidget);
+    expect(find.text('1. Save a checkpoint'), findsOneWidget);
+    expect(find.text('2. Type "delete my data" to confirm'), findsOneWidget);
+    expect(fieldEnabled(tester), isFalse);
     expect(deleteButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('the checkpoint is exported with its own file name', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    await tapReset(tester);
+
+    await exportCheckpoint(tester);
+
+    expect(shared.single.fileName, '2026-11-22_1430_reset_checkpoint.json');
+    expect(find.text('Checkpoint saved'), findsOneWidget);
+    expect(find.text('Export checkpoint'), findsNothing);
+    expect(fieldEnabled(tester), isTrue);
+    expect(deleteButton(tester).onPressed, isNull, reason: 'not typed yet');
+    expect(resetter.resets, 0);
+  });
+
+  testWidgets('closing the share sheet does not unlock the reset', (
+    tester,
+  ) async {
+    shareSaves = false;
+    await pumpProfile(tester);
+    await tapReset(tester);
+
+    await exportCheckpoint(tester);
+
+    expect(shared, hasLength(1));
+    expect(find.text('Checkpoint saved'), findsNothing);
+    expect(find.text('Export checkpoint'), findsOneWidget);
+    expect(fieldEnabled(tester), isFalse);
+
+    // Saving on a second try unlocks it.
+    shareSaves = true;
+    await exportCheckpoint(tester);
+    expect(fieldEnabled(tester), isTrue);
   });
 
   testWidgets('Delete stays disabled until the phrase is typed', (
@@ -137,6 +193,7 @@ void main() {
   ) async {
     await pumpProfile(tester);
     await tapReset(tester);
+    await exportCheckpoint(tester);
 
     await type(tester, 'delete my');
     expect(deleteButton(tester).onPressed, isNull);
@@ -152,26 +209,29 @@ void main() {
     expect(resetter.resets, 0, reason: 'a disabled button does nothing');
   });
 
-  testWidgets('typing the phrase and confirming deletes everything', (
+  testWidgets(
+    'exporting, typing the phrase and confirming deletes everything',
+    (tester) async {
+      await pumpProfile(tester);
+      await tapReset(tester);
+      await exportCheckpoint(tester);
+
+      await type(tester, 'delete my data');
+      await tester.tap(find.text('Delete everything'));
+      await tester.pumpAndSettle();
+
+      expect(resetter.resets, 1);
+      expect(find.text('All data deleted'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
+
+  testWidgets('Cancel deletes nothing, even after exporting and typing', (
     tester,
   ) async {
     await pumpProfile(tester);
     await tapReset(tester);
-
-    await type(tester, 'delete my data');
-    await tester.tap(find.text('Delete everything'));
-    await tester.pumpAndSettle();
-
-    expect(resetter.resets, 1);
-    expect(find.text('All data deleted'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
-  });
-
-  testWidgets('Cancel deletes nothing, even after typing the phrase', (
-    tester,
-  ) async {
-    await pumpProfile(tester);
-    await tapReset(tester);
+    await exportCheckpoint(tester);
 
     await type(tester, 'delete my data');
     await tester.tap(find.text('Cancel'));
@@ -181,24 +241,24 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('Export backup first shares, and the dialog stays open', (
-    tester,
-  ) async {
+  testWidgets('reopening the dialog needs a new checkpoint', (tester) async {
     await pumpProfile(tester);
     await tapReset(tester);
-
-    await tester.tap(find.text('Export backup first'));
+    await exportCheckpoint(tester);
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    expect(shared.single.fileName, 'fundly-backup-2026-11-22.json');
-    expect(find.text('Delete all your data?'), findsOneWidget);
-    expect(resetter.resets, 0);
+    await tapReset(tester);
+
+    expect(find.text('Export checkpoint'), findsOneWidget);
+    expect(fieldEnabled(tester), isFalse);
   });
 
   testWidgets('a failed reset says nothing changed', (tester) async {
     resetter.fail = true;
     await pumpProfile(tester);
     await tapReset(tester);
+    await exportCheckpoint(tester);
 
     await type(tester, 'delete my data');
     await tester.tap(find.text('Delete everything'));

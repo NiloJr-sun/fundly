@@ -1068,10 +1068,15 @@ suggestions as approved decisions.
                           (Profile tab, signed
                           out only): shows the
                           counts to be deleted,
-                          offers Export backup
-                          first and needs "delete
-                          my data" typed (case and
-                          outer spaces ignored).
+                          requires a saved export
+                          first (YYYY-MM-DD_HHmm_
+                          reset_checkpoint.json;
+                          a closed share sheet
+                          does not count, a web
+                          download does), then
+                          "delete my data" typed
+                          (case and outer spaces
+                          ignored).
                           One transaction deletes
                           every record and re-adds
                           the default categories,

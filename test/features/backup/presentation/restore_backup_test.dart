@@ -42,7 +42,9 @@ class FakeBackupImporter implements BackupImporter {
 
 class FakeBackupExporter implements BackupExporter {
   @override
-  Future<BackupFile> createFile() async => const BackupFile(
+  Future<BackupFile> createFile({
+    BackupFileKind kind = BackupFileKind.backup,
+  }) async => const BackupFile(
     fileName: 'fundly-backup-2026-11-17.json',
     contents: '{}',
   );
@@ -112,6 +114,7 @@ void main() {
           pickBackupFileProvider.overrideWithValue(() async => pickedContents),
           shareBackupFileProvider.overrideWithValue((file, {origin}) async {
             shared.add(file);
+            return true;
           }),
         ],
         child: const MaterialApp(home: ProfileScreen()),

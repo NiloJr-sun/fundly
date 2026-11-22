@@ -231,4 +231,18 @@ void main() {
     expect(decoded['categories'], hasLength(9));
     expect(file.contents, startsWith('{\n  "app": "fundly",'));
   });
+
+  test('a reset checkpoint is named by local date and time', () async {
+    final exporter = BackupExporter(
+      database,
+      clock: () => DateTime(2026, 11, 22, 9, 5),
+    );
+
+    final checkpoint = await exporter.createFile(
+      kind: BackupFileKind.resetCheckpoint,
+    );
+
+    expect(checkpoint.fileName, '2026-11-22_0905_reset_checkpoint.json');
+    expect(checkpoint.contents, (await exporter.createFile()).contents);
+  });
 }

@@ -6,6 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 
+/// What a backup file is for; only its name differs.
+enum BackupFileKind {
+  /// An ordinary backup from Export backup.
+  backup,
+
+  /// The export required before Reset all data.
+  resetCheckpoint,
+}
+
 /// A backup ready to save or share: a file name and its JSON text.
 @immutable
 final class BackupFile {
@@ -120,16 +129,24 @@ class BackupExporter {
     };
   });
 
-  /// The backup as an indented JSON file named after today's local date,
-  /// e.g. `fundly-backup-2026-11-17.json`.
-  Future<BackupFile> createFile() async {
+  /// The backup as an indented JSON file named after the local date:
+  /// `fundly-backup-2026-11-17.json` for a [BackupFileKind.backup], and
+  /// `2026-11-22_1430_reset_checkpoint.json` (with the local time, so several
+  /// checkpoints in a day keep their order) for a
+  /// [BackupFileKind.resetCheckpoint]. The contents are the same.
+  Future<BackupFile> createFile({
+    BackupFileKind kind = BackupFileKind.backup,
+  }) async {
     final backup = await export();
-    final today = _now().toLocal();
+    final now = _now().toLocal();
     String two(int value) => value.toString().padLeft(2, '0');
+    final date = '${now.year}-${two(now.month)}-${two(now.day)}';
     return BackupFile(
-      fileName:
-          'fundly-backup-${today.year}-${two(today.month)}-${two(today.day)}'
-          '.json',
+      fileName: switch (kind) {
+        BackupFileKind.backup => 'fundly-backup-$date.json',
+        BackupFileKind.resetCheckpoint =>
+          '${date}_${two(now.hour)}${two(now.minute)}_reset_checkpoint.json',
+      },
       contents: '${const JsonEncoder.withIndent('  ').convert(backup)}\n',
     );
   }

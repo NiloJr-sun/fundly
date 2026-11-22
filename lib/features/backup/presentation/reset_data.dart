@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/spacing.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
+import '../data/backup_exporter.dart';
 import '../data/backup_importer.dart';
 import '../data/data_resetter.dart';
 import 'export_backup.dart';
@@ -40,9 +41,10 @@ Future<void> _explainResetUnavailable(BuildContext context) => showDialog<void>(
   ),
 );
 
-/// Shows what will be deleted, offers to export first, and asks the user to
-/// type [resetConfirmationPhrase] before deleting every record on this device.
-/// The default categories come back, as on a fresh install.
+/// Shows what will be deleted, requires a reset checkpoint export (see
+/// [BackupFileKind.resetCheckpoint]) and asks the user to type
+/// [resetConfirmationPhrase] before deleting every record on this device. The
+/// default categories come back, as on a fresh install.
 ///
 /// Nothing changes unless the user confirms. [origin] is where the export
 /// share sheet points on iPad.
@@ -73,8 +75,12 @@ Future<void> resetData(
     context: context,
     builder: (_) => _ConfirmResetDialog(
       current: current,
-      onExportFirst: (dialogContext) =>
-          exportBackup(dialogContext, ref, origin: origin),
+      exportCheckpoint: (dialogContext) => exportBackup(
+        dialogContext,
+        ref,
+        kind: BackupFileKind.resetCheckpoint,
+        origin: origin,
+      ),
     ),
   );
   if (confirmed != true || !context.mounted) return;
@@ -112,11 +118,13 @@ Future<void> resetData(
 class _ConfirmResetDialog extends StatefulWidget {
   const _ConfirmResetDialog({
     required this.current,
-    required this.onExportFirst,
+    required this.exportCheckpoint,
   });
 
   final BackupCounts current;
-  final Future<void> Function(BuildContext context) onExportFirst;
+
+  /// Exports the checkpoint and returns whether it was saved or sent.
+  final Future<bool> Function(BuildContext context) exportCheckpoint;
 
   @override
   State<_ConfirmResetDialog> createState() => _ConfirmResetDialogState();
@@ -124,7 +132,8 @@ class _ConfirmResetDialog extends StatefulWidget {
 
 class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
   final _controller = TextEditingController();
-  var _confirmed = false;
+  var _exported = false;
+  var _typed = false;
 
   @override
   void dispose() {
@@ -132,9 +141,15 @@ class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
     super.dispose();
   }
 
+  Future<void> _export() async {
+    final saved = await widget.exportCheckpoint(context);
+    if (saved && mounted) setState(() => _exported = true);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return AlertDialog(
       title: const Text('Delete all your data?'),
       content: SingleChildScrollView(
@@ -142,30 +157,41 @@ class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'On this phone now',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
+            Text('On this phone now', style: theme.textTheme.titleSmall),
             Text(describeCounts(widget.current)),
             const SizedBox(height: Spacing.md),
             const Text(
               'Everything on this phone is deleted and Fundly starts fresh '
               "with its default categories. This can't be undone.",
             ),
-            const SizedBox(height: Spacing.sm),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
+            const SizedBox(height: Spacing.md),
+            Text('1. Save a checkpoint', style: theme.textTheme.titleSmall),
+            const SizedBox(height: Spacing.xs),
+            if (_exported)
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: colorScheme.primary),
+                  const SizedBox(width: Spacing.sm),
+                  const Expanded(child: Text('Checkpoint saved')),
+                ],
+              )
+            else
+              OutlinedButton.icon(
                 icon: const Icon(Icons.ios_share),
-                label: const Text('Export backup first'),
-                onPressed: () => widget.onExportFirst(context),
+                label: const Text('Export checkpoint'),
+                onPressed: _export,
+              ),
+            const SizedBox(height: Spacing.md),
+            Text(
+              '2. Type "$resetConfirmationPhrase" to confirm',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: _exported ? null : theme.disabledColor,
               ),
             ),
             const SizedBox(height: Spacing.sm),
-            const Text('Type "$resetConfirmationPhrase" to confirm.'),
-            const SizedBox(height: Spacing.sm),
             TextField(
               controller: _controller,
+              enabled: _exported,
               autocorrect: false,
               enableSuggestions: false,
               textCapitalization: TextCapitalization.none,
@@ -173,8 +199,7 @@ class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
                 hintText: resetConfirmationPhrase,
                 border: OutlineInputBorder(),
               ),
-              onChanged: (text) =>
-                  setState(() => _confirmed = confirmsReset(text)),
+              onChanged: (text) => setState(() => _typed = confirmsReset(text)),
             ),
           ],
         ),
@@ -189,7 +214,9 @@ class _ConfirmResetDialogState extends State<_ConfirmResetDialog> {
             backgroundColor: colorScheme.error,
             foregroundColor: colorScheme.onError,
           ),
-          onPressed: _confirmed ? () => Navigator.of(context).pop(true) : null,
+          onPressed: _exported && _typed
+              ? () => Navigator.of(context).pop(true)
+              : null,
           child: const Text('Delete everything'),
         ),
       ],
