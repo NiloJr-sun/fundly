@@ -145,10 +145,13 @@ class PowerSyncStore implements SyncedStore {
       unawaited(_deletePreviewDatabase());
       if (_closed || _powerSyncUrl.isEmpty) return;
       final firstDownload = !(sync.currentStatus.hasSynced ?? false);
+      // PowerSync skips a status equal to the last one, so a retry failing
+      // the same way sends no event: refresh when the record changes.
       final connector = _connector = _SupabaseConnector(
         _client,
         _powerSyncUrl,
         _identity,
+        onUploadFailureChanged: () => _onStatus(sync.currentStatus),
       );
       _statusSubscription = sync.statusStream.listen(_onStatus);
       await sync.connect(connector: connector);
@@ -227,16 +230,35 @@ class PowerSyncStore implements SyncedStore {
 /// Gives PowerSync the signed-in user's Supabase token and uploads queued
 /// batches to `fundly_apply_operations`.
 class _SupabaseConnector extends ps.PowerSyncBackendConnector {
-  _SupabaseConnector(this._client, this._endpoint, this._identity);
+  _SupabaseConnector(
+    this._client,
+    this._endpoint,
+    this._identity, {
+    required this.onUploadFailureChanged,
+  });
 
   final SupabaseClient _client;
   final String _endpoint;
   final SignedIn _identity;
 
-  /// Why the last upload attempt failed, or null after one that did not
-  /// throw this. Kept here because the web sync worker passes the error back
-  /// only as text (see [syncStateFor]).
+  /// Called when [lastUploadFailure] changes.
+  final void Function() onUploadFailureChanged;
+
+  /// Why the most recent failed upload failed, or null when that failure
+  /// was not a [SyncUploadException]. Kept here because the web sync worker
+  /// passes the error back only as text (see [syncStateFor]). Not cleared
+  /// while an attempt runs or after a success: [syncStateFor] ignores it
+  /// once PowerSync reports no upload error.
   SyncUploadException? lastUploadFailure;
+
+  void _recordFailure(SyncUploadException? failure) {
+    if (failure?.code == lastUploadFailure?.code &&
+        failure?.outcome == lastUploadFailure?.outcome) {
+      return;
+    }
+    lastUploadFailure = failure;
+    onUploadFailureChanged();
+  }
 
   @override
   Future<ps.PowerSyncCredentials?> fetchCredentials() async {
@@ -258,7 +280,6 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
   /// fails; PowerSync calls again later.
   @override
   Future<void> uploadData(ps.PowerSyncDatabase database) async {
-    lastUploadFailure = null;
     try {
       // Never upload one user's changes with another user's token.
       if (_client.auth.currentSession?.user.id != _identity.userId) {
@@ -267,7 +288,10 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
       final apply = supabaseApplyBatch(_client);
       while (await uploadNextBatch(database, apply)) {}
     } on SyncUploadException catch (failure) {
-      lastUploadFailure = failure;
+      _recordFailure(failure);
+      rethrow;
+    } on Object {
+      _recordFailure(null);
       rethrow;
     }
   }
