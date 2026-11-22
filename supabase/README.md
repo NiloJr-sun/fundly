@@ -190,5 +190,5 @@ cover:
 - the same import sent twice at once.
 
 The timing check imported 10,000 transactions (4.2 MB) in 0.60 s and
-19,000 (7.9 MB) in 1.33 s under an 8 s statement timeout. The migration is
-not deployed to the hosted project.
+19,000 (7.9 MB) in 1.33 s under an 8 s statement timeout. Deployed to the hosted
+project on 2026-11-22 (see `powersync/README.md`, verification record).

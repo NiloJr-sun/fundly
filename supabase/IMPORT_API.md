@@ -1,6 +1,7 @@
 # Dataset import — S6.1
 
-Implemented by `20261122020000_dataset_import.sql` and verified locally only.
+Implemented by `20261122020000_dataset_import.sql`, verified locally and deployed
+to the hosted project on 2026-11-22.
 The function replaces one owner's whole dataset in a single transaction: other
 devices download either the old dataset or the complete new one. It is the
 server half of moving signed-out data or a backup into an account

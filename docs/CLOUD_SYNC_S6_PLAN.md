@@ -3,7 +3,7 @@
 Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S6.1
-is implemented and verified locally, but not deployed to the hosted project.
+is implemented, verified locally and deployed to the hosted project (2026-11-22).
 S6.2 and S6.3 are not started. S6 is split into three sub-slices; each is planned in more
 detail, implemented, verified and reviewed on its own, and the agent stops
 after each.

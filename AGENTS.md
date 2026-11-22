@@ -83,8 +83,8 @@ simulator build for anything that changes app code. macOS has no
   transaction. Signed in, `CloudDataResetter` sends `fundly_import_dataset`
   `replace` with only the defaults (same `import_id` on retry); it needs a
   connection, a full download and no waiting uploads
-  (`docs/RESET_SIGNED_IN_PLAN.md`). The S6.1 migration must be deployed to
-  the hosted project for it to work there.
+  (`docs/RESET_SIGNED_IN_PLAN.md`). S5.3 and S6.1 are deployed to the hosted
+  project (2026-11-22).
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one

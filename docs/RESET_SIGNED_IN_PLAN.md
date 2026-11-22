@@ -4,9 +4,8 @@ Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–4, all as recommended). **B1
 and B2 are implemented** and verified locally (unit, widget and local
-Supabase contract tests). B2 needs the S6.1 migration on the hosted project
-before it works there; until then the server refuses the call and nothing
-changes. Follows Task A (signed-out reset with a
+Supabase contract tests). The S6.1 migration was deployed to the hosted project on
+2026-11-22. Follows Task A (signed-out reset with a
 required `YYYY-MM-DD_HHmm_reset_checkpoint.json` export). The product owner
 approved bringing format 7 export forward from S6.3 and will deploy the S6.1
 migration to the hosted project before this is tried on a device.
@@ -24,7 +23,8 @@ the account starts again with only the default categories, on every device.
   owner's write lock: checks `expected` counts (`dataset_changed` if another
   device changed them), deletes every record with tombstones, inserts the new
   dataset, and stores a receipt so a resend never applies twice. It is
-  verified locally only and **not deployed**. No app code calls it yet.
+  verified locally only and **not deployed** (deployed 2026-11-22). No app code
+  called it yet.
 - **Synced store:** records live in Drift raw tables
   (`core/sync/synced_tables.dart`) with UUID IDs. `pendingUploadCountProvider`
   counts queued batches; `syncStateProvider` gives the connection and whether
