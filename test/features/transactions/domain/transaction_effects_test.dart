@@ -7,8 +7,8 @@ import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'transaction_fixtures.dart';
 
 /// Sums the effects of [transactions] per account, starting from zero.
-Map<int, Money> applyAll(List<TransactionDraft> transactions) {
-  final balances = <int, Money>{};
+Map<String, Money> applyAll(List<TransactionDraft> transactions) {
+  final balances = <String, Money>{};
   for (final effect in transactions.expand(effectsOf)) {
     balances[effect.accountId] =
         (balances[effect.accountId] ?? php(0)) + effect.change;

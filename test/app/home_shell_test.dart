@@ -78,7 +78,7 @@ void main() {
           overrides: fakeAccounts(
             [],
             categories: const [
-              Category(id: 1, name: 'Food', kind: CategoryKind.spending),
+              Category(id: '1', name: 'Food', kind: CategoryKind.spending),
             ],
           ),
           child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),

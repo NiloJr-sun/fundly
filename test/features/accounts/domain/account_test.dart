@@ -6,7 +6,7 @@ import 'package:fundly/features/accounts/domain/account_type.dart';
 void main() {
   final createdAt = DateTime.utc(2026, 11, 16, 8);
   final account = Account(
-    id: 7,
+    id: '7',
     name: 'RCBC Credit Card',
     type: AccountType.credit,
     openingBalance: const Money(minorUnits: -300000, currencyCode: 'PHP'),
@@ -50,7 +50,7 @@ void main() {
     test('keeps id, type and createdAt', () {
       final edited = account.copyWith(name: 'Renamed', isArchived: true);
 
-      expect(edited.id, 7);
+      expect(edited.id, '7');
       expect(edited.type, AccountType.credit);
       expect(edited.createdAt, createdAt);
     });

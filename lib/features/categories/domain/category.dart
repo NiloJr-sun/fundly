@@ -27,9 +27,9 @@ final class Category {
   });
 
   /// Non-null for a managed liability-account Plans row.
-  final int? linkedAccountId;
+  final String? linkedAccountId;
 
-  final int id;
+  final String id;
   final String name;
   final CategoryKind kind;
 

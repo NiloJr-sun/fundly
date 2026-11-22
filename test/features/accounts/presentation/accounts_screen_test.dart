@@ -15,7 +15,7 @@ import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 
 import '../../../helpers/provider_overrides.dart';
 
-Account account(int id, String name, AccountType type, int openingMinor) =>
+Account account(String id, String name, AccountType type, int openingMinor) =>
     Account(
       id: id,
       name: name,
@@ -54,10 +54,10 @@ void main() {
     await pumpScreen(
       tester,
       fakeAccounts([
-        account(1, 'BDO Savings', AccountType.savingsCash, 1500000),
-        account(2, 'Cash Wallet', AccountType.savingsCash, 0),
-        account(3, 'RCBC Credit', AccountType.credit, -300000),
-        account(4, 'Car Loan', AccountType.loan, -5000000),
+        account('1', 'BDO Savings', AccountType.savingsCash, 1500000),
+        account('2', 'Cash Wallet', AccountType.savingsCash, 0),
+        account('3', 'RCBC Credit', AccountType.credit, -300000),
+        account('4', 'Car Loan', AccountType.loan, -5000000),
       ]),
     );
 
@@ -87,11 +87,11 @@ void main() {
 
   group('sections', () {
     final mixed = [
-      account(1, 'BDO Savings', AccountType.savingsCash, 1500000),
-      account(2, 'Cash Wallet', AccountType.savingsCash, 250050),
-      account(3, 'RCBC Credit', AccountType.credit, -300000),
-      account(4, 'BPI Credit', AccountType.credit, -125000),
-      account(5, 'Car Loan', AccountType.loan, -5000000),
+      account('1', 'BDO Savings', AccountType.savingsCash, 1500000),
+      account('2', 'Cash Wallet', AccountType.savingsCash, 250050),
+      account('3', 'RCBC Credit', AccountType.credit, -300000),
+      account('4', 'BPI Credit', AccountType.credit, -125000),
+      account('5', 'Car Loan', AccountType.loan, -5000000),
     ];
 
     /// The text on the right of the [title] section header.
@@ -143,14 +143,14 @@ void main() {
       tester,
       fakeAccounts([
         Account(
-          id: 1,
+          id: '1',
           name: 'BDO Savings',
           type: AccountType.savingsCash,
           openingBalance: const Money(minorUnits: 0, currencyCode: 'PHP'),
           createdAt: DateTime.utc(2026, 11, 16),
           isBudgetAccount: true,
         ),
-        account(2, 'Cash Wallet', AccountType.savingsCash, 0),
+        account('2', 'Cash Wallet', AccountType.savingsCash, 0),
       ]),
     );
 
@@ -165,7 +165,7 @@ void main() {
   testWidgets('omits sections for types with no accounts', (tester) async {
     await pumpScreen(
       tester,
-      fakeAccounts([account(1, 'BDO Savings', AccountType.savingsCash, 0)]),
+      fakeAccounts([account('1', 'BDO Savings', AccountType.savingsCash, 0)]),
     );
 
     expect(find.text('Assets'), findsOneWidget);
@@ -177,19 +177,19 @@ void main() {
 
   group('custom account types', () {
     final eWallet = CustomAccountType(
-      id: 10,
+      id: '10',
       name: 'E-wallet',
       baseType: AccountType.savingsCash,
       createdAt: DateTime.utc(2026, 11, 17),
     );
     final payLater = CustomAccountType(
-      id: 11,
+      id: '11',
       name: 'Pay later',
       baseType: AccountType.credit,
       createdAt: DateTime.utc(2026, 11, 17),
     );
     final debt = CustomAccountType(
-      id: 12,
+      id: '12',
       name: 'Debt',
       baseType: AccountType.loan,
       createdAt: DateTime.utc(2026, 11, 17),
@@ -215,18 +215,21 @@ void main() {
         tester,
         fakeAccounts(
           [
-            account(1, 'BDO Savings', AccountType.savingsCash, 1500000),
+            account('1', 'BDO Savings', AccountType.savingsCash, 1500000),
             custom(
-              account(2, 'GCash', AccountType.savingsCash, 120000),
+              account('2', 'GCash', AccountType.savingsCash, 120000),
               eWallet,
             ),
-            custom(account(3, 'Maya', AccountType.savingsCash, 30000), eWallet),
-            account(4, 'RCBC Credit', AccountType.credit, -300000),
             custom(
-              account(5, 'SPayLater', AccountType.credit, -50000),
+              account('3', 'Maya', AccountType.savingsCash, 30000),
+              eWallet,
+            ),
+            account('4', 'RCBC Credit', AccountType.credit, -300000),
+            custom(
+              account('5', 'SPayLater', AccountType.credit, -50000),
               payLater,
             ),
-            custom(account(6, 'From Mom', AccountType.loan, -1000000), debt),
+            custom(account('6', 'From Mom', AccountType.loan, -1000000), debt),
           ],
           customTypes: [debt, eWallet, payLater],
         ),
@@ -266,7 +269,7 @@ void main() {
       await pumpScreen(
         tester,
         fakeAccounts(
-          [custom(account(1, 'GCash', AccountType.savingsCash, 0), eWallet)],
+          [custom(account('1', 'GCash', AccountType.savingsCash, 0), eWallet)],
           customTypes: [eWallet, payLater],
         ),
       );
@@ -313,7 +316,7 @@ void main() {
   testWidgets('tapping an account opens its details', (tester) async {
     await pumpScreen(
       tester,
-      fakeAccounts([account(1, 'BDO Savings', AccountType.savingsCash, 0)]),
+      fakeAccounts([account('1', 'BDO Savings', AccountType.savingsCash, 0)]),
     );
 
     await tester.tap(find.text('BDO Savings'));

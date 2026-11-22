@@ -12,8 +12,8 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
   final int firstId;
 
   final List<CustomAccountType> created = [];
-  final List<({int id, String? name, AccountType? baseType})> updated = [];
-  final List<int> deleted = [];
+  final List<({String id, String? name, AccountType? baseType})> updated = [];
+  final List<String> deleted = [];
 
   /// When set, the next call throws this instead of saving.
   CustomAccountTypeValidationError? failWith;
@@ -25,7 +25,7 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
   }) async {
     _maybeFail();
     final type = CustomAccountType(
-      id: firstId + created.length,
+      id: '${firstId + created.length}',
       name: name.trim(),
       baseType: baseType,
       createdAt: DateTime.utc(2026, 11, 17),
@@ -36,7 +36,7 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
 
   @override
   Future<CustomAccountType> update(
-    int id, {
+    String id, {
     String? name,
     AccountType? baseType,
   }) async {
@@ -51,7 +51,7 @@ class FakeCustomAccountTypeRepository implements CustomAccountTypeRepository {
   }
 
   @override
-  Future<void> delete(int id) async {
+  Future<void> delete(String id) async {
     _maybeFail();
     deleted.add(id);
   }

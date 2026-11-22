@@ -26,7 +26,7 @@ final class Account {
   static const String defaultCurrency = 'PHP';
 
   /// Database-assigned identifier (CLAUDE.md §11, D7).
-  final int id;
+  final String id;
   final String name;
 
   /// Fixed after creation, so [copyWith] cannot change it.
@@ -40,7 +40,7 @@ final class Account {
   /// The custom type the account is shown under, or `null` for the built-in
   /// [type]. A custom type always has [type] as its base type, so every
   /// accounting rule keeps using [type].
-  final int? customTypeId;
+  final String? customTypeId;
 
   /// Whether this account’s current balance funds Ready to assign on Plans.
   /// At most one account is the budget account, and it is Savings/Cash.

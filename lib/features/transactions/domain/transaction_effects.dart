@@ -2,7 +2,7 @@ import '../../../core/money/money.dart';
 import 'transaction.dart';
 
 /// A signed change to one account's balance (CLAUDE.md §11, D1).
-typedef BalanceEffect = ({int accountId, Money change});
+typedef BalanceEffect = ({String accountId, Money change});
 
 /// How [transaction] changes account balances under the signed convention:
 ///
@@ -32,6 +32,6 @@ List<BalanceEffect> effectsOf(TransactionDraft transaction) => [
     ),
 ];
 
-int _require(int? accountId, String role) =>
+String _require(String? accountId, String role) =>
     accountId ??
     (throw StateError('A valid transaction must have a $role account.'));

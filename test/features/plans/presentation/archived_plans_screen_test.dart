@@ -26,7 +26,7 @@ void main() {
     bool archived = false,
     bool categoryArchived = false,
     bool deleted = false,
-    int? linkedAccountId,
+    String? linkedAccountId,
   }) => Category(
     id: foodId,
     name: 'Food',
@@ -179,7 +179,7 @@ void main() {
       rows: [food(archived: true)],
       plans: [
         MonthlyPlan(
-          id: 1,
+          id: '1',
           month: month.previous,
           categoryId: foodId,
           target: php(20000),

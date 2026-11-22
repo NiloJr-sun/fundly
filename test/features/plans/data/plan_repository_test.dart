@@ -13,9 +13,9 @@ void main() {
   late AppDatabase database;
   late PlanRepository repository;
   late CategoryRepository categories;
-  late int food;
-  late int transport;
-  late int salary;
+  late String food;
+  late String transport;
+  late String salary;
   var clockTime = DateTime.utc(2026, 11, 16, 9);
 
   final november = CalendarMonth(2026, 11);
@@ -30,7 +30,7 @@ void main() {
     repository = PlanRepository(database, clock: () => clockTime);
     categories = CategoryRepository(database);
     final all = await categories.watchAll().first;
-    int idOf(String name) => all.firstWhere((c) => c.name == name).id;
+    String idOf(String name) => all.firstWhere((c) => c.name == name).id;
     food = idOf('Food & Groceries');
     transport = idOf('Fuel');
     salary = idOf('Salary');
@@ -44,7 +44,7 @@ void main() {
 
   /// Saves a plan with [target] and, unless given, the same [assigned].
   Future<MonthlyPlan> plan(
-    int categoryId,
+    String categoryId,
     int target, {
     CalendarMonth? month,
     int? assigned,
@@ -165,7 +165,7 @@ void main() {
 
     test('rejects an unknown category', () async {
       await expectLater(
-        plan(999, 100),
+        plan('999', 100),
         throwsPlanError(PlanValidationError.categoryNotFound),
       );
     });
@@ -269,7 +269,7 @@ void main() {
   group('database constraints (backstop if Dart checks are bypassed)', () {
     Future<void> insertRaw({
       String month = '2026-11',
-      int? categoryId,
+      String? categoryId,
       int? target = 100,
       int assigned = 100,
     }) => database.customStatement(
@@ -321,7 +321,7 @@ void main() {
     });
 
     test('rejects an unknown category (foreign key)', () {
-      expect(insertRaw(categoryId: 999), throwsA(isA<Exception>()));
+      expect(insertRaw(categoryId: '999'), throwsA(isA<Exception>()));
     });
   });
 }

@@ -206,7 +206,7 @@ void main() {
       await openForm(
         tester,
         editing: const Category(
-          id: 20,
+          id: '20',
           name: 'Salary',
           kind: CategoryKind.inflow,
         ),

@@ -143,7 +143,7 @@ final readyToAssignProvider =
 
 /// Live eligibility for permanently deleting an archived Plans row.
 final planDeletionStatusProvider = StreamProvider.autoDispose
-    .family<PlanDeletionStatus, int>(
+    .family<PlanDeletionStatus, String>(
       (ref, categoryId) =>
           ref.watch(planRepositoryProvider).watchDeletionStatus(categoryId),
     );

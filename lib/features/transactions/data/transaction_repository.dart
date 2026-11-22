@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/calendar_date.dart';
 import '../../accounts/data/account_row_mapping.dart';
@@ -27,7 +28,7 @@ class TransactionRepository {
   /// [accountId] keeps transactions where that account is the source or the
   /// destination. [from] and [to] are inclusive date bounds.
   Stream<List<Transaction>> watchAll({
-    int? accountId,
+    String? accountId,
     CalendarDate? from,
     CalendarDate? to,
   }) {
@@ -35,8 +36,8 @@ class TransactionRepository {
       ..where((t) {
         final conditions = <Expression<bool>>[
           if (accountId != null)
-            t.sourceAccountId.equals(accountId) |
-                t.destinationAccountId.equals(accountId),
+            t.sourceAccountId.equals(rowIdOf(accountId)) |
+                t.destinationAccountId.equals(rowIdOf(accountId)),
           if (from != null) t.date.isBiggerOrEqualValue(from.toIsoString()),
           if (to != null) t.date.isSmallerOrEqualValue(to.toIsoString()),
         ];
@@ -52,9 +53,9 @@ class TransactionRepository {
   }
 
   /// Emits `null` if the transaction does not exist.
-  Stream<Transaction?> watchById(int id) {
+  Stream<Transaction?> watchById(String id) {
     final query = _database.select(_transactions)
-      ..where((t) => t.id.equals(id));
+      ..where((t) => t.id.equals(rowIdOf(id)));
     return query.watchSingleOrNull().map(
       (row) => row == null ? null : _toDomain(row),
     );
@@ -77,9 +78,11 @@ class TransactionRepository {
               currencyCode: normalized.amount.currencyCode,
               date: normalized.date,
               payee: Value(normalized.payee),
-              categoryId: Value(normalized.categoryId),
-              sourceAccountId: Value(normalized.sourceAccountId),
-              destinationAccountId: Value(normalized.destinationAccountId),
+              categoryId: Value(rowIdOrNull(normalized.categoryId)),
+              sourceAccountId: Value(rowIdOrNull(normalized.sourceAccountId)),
+              destinationAccountId: Value(
+                rowIdOrNull(normalized.destinationAccountId),
+              ),
               note: Value(normalized.note),
               createdAt: now,
               updatedAt: now,
@@ -95,7 +98,7 @@ class TransactionRepository {
   ///
   /// Throws [TransactionValidationException], or [StateError] if the
   /// transaction does not exist.
-  Future<Transaction> update(int id, TransactionDraft draft) {
+  Future<Transaction> update(String id, TransactionDraft draft) {
     return _database.transaction(() async {
       final existing = await _find(id);
       final normalized = _normalize(draft);
@@ -103,15 +106,17 @@ class TransactionRepository {
       final rows =
           await (_database.update(
             _transactions,
-          )..where((t) => t.id.equals(id))).writeReturning(
+          )..where((t) => t.id.equals(rowIdOf(id)))).writeReturning(
             TransactionsCompanion(
               amountMinor: Value(normalized.amount.minorUnits),
               currencyCode: Value(normalized.amount.currencyCode),
               date: Value(normalized.date),
               payee: Value(normalized.payee),
-              categoryId: Value(normalized.categoryId),
-              sourceAccountId: Value(normalized.sourceAccountId),
-              destinationAccountId: Value(normalized.destinationAccountId),
+              categoryId: Value(rowIdOrNull(normalized.categoryId)),
+              sourceAccountId: Value(rowIdOrNull(normalized.sourceAccountId)),
+              destinationAccountId: Value(
+                rowIdOrNull(normalized.destinationAccountId),
+              ),
               note: Value(normalized.note),
               updatedAt: Value(_now().toUtc()),
             ),
@@ -124,17 +129,17 @@ class TransactionRepository {
   /// recalculate automatically (rule 11).
   ///
   /// Throws [StateError] if the transaction does not exist.
-  Future<void> delete(int id) async {
+  Future<void> delete(String id) async {
     final deleted = await (_database.delete(
       _transactions,
-    )..where((t) => t.id.equals(id))).go();
+    )..where((t) => t.id.equals(rowIdOf(id)))).go();
     if (deleted == 0) throw StateError('Transaction $id does not exist.');
   }
 
-  Future<Transaction> _find(int id) async {
+  Future<Transaction> _find(String id) async {
     final row = await (_database.select(
       _transactions,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    )..where((t) => t.id.equals(rowIdOf(id)))).getSingleOrNull();
     if (row == null) throw StateError('Transaction $id does not exist.');
     return _toDomain(row);
   }
@@ -147,8 +152,12 @@ class TransactionRepository {
     final categoryRows = await _database.select(_database.categories).get();
     final errors = validateTransaction(
       draft,
-      accounts: {for (final row in accountRows) row.id: row.toDomain()},
-      categories: {for (final row in categoryRows) row.id: row.toDomain()},
+      accounts: {
+        for (final row in accountRows) recordIdOf(row.id): row.toDomain(),
+      },
+      categories: {
+        for (final row in categoryRows) recordIdOf(row.id): row.toDomain(),
+      },
       existing: existing,
     );
     if (errors.isNotEmpty) throw TransactionValidationException(errors);
@@ -168,14 +177,14 @@ class TransactionRepository {
       );
 
   static Transaction _toDomain(TransactionRow row) => Transaction(
-    id: row.id,
+    id: recordIdOf(row.id),
     type: row.type,
     amount: Money(minorUnits: row.amountMinor, currencyCode: row.currencyCode),
     date: row.date,
     payee: row.payee,
-    categoryId: row.categoryId,
-    sourceAccountId: row.sourceAccountId,
-    destinationAccountId: row.destinationAccountId,
+    categoryId: recordIdOrNull(row.categoryId),
+    sourceAccountId: recordIdOrNull(row.sourceAccountId),
+    destinationAccountId: recordIdOrNull(row.destinationAccountId),
     note: row.note,
     createdAt: row.createdAt.toUtc(),
     updatedAt: row.updatedAt.toUtc(),

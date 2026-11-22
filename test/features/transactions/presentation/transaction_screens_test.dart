@@ -33,10 +33,10 @@ void main() {
       date: CalendarDate(2026, 11, 16),
       note: 'Team lunch',
     ),
-    id: 3,
+    id: '3',
   );
-  final move = saved(transfer(amount: 200000), id: 2);
-  final salary = saved(inflow(amount: 3000000), id: 1);
+  final move = saved(transfer(amount: 200000), id: '2');
+  final salary = saved(inflow(amount: 3000000), id: '1');
   final transactions = [lunch, move, salary];
 
   List<Override> overrides() => fakeAccounts(
@@ -142,7 +142,7 @@ void main() {
 
   group('Transaction details', () {
     testWidgets('shows the full trail of a spending', (tester) async {
-      await pump(tester, const TransactionDetailScreen(transactionId: 3));
+      await pump(tester, const TransactionDetailScreen(transactionId: '3'));
 
       expect(find.text('Spending'), findsOneWidget);
       expect(find.text('₱150.00'), findsOneWidget);
@@ -158,7 +158,7 @@ void main() {
     });
 
     testWidgets('shows both accounts of a transfer', (tester) async {
-      await pump(tester, const TransactionDetailScreen(transactionId: 2));
+      await pump(tester, const TransactionDetailScreen(transactionId: '2'));
 
       expect(find.text('Transfer'), findsOneWidget);
       expect(find.text('BDO Savings'), findsOneWidget);
@@ -167,7 +167,7 @@ void main() {
     });
 
     testWidgets('marks an archived account', (tester) async {
-      final fromOld = saved(spending(from: oldWalletId), id: 9);
+      final fromOld = saved(spending(from: oldWalletId), id: '9');
       await tester.pumpWidget(
         ProviderScope(
           overrides: fakeAccounts(
@@ -176,7 +176,7 @@ void main() {
             transactions: [fromOld],
           ),
           child: const MaterialApp(
-            home: TransactionDetailScreen(transactionId: 9),
+            home: TransactionDetailScreen(transactionId: '9'),
           ),
         ),
       );
@@ -188,7 +188,7 @@ void main() {
     testWidgets('shows when it was last edited', (tester) async {
       final edited = saved(
         transfer(),
-        id: 5,
+        id: '5',
         createdAt: DateTime.utc(2026, 11, 1, 12),
         updatedAt: DateTime.utc(2026, 11, 10, 12),
       );
@@ -196,7 +196,7 @@ void main() {
         ProviderScope(
           overrides: fakeAccounts(active, transactions: [edited]),
           child: const MaterialApp(
-            home: TransactionDetailScreen(transactionId: 5),
+            home: TransactionDetailScreen(transactionId: '5'),
           ),
         ),
       );
@@ -208,7 +208,7 @@ void main() {
     });
 
     testWidgets('says when the transaction does not exist', (tester) async {
-      await pump(tester, const TransactionDetailScreen(transactionId: 404));
+      await pump(tester, const TransactionDetailScreen(transactionId: '404'));
 
       expect(find.text('This transaction no longer exists.'), findsOneWidget);
     });
@@ -221,7 +221,7 @@ void main() {
 
     /// Opens the details of transaction [id] from a placeholder page so
     /// deleting can pop.
-    Future<void> openDetail(WidgetTester tester, int id) async {
+    Future<void> openDetail(WidgetTester tester, String id) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: fakeAccounts(

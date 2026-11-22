@@ -26,7 +26,7 @@ void main() {
 
   final november = CalendarMonth(2026, 11);
   final october = CalendarMonth(2026, 10);
-  const transportId = 11;
+  const transportId = '11';
   const transport = Category(
     id: transportId,
     name: 'Transport',
@@ -39,7 +39,7 @@ void main() {
   /// A plan with [target] (`null` for none) and [assigned], which defaults
   /// to the target.
   MonthlyPlan plan(
-    int categoryId,
+    String categoryId,
     int? target, {
     int? assigned,
     CalendarMonth? month,
@@ -160,13 +160,13 @@ void main() {
         withCategories: [
           ...allCategories,
           const Category(
-            id: 40,
+            id: '40',
             name: 'Emergency fund',
             kind: CategoryKind.spending,
             planGroup: PlanGroup.savings,
           ),
           const Category(
-            id: 41,
+            id: '41',
             name: 'Card payoff',
             kind: CategoryKind.spending,
             planGroup: PlanGroup.liability,
@@ -193,13 +193,13 @@ void main() {
         withCategories: [
           ...allCategories,
           const Category(
-            id: 40,
+            id: '40',
             name: 'Emergency fund',
             kind: CategoryKind.spending,
             planGroup: PlanGroup.savings,
           ),
           const Category(
-            id: 41,
+            id: '41',
             name: 'Card payoff',
             kind: CategoryKind.spending,
             planGroup: PlanGroup.liability,
@@ -258,7 +258,7 @@ void main() {
         tester,
         withCategories: const [
           Category(
-            id: 40,
+            id: '40',
             name: 'Emergency fund',
             kind: CategoryKind.spending,
             planGroup: PlanGroup.savings,
@@ -324,9 +324,9 @@ void main() {
         tester,
         plans: [plan(foodId, 500000)],
         transactions: [
-          saved(spending(amount: 100000), id: 1),
-          saved(transfer(), id: 2),
-          saved(cardPayment(), id: 3),
+          saved(spending(amount: 100000), id: '1'),
+          saved(transfer(), id: '2'),
+          saved(cardPayment(), id: '3'),
         ],
       );
 
@@ -422,18 +422,18 @@ void main() {
       await pumpScreen(
         tester,
         transactions: [
-          saved(spending(amount: 8000, payee: 'Jollibee'), id: 1),
+          saved(spending(amount: 8000, payee: 'Jollibee'), id: '1'),
           saved(
             spending(
               amount: 9000,
               payee: 'Last month',
               date: CalendarDate(2026, 10, 31),
             ),
-            id: 2,
+            id: '2',
           ),
           saved(
             spending(amount: 7000, payee: 'Grab', category: transportId),
-            id: 3,
+            id: '3',
           ),
         ],
       );
@@ -475,7 +475,7 @@ void main() {
     ) async {
       await pumpScreen(
         tester,
-        transactions: [saved(inflow(amount: 4000000), id: 1)],
+        transactions: [saved(inflow(amount: 4000000), id: '1')],
       );
 
       expect(
@@ -501,9 +501,9 @@ void main() {
         bdoIsBudgetAccount: true,
         plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
         transactions: [
-          saved(inflow(amount: 4000000), id: 1),
+          saved(inflow(amount: 4000000), id: '1'),
           // Transfers out reduce the live balance.
-          saved(transferToWallet(500000), id: 2),
+          saved(transferToWallet(500000), id: '2'),
         ],
       );
 
@@ -552,9 +552,9 @@ void main() {
         bdoIsBudgetAccount: true,
         plans: [plan(foodId, 400000)],
         transactions: [
-          saved(inflow(amount: 1000000), id: 1),
-          saved(spending(amount: 100000), id: 2),
-          saved(spending(amount: 200000, from: rcbcCardId), id: 3),
+          saved(inflow(amount: 1000000), id: '1'),
+          saved(spending(amount: 100000), id: '2'),
+          saved(spending(amount: 200000, from: rcbcCardId), id: '3'),
         ],
       );
       expect(amountText(tester).data, '₱6,000.00');
@@ -595,7 +595,7 @@ void main() {
         tester,
         bdoIsBudgetAccount: true,
         plans: [plan(foodId, 100000, month: october)],
-        transactions: [saved(inflow(amount: 4000000), id: 1)],
+        transactions: [saved(inflow(amount: 4000000), id: '1')],
       );
 
       await tester.tap(find.byTooltip('Previous month'));
@@ -608,7 +608,7 @@ void main() {
       await pumpScreen(
         tester,
         bdoIsBudgetAccount: true,
-        transactions: [saved(inflow(amount: 4000000), id: 1)],
+        transactions: [saved(inflow(amount: 4000000), id: '1')],
       );
 
       await tester.tap(find.text('Ready to assign'));

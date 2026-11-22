@@ -58,9 +58,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   final _payeeController = TextEditingController();
   final _noteController = TextEditingController();
   late CalendarDate _date;
-  int? _sourceAccountId;
-  int? _destinationAccountId;
-  int? _categoryId;
+  String? _sourceAccountId;
+  String? _destinationAccountId;
+  String? _categoryId;
   bool _isSaving = false;
 
   /// Errors from the last save attempt, shown under their fields.
@@ -400,14 +400,14 @@ class _AccountField extends ConsumerWidget {
 
   final String label;
   final List<Account> accounts;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  final FormFieldValidator<int> validator;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customTypes = ref.watch(customAccountTypesByIdProvider);
-    return DropdownButtonFormField<int>(
+    return DropdownButtonFormField<String>(
       initialValue: value,
       // Lets long account names shrink with an ellipsis instead of
       // overflowing on narrow phones.
@@ -441,19 +441,19 @@ class _CategoryField extends StatelessWidget {
 
   final List<Category> categories;
   final bool optional;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-  final FormFieldValidator<int> validator;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<int>(
+    return DropdownButtonFormField<String>(
       initialValue: value,
       decoration: InputDecoration(
         labelText: optional ? 'Category (optional)' : 'Category',
       ),
       items: [
-        if (optional) const DropdownMenuItem<int>(child: Text('None')),
+        if (optional) const DropdownMenuItem<String>(child: Text('None')),
         for (final category in categories)
           DropdownMenuItem(
             value: category.id,

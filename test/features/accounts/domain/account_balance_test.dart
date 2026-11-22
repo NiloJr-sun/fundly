@@ -18,7 +18,7 @@ void main() {
   final carLoan = withOpening(accounts[carLoanId]!, -5000000);
   final all = [bdo, wallet, rcbc, carLoan];
 
-  Map<int, Money> balances(List<TransactionDraft> transactions) =>
+  Map<String, Money> balances(List<TransactionDraft> transactions) =>
       balancesFor(all, transactions);
 
   test('with no transactions, balance is the opening balance', () {
@@ -134,7 +134,7 @@ void main() {
   test('account type does not change the arithmetic', () {
     for (final type in AccountType.values) {
       final account = Account(
-        id: 1,
+        id: '1',
         name: 'Any',
         type: type,
         openingBalance: php(-100),

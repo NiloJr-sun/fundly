@@ -75,7 +75,9 @@ void main() {
   Finder field(String label) => find.widgetWithText(TextFormField, label);
 
   Future<void> choose(WidgetTester tester, String label, String option) async {
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<int>, label));
+    await tester.tap(
+      find.widgetWithText(DropdownButtonFormField<String>, label),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text(option).last);
     await tester.pumpAndSettle();
@@ -140,7 +142,7 @@ void main() {
       await openForm(tester, TransactionType.spending);
 
       await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Paid from'),
+        find.widgetWithText(DropdownButtonFormField<String>, 'Paid from'),
       );
       await tester.pumpAndSettle();
 
@@ -154,7 +156,7 @@ void main() {
       await openForm(tester, TransactionType.spending);
 
       await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Category'),
+        find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
       );
       await tester.pumpAndSettle();
 
@@ -166,7 +168,7 @@ void main() {
       await openForm(tester, TransactionType.spending);
 
       await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Category'),
+        find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
       );
       await tester.pumpAndSettle();
 
@@ -263,10 +265,14 @@ void main() {
 
   /// Opens the [label] dropdown and returns the account options it lists.
   Future<List<String>> optionsOf(WidgetTester tester, String label) async {
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<int>, label));
+    await tester.tap(
+      find.widgetWithText(DropdownButtonFormField<String>, label),
+    );
     await tester.pumpAndSettle();
     final options = tester
-        .widgetList<DropdownMenuItem<int>>(find.byType(DropdownMenuItem<int>))
+        .widgetList<DropdownMenuItem<String>>(
+          find.byType(DropdownMenuItem<String>),
+        )
         .map((item) => ((item.child as Text).data!))
         .toSet()
         .toList();
@@ -280,7 +286,7 @@ void main() {
       await openForm(tester, TransactionType.transfer);
       expect(find.text('New Transfer'), findsOneWidget);
       expect(
-        find.widgetWithText(DropdownButtonFormField<int>, 'Category'),
+        find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
         findsNothing,
       );
 
@@ -400,13 +406,13 @@ void main() {
         withAccounts: [accounts[bdoId]!],
         customTypes: [
           CustomAccountType(
-            id: 10,
+            id: '10',
             name: 'Pay later',
             baseType: AccountType.credit,
             createdAt: DateTime.utc(2026, 11, 17),
           ),
           CustomAccountType(
-            id: 11,
+            id: '11',
             name: 'Debt',
             baseType: AccountType.loan,
             createdAt: DateTime.utc(2026, 11, 17),
@@ -427,7 +433,7 @@ void main() {
         date: CalendarDate(2026, 11, 2),
         note: 'Weekly',
       ),
-      id: 7,
+      id: '7',
     );
 
     testWidgets('fills in the existing values', (tester) async {
@@ -451,7 +457,7 @@ void main() {
 
       expect(repository.created, isEmpty);
       final update = repository.updated.single;
-      expect(update.id, 7);
+      expect(update.id, '7');
       expect(update.draft.type, TransactionType.spending);
       expect(update.draft.amount, php(75000));
       expect(update.draft.sourceAccountId, rcbcCardId);
@@ -463,7 +469,7 @@ void main() {
     testWidgets('G7: keeps an archived account the transaction uses', (
       tester,
     ) async {
-      final fromOld = saved(spending(from: oldWalletId), id: 8);
+      final fromOld = saved(spending(from: oldWalletId), id: '8');
       await openForm(tester, fromOld.type, editing: fromOld);
 
       expect(
@@ -480,7 +486,7 @@ void main() {
     testWidgets('keeps an archived category the transaction uses', (
       tester,
     ) async {
-      final gift = saved(spending(category: giftsId), id: 9);
+      final gift = saved(spending(category: giftsId), id: '9');
       await openForm(tester, gift.type, editing: gift);
 
       expect(find.text('Gifts (archived)'), findsOneWidget);

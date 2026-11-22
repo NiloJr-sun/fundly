@@ -170,13 +170,13 @@ void main() {
 
   group('custom account types', () {
     final eWallet = CustomAccountType(
-      id: 10,
+      id: '10',
       name: 'E-wallet',
       baseType: AccountType.savingsCash,
       createdAt: DateTime.utc(2026, 11, 17),
     );
     final payLater = CustomAccountType(
-      id: 11,
+      id: '11',
       name: 'Pay later',
       baseType: AccountType.credit,
       createdAt: DateTime.utc(2026, 11, 17),
@@ -346,7 +346,7 @@ void main() {
       tester,
     ) async {
       final wallet = Account(
-        id: 5,
+        id: '5',
         name: 'GCash',
         type: AccountType.savingsCash,
         openingBalance: php(0),
@@ -376,7 +376,7 @@ void main() {
 
   group('budget account', () {
     final bdo = Account(
-      id: 1,
+      id: '1',
       name: 'BDO Savings',
       type: AccountType.savingsCash,
       openingBalance: php(0),
@@ -384,7 +384,7 @@ void main() {
       isBudgetAccount: true,
     );
     final bpi = Account(
-      id: 2,
+      id: '2',
       name: 'BPI Savings',
       type: AccountType.savingsCash,
       openingBalance: php(0),
@@ -414,7 +414,7 @@ void main() {
       await tapSave(tester, 'Add account');
 
       expect(find.byType(AlertDialog), findsNothing, reason: 'nothing to move');
-      expect(repository.budgetAccountChanges, [repository.created.length]);
+      expect(repository.budgetAccountChanges, ['${repository.created.length}']);
       expect(find.byType(AccountFormScreen), findsNothing);
     });
 
@@ -487,7 +487,7 @@ void main() {
 
   group('editing', () {
     final card = Account(
-      id: 7,
+      id: '7',
       name: 'RCBC Credit',
       type: AccountType.credit,
       openingBalance: php(-300000),
@@ -535,7 +535,7 @@ void main() {
       tester,
     ) async {
       final wallet = Account(
-        id: 8,
+        id: '8',
         name: 'Cash Wallet',
         type: AccountType.savingsCash,
         openingBalance: php(0),

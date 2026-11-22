@@ -13,7 +13,7 @@ import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import '../../../helpers/fake_custom_account_type_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 
-CustomAccountType customType(int id, String name, AccountType baseType) =>
+CustomAccountType customType(String id, String name, AccountType baseType) =>
     CustomAccountType(
       id: id,
       name: name,
@@ -21,7 +21,7 @@ CustomAccountType customType(int id, String name, AccountType baseType) =>
       createdAt: DateTime.utc(2026, 11, 17),
     );
 
-Account account(int id, CustomAccountType type) => Account(
+Account account(String id, CustomAccountType type) => Account(
   id: id,
   name: 'Account $id',
   type: type.baseType,
@@ -31,9 +31,9 @@ Account account(int id, CustomAccountType type) => Account(
 );
 
 void main() {
-  final eWallet = customType(10, 'E-wallet', AccountType.savingsCash);
-  final debt = customType(11, 'Debt', AccountType.loan);
-  final payLater = customType(12, 'Pay later', AccountType.credit);
+  final eWallet = customType('10', 'E-wallet', AccountType.savingsCash);
+  final debt = customType('11', 'Debt', AccountType.loan);
+  final payLater = customType('12', 'Pay later', AccountType.credit);
   late FakeCustomAccountTypeRepository repository;
 
   setUp(() => repository = FakeCustomAccountTypeRepository());
@@ -96,8 +96,8 @@ void main() {
     await pumpScreen(
       tester,
       types: [debt, eWallet, payLater],
-      accounts: [account(1, eWallet), account(2, eWallet)],
-      archived: [account(3, debt)],
+      accounts: [account('1', eWallet), account('2', eWallet)],
+      archived: [account('3', debt)],
     );
 
     final texts = tester
@@ -200,7 +200,7 @@ void main() {
       await pumpScreen(
         tester,
         types: [payLater],
-        accounts: [account(1, payLater)],
+        accounts: [account('1', payLater)],
       );
       await openType(tester, 'Pay later');
 

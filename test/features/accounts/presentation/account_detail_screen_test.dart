@@ -18,7 +18,7 @@ import '../../../helpers/provider_overrides.dart';
 import '../../transactions/domain/transaction_fixtures.dart' show saved;
 
 Account account({
-  int id = 1,
+  String id = '1',
   String name = 'BDO Savings',
   AccountType type = AccountType.savingsCash,
   int openingMinor = 0,
@@ -41,7 +41,7 @@ void main() {
   Future<void> openDetail(
     WidgetTester tester,
     List<Override> overrides, {
-    int accountId = 1,
+    String accountId = '1',
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -94,7 +94,7 @@ void main() {
 
   testWidgets('shows a custom type by name', (tester) async {
     final eWallet = CustomAccountType(
-      id: 10,
+      id: '10',
       name: 'E-wallet',
       baseType: AccountType.savingsCash,
       createdAt: DateTime.utc(2026, 11, 17),
@@ -104,7 +104,7 @@ void main() {
       fakeAccounts(
         [
           Account(
-            id: 1,
+            id: '1',
             name: 'GCash',
             type: AccountType.savingsCash,
             openingBalance: const Money.zero('PHP'),
@@ -125,7 +125,7 @@ void main() {
       tester,
       fakeAccounts([
         Account(
-          id: 1,
+          id: '1',
           name: 'BDO Savings',
           type: AccountType.savingsCash,
           openingBalance: const Money.zero('PHP'),
@@ -140,7 +140,7 @@ void main() {
   });
 
   testWidgets('says so when the account does not exist', (tester) async {
-    await openDetail(tester, noAccounts(), accountId: 42);
+    await openDetail(tester, noAccounts(), accountId: '42');
 
     expect(find.text('This account no longer exists.'), findsOneWidget);
     expect(find.byTooltip('Edit'), findsNothing);
@@ -168,7 +168,7 @@ void main() {
       await tapButton(tester, 'Archive account');
 
       expect(find.byType(AlertDialog), findsNothing);
-      expect(repository.archivedChanges, [(id: 1, archived: true)]);
+      expect(repository.archivedChanges, [(id: '1', archived: true)]);
       expect(find.byType(AccountDetailScreen), findsNothing);
       expect(find.text('BDO Savings archived'), findsOneWidget);
     });
@@ -206,7 +206,7 @@ void main() {
       expect(find.textContaining('balance: -₱50,000.00'), findsOneWidget);
       await tapButton(tester, 'Archive');
 
-      expect(repository.archivedChanges, [(id: 1, archived: true)]);
+      expect(repository.archivedChanges, [(id: '1', archived: true)]);
       expect(find.byType(AccountDetailScreen), findsNothing);
     });
 
@@ -227,14 +227,14 @@ void main() {
       await tapButton(tester, 'Unarchive account');
 
       expect(find.byType(AlertDialog), findsNothing);
-      expect(repository.archivedChanges, [(id: 1, archived: false)]);
+      expect(repository.archivedChanges, [(id: '1', archived: false)]);
       expect(find.text('BDO Savings restored'), findsOneWidget);
     });
   });
 
   group('deleting', () {
     final archived = account(isArchived: true);
-    final other = account(id: 2, name: 'Cash Wallet');
+    final other = account(id: '2', name: 'Cash Wallet');
 
     Future<void> openArchived(
       WidgetTester tester, {

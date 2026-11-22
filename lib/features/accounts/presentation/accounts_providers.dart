@@ -25,7 +25,7 @@ final archivedAccountsProvider = StreamProvider<List<Account>>(
 );
 
 /// One account by id, or `null` if it does not exist.
-final accountByIdProvider = StreamProvider.family<Account?, int>(
+final accountByIdProvider = StreamProvider.family<Account?, String>(
   (ref, id) => ref.watch(accountRepositoryProvider).watchById(id),
 );
 
@@ -37,7 +37,7 @@ final allAccountsProvider = StreamProvider<List<Account>>(
 /// Current balance of every account, keyed by id, from [balancesFor].
 ///
 /// Recomputes whenever an account or a transaction changes (rule 11).
-final accountBalancesProvider = Provider<AsyncValue<Map<int, Money>>>((ref) {
+final accountBalancesProvider = Provider<AsyncValue<Map<String, Money>>>((ref) {
   final accounts = ref.watch(allAccountsProvider);
   final transactions = ref.watch(allTransactionsProvider);
   return switch ((accounts, transactions)) {
@@ -55,7 +55,7 @@ final accountBalancesProvider = Provider<AsyncValue<Map<int, Money>>>((ref) {
 
 /// Every account (including archived), keyed by id, for showing names.
 /// Empty while loading.
-final accountsByIdProvider = Provider<Map<int, Account>>((ref) {
+final accountsByIdProvider = Provider<Map<String, Account>>((ref) {
   final accounts = ref.watch(allAccountsProvider).value ?? const [];
   return {for (final account in accounts) account.id: account};
 });
@@ -67,18 +67,18 @@ final customAccountTypesProvider = StreamProvider<List<CustomAccountType>>(
 
 /// Every custom account type keyed by id, for showing names. Empty while
 /// loading.
-final customAccountTypesByIdProvider = Provider<Map<int, CustomAccountType>>((
-  ref,
-) {
-  final types = ref.watch(customAccountTypesProvider).value ?? const [];
-  return {for (final type in types) type.id: type};
-});
+final customAccountTypesByIdProvider = Provider<Map<String, CustomAccountType>>(
+  (ref) {
+    final types = ref.watch(customAccountTypesProvider).value ?? const [];
+    return {for (final type in types) type.id: type};
+  },
+);
 
 /// How many accounts, active or archived, use each custom type, keyed by
 /// custom type id. Types without accounts are absent. Empty while loading.
-final customTypeAccountCountsProvider = Provider<Map<int, int>>((ref) {
+final customTypeAccountCountsProvider = Provider<Map<String, int>>((ref) {
   final accounts = ref.watch(allAccountsProvider).value ?? const [];
-  final counts = <int, int>{};
+  final counts = <String, int>{};
   for (final account in accounts) {
     final id = account.customTypeId;
     if (id != null) counts[id] = (counts[id] ?? 0) + 1;

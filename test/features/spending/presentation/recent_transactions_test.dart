@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/date_range.dart';
 import 'package:fundly/features/spending/presentation/recent_transactions.dart';
@@ -20,7 +21,7 @@ void main() {
     for (var i = count; i >= 1; i--)
       saved(
         spending(payee: 'Shop $i', date: CalendarDate(2026, 11, i)),
-        id: i,
+        id: recordIdOf(i),
       ),
   ];
 
@@ -104,7 +105,7 @@ void main() {
       ])
         saved(
           spending(payee: 'Shop $id', date: date),
-          id: id,
+          id: recordIdOf(id),
         ),
     ];
 

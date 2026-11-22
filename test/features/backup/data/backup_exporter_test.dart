@@ -121,7 +121,7 @@ void main() {
 
     expect(backup['customAccountTypes'], [
       {
-        'id': eWallet.id,
+        'id': int.parse(eWallet.id),
         'name': 'E-wallet',
         'baseType': 'savingsCash',
         'createdAt': '2026-11-16T09:30:00.000Z',
@@ -129,7 +129,7 @@ void main() {
     ]);
     expect(backup['accounts'], [
       {
-        'id': bdo.id,
+        'id': int.parse(bdo.id),
         'name': 'BDO Savings',
         'type': 'savingsCash',
         'customTypeId': null,
@@ -140,10 +140,10 @@ void main() {
         'isBudgetAccount': true,
       },
       {
-        'id': gcash.id,
+        'id': int.parse(gcash.id),
         'name': 'GCash',
         'type': 'savingsCash',
-        'customTypeId': eWallet.id,
+        'customTypeId': int.parse(eWallet.id),
         'openingBalanceMinor': 0,
         'currencyCode': 'PHP',
         'createdAt': '2026-11-16T09:30:00.000Z',
@@ -151,7 +151,7 @@ void main() {
         'isBudgetAccount': false,
       },
       {
-        'id': card.id,
+        'id': int.parse(card.id),
         'name': 'RCBC Credit',
         'type': 'credit',
         'customTypeId': null,
@@ -164,7 +164,7 @@ void main() {
       },
     ]);
     expect((backup['categories']! as List).last, {
-      'id': gifts.id,
+      'id': int.parse(gifts.id),
       'name': 'Gifts',
       'kind': 'spending',
       'isArchived': false,
@@ -181,8 +181,8 @@ void main() {
         'currencyCode': 'PHP',
         'date': '2026-11-10',
         'payee': 'SM Supermarket',
-        'categoryId': gifts.id,
-        'sourceAccountId': card.id,
+        'categoryId': int.parse(gifts.id),
+        'sourceAccountId': int.parse(card.id),
         'destinationAccountId': null,
         'note': 'Birthday',
         'createdAt': '2026-11-16T09:30:00.000Z',
@@ -196,8 +196,8 @@ void main() {
         'date': '2026-11-11',
         'payee': '',
         'categoryId': null,
-        'sourceAccountId': bdo.id,
-        'destinationAccountId': gcash.id,
+        'sourceAccountId': int.parse(bdo.id),
+        'destinationAccountId': int.parse(gcash.id),
         'note': '',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'updatedAt': '2026-11-16T09:30:00.000Z',
@@ -207,7 +207,7 @@ void main() {
       {
         'id': 1,
         'month': '2026-11',
-        'categoryId': gifts.id,
+        'categoryId': int.parse(gifts.id),
         'targetAmountMinor': null,
         'assignedAmountMinor': 100000,
         'currencyCode': 'PHP',

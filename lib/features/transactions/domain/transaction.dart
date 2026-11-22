@@ -28,13 +28,13 @@ class TransactionDraft {
 
   /// Payee, merchant, source of income, or a description.
   final String payee;
-  final int? categoryId;
+  final String? categoryId;
 
   /// Account money leaves. Used by spending, transfer and card payment.
-  final int? sourceAccountId;
+  final String? sourceAccountId;
 
   /// Account money arrives in. Used by inflow, transfer and card payment.
-  final int? destinationAccountId;
+  final String? destinationAccountId;
   final String note;
 
   @override
@@ -85,7 +85,7 @@ final class Transaction extends TransactionDraft {
     required this.updatedAt,
   });
 
-  final int id;
+  final String id;
 
   /// UTC instants (G9).
   final DateTime createdAt;

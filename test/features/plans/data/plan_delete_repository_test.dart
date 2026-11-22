@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
@@ -29,9 +30,9 @@ void main() {
   late Account asset;
   late Account card;
   late Account loan;
-  late int food;
-  late int debt;
-  late int loanPlan;
+  late String food;
+  late String debt;
+  late String loanPlan;
   final month = CalendarMonth(2026, 11);
 
   setUp(() async {
@@ -62,14 +63,14 @@ void main() {
   });
   tearDown(() => database.close());
 
-  Future<PlanDeletionStatus> status(int id) =>
+  Future<PlanDeletionStatus> status(String id) =>
       plans.watchDeletionStatus(id).first;
-  Future<Category> category(int id) async =>
+  Future<Category> category(String id) async =>
       (await categories.watchAll().first).singleWhere((c) => c.id == id);
   Matcher blocked(PlanDeletionStatus value) => throwsA(
     isA<PlanDeletionException>().having((e) => e.status, 'status', value),
   );
-  Future<void> save(int id, CalendarMonth at, int assigned) async {
+  Future<void> save(String id, CalendarMonth at, int assigned) async {
     await plans.save(
       month: at,
       categoryId: id,
@@ -123,7 +124,7 @@ void main() {
         blocked(PlanDeletionStatus.notArchived),
       );
       await expectLater(
-        plans.deletePermanently(999),
+        plans.deletePermanently('999'),
         blocked(PlanDeletionStatus.categoryNotFound),
       );
       final salary = (await categories.watchAll().first).firstWhere(
@@ -297,7 +298,8 @@ void main() {
 
   test('SQLite rejects deleted flags on active or inflow rows', () async {
     await expectLater(
-      (database.update(database.categories)..where((c) => c.id.equals(food)))
+      (database.update(database.categories)
+            ..where((c) => c.id.equals(rowIdOf(food))))
           .write(const CategoriesCompanion(isPlanDeleted: Value(true))),
       throwsA(isA<Exception>()),
     );
@@ -307,7 +309,7 @@ void main() {
     await expectLater(
       (database.update(
         database.categories,
-      )..where((c) => c.id.equals(salary.id))).write(
+      )..where((c) => c.id.equals(rowIdOf(salary.id)))).write(
         const CategoriesCompanion(
           isPlanArchived: Value(true),
           isPlanDeleted: Value(true),

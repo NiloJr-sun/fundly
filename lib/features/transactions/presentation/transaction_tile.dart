@@ -17,13 +17,13 @@ class TransactionTile extends ConsumerWidget {
   const TransactionTile({super.key, required this.transaction, this.accountId});
 
   final Transaction transaction;
-  final int? accountId;
+  final String? accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsByIdProvider);
     final categories = ref.watch(categoriesByIdProvider);
-    String accountName(int? id) => accounts[id]?.name ?? '…';
+    String accountName(String? id) => accounts[id]?.name ?? '…';
 
     final details = switch (transaction.type) {
       TransactionType.spending => [

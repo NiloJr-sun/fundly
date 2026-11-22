@@ -24,8 +24,8 @@ void main() {
   late TransactionRepository transactions;
   late Account budget;
   late Account card;
-  late int food;
-  late int debt;
+  late String food;
+  late String debt;
   final november = CalendarMonth(2026, 11);
   final december = CalendarMonth(2026, 12);
 
@@ -53,7 +53,7 @@ void main() {
   tearDown(() => database.close());
 
   Future<void> assign(
-    int categoryId,
+    String categoryId,
     int amount, {
     CalendarMonth? month,
   }) async {
@@ -65,7 +65,7 @@ void main() {
     );
   }
 
-  Future<Category> category(int id) async =>
+  Future<Category> category(String id) async =>
       (await categories.watchAll().first).singleWhere((c) => c.id == id);
   Matcher blocked(Map<CalendarMonth, int> values) => throwsA(
     isA<PlanArchiveBlocked>().having(
@@ -277,7 +277,7 @@ void main() {
 
   test('unknown and inflow categories cannot be archived as plans', () async {
     await expectLater(
-      plans.setArchived(999, archived: true),
+      plans.setArchived('999', archived: true),
       throwsA(isA<PlanValidationException>()),
     );
     final salary = (await categories.watchAll().first).singleWhere(

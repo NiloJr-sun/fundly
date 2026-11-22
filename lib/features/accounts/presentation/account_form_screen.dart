@@ -18,7 +18,7 @@ import 'accounts_providers.dart';
 
 /// A choice in the account type dropdown: a built-in [type], or the custom
 /// type [customTypeId] based on it.
-typedef AccountTypeChoice = ({AccountType type, int? customTypeId});
+typedef AccountTypeChoice = ({AccountType type, String? customTypeId});
 
 /// Creates a new account, or edits [account] when given.
 ///

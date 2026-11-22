@@ -17,7 +17,7 @@ final class CustomAccountType {
     required this.createdAt,
   });
 
-  final int id;
+  final String id;
   final String name;
   final AccountType baseType;
 

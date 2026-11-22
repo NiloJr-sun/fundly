@@ -13,11 +13,11 @@ import 'account_type.dart';
 /// a transaction recalculates them automatically (rule 11).
 ///
 /// Effects on accounts not in [accounts] are ignored.
-Map<int, Money> balancesFor(
+Map<String, Money> balancesFor(
   Iterable<Account> accounts,
   Iterable<TransactionDraft> transactions,
 ) {
-  final balances = <int, Money>{
+  final balances = <String, Money>{
     for (final account in accounts) account.id: account.openingBalance,
   };
   for (final effect in transactions.expand(effectsOf)) {
@@ -34,7 +34,7 @@ Map<int, Money> balancesFor(
 /// from [balances] are skipped; callers choose which accounts to include.
 Map<AccountType, Money> totalsByType(
   Iterable<Account> accounts,
-  Map<int, Money> balances, {
+  Map<String, Money> balances, {
   String currencyCode = Account.defaultCurrency,
 }) {
   final totals = {
@@ -52,7 +52,7 @@ Map<AccountType, Money> totalsByType(
 /// [balances] are skipped.
 Money totalBalance(
   Iterable<Account> accounts,
-  Map<int, Money> balances, {
+  Map<String, Money> balances, {
   String currencyCode = Account.defaultCurrency,
 }) {
   var total = Money.zero(currencyCode);

@@ -177,7 +177,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.rename(999, 'Gifts'), throwsStateError);
+      expect(repository.rename('999', 'Gifts'), throwsStateError);
     });
   });
 
@@ -258,7 +258,10 @@ void main() {
     });
 
     test('setPlanGroup throws for an unknown id', () {
-      expect(repository.setPlanGroup(999, PlanGroup.savings), throwsStateError);
+      expect(
+        repository.setPlanGroup('999', PlanGroup.savings),
+        throwsStateError,
+      );
     });
   });
 
@@ -274,7 +277,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.setArchived(999, archived: true), throwsStateError);
+      expect(repository.setArchived('999', archived: true), throwsStateError);
     });
   });
 
@@ -319,7 +322,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.delete(999), throwsStateError);
+      expect(repository.delete('999'), throwsStateError);
     });
   });
 

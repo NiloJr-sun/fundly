@@ -18,8 +18,8 @@ void main() {
     TransactionType type,
     int amount,
     CalendarDate date, {
-    int? from,
-    int? to,
+    String? from,
+    String? to,
   }) => TransactionDraft(
     type: type,
     amount: php(amount),
@@ -201,7 +201,7 @@ void main() {
       [],
       plans: [
         MonthlyPlan(
-          id: 1,
+          id: '1',
           month: december.previous,
           categoryId: foodId,
           target: php(500000),

@@ -11,7 +11,7 @@ Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
 final today = CalendarDate(2026, 11, 16);
 
 Account _account(
-  int id,
+  String id,
   String name,
   AccountType type, {
   bool archived = false,
@@ -25,13 +25,13 @@ Account _account(
 );
 
 // Account ids used across transaction tests.
-const bdoId = 1;
-const walletId = 2;
-const rcbcCardId = 3;
-const carLoanId = 4;
-const oldWalletId = 5; // archived
+const bdoId = '1';
+const walletId = '2';
+const rcbcCardId = '3';
+const carLoanId = '4';
+const oldWalletId = '5'; // archived
 
-final accounts = <int, Account>{
+final accounts = <String, Account>{
   bdoId: _account(bdoId, 'BDO Savings', AccountType.savingsCash),
   walletId: _account(walletId, 'Cash Wallet', AccountType.savingsCash),
   rcbcCardId: _account(rcbcCardId, 'RCBC Credit', AccountType.credit),
@@ -44,11 +44,11 @@ final accounts = <int, Account>{
   ),
 };
 
-const foodId = 10;
-const salaryId = 20;
-const giftsId = 30; // archived spending category
+const foodId = '10';
+const salaryId = '20';
+const giftsId = '30'; // archived spending category
 
-final categories = <int, Category>{
+final categories = <String, Category>{
   foodId: const Category(id: foodId, name: 'Food', kind: CategoryKind.spending),
   salaryId: const Category(
     id: salaryId,
@@ -65,9 +65,9 @@ final categories = <int, Category>{
 
 TransactionDraft spending({
   int amount = 50000,
-  int? from = bdoId,
-  int? to,
-  int? category = foodId,
+  String? from = bdoId,
+  String? to,
+  String? category = foodId,
   String payee = 'SM Supermarket',
   CalendarDate? date,
   String note = '',
@@ -84,9 +84,9 @@ TransactionDraft spending({
 
 TransactionDraft inflow({
   int amount = 3000000,
-  int? from,
-  int? to = bdoId,
-  int? category = salaryId,
+  String? from,
+  String? to = bdoId,
+  String? category = salaryId,
   String payee = 'Employer',
 }) => TransactionDraft(
   type: TransactionType.inflow,
@@ -100,9 +100,9 @@ TransactionDraft inflow({
 
 TransactionDraft transfer({
   int amount = 200000,
-  int? from = bdoId,
-  int? to = walletId,
-  int? category,
+  String? from = bdoId,
+  String? to = walletId,
+  String? category,
 }) => TransactionDraft(
   type: TransactionType.transfer,
   amount: php(amount),
@@ -114,8 +114,8 @@ TransactionDraft transfer({
 
 TransactionDraft cardPayment({
   int amount = 300000,
-  int? from = bdoId,
-  int? to = rcbcCardId,
+  String? from = bdoId,
+  String? to = rcbcCardId,
 }) => TransactionDraft(
   type: TransactionType.creditCardPayment,
   amount: php(amount),
@@ -127,7 +127,7 @@ TransactionDraft cardPayment({
 /// Saves [draft] as a transaction with [id] (default 1).
 Transaction saved(
   TransactionDraft draft, {
-  int id = 1,
+  String id = '1',
   DateTime? createdAt,
   DateTime? updatedAt,
 }) => Transaction(

@@ -91,8 +91,8 @@ Set<AccountType> allowedDestinationAccountTypes(TransactionType type) =>
 /// type.
 Set<TransactionValidationError> validateTransaction(
   TransactionDraft draft, {
-  required Map<int, Account> accounts,
-  required Map<int, Category> categories,
+  required Map<String, Account> accounts,
+  required Map<String, Category> categories,
   Transaction? existing,
 }) {
   final errors = <TransactionValidationError>{};
@@ -152,11 +152,11 @@ enum _Role { source, destination }
 /// currency check.
 Account? _checkAccount({
   required _Role role,
-  required int? accountId,
+  required String? accountId,
   required bool used,
   required Set<AccountType> allowedTypes,
-  required int? previousAccountId,
-  required Map<int, Account> accounts,
+  required String? previousAccountId,
+  required Map<String, Account> accounts,
   required Set<TransactionValidationError> errors,
 }) {
   final isSource = role == _Role.source;
@@ -226,8 +226,8 @@ void _checkPayee(
 
 void _checkCategory(
   TransactionDraft draft,
-  Map<int, Category> categories,
-  int? previousCategoryId,
+  Map<String, Category> categories,
+  String? previousCategoryId,
   Set<TransactionValidationError> errors,
 ) {
   final categoryId = draft.categoryId;

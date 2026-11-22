@@ -51,7 +51,7 @@ void main() {
             ],
             plans: [
               MonthlyPlan(
-                id: 1,
+                id: '1',
                 month: CalendarMonth(2026, 12),
                 categoryId: foodId,
                 target: null,

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../domain/category.dart';
 import '../domain/category_rules.dart';
 import '../domain/category_validation_exception.dart';
@@ -59,24 +60,24 @@ class CategoryRepository {
   ///
   /// Throws [ArgumentError] for an inflow category, or [StateError] if the
   /// category does not exist.
-  Future<Category> setPlanGroup(int id, PlanGroup planGroup) =>
-      _database.transaction(() async {
-        final existing = await (_database.select(
-          _categories,
-        )..where((category) => category.id.equals(id))).getSingleOrNull();
-        if (existing == null) throw StateError('Category $id does not exist.');
-        if (existing.linkedAccountId != null) {
-          throw StateError('Manage this Plans row through its account.');
-        }
-        _requireGroupAllowed(existing.kind, planGroup);
-        final rows =
-            await (_database.update(
-              _categories,
-            )..where((category) => category.id.equals(id))).writeReturning(
-              CategoriesCompanion(planGroup: Value(planGroup)),
-            );
-        return rows.single.toDomain();
-      });
+  Future<Category> setPlanGroup(
+    String id,
+    PlanGroup planGroup,
+  ) => _database.transaction(() async {
+    final existing = await (_database.select(
+      _categories,
+    )..where((category) => category.id.equals(rowIdOf(id)))).getSingleOrNull();
+    if (existing == null) throw StateError('Category $id does not exist.');
+    if (existing.linkedAccountId != null) {
+      throw StateError('Manage this Plans row through its account.');
+    }
+    _requireGroupAllowed(existing.kind, planGroup);
+    final rows =
+        await (_database.update(_categories)
+              ..where((category) => category.id.equals(rowIdOf(id))))
+            .writeReturning(CategoriesCompanion(planGroup: Value(planGroup)));
+    return rows.single.toDomain();
+  });
 
   /// Inflow categories are never planned, so they stay in the default group.
   /// The UI only offers groups for spending, so this is a programming error.
@@ -94,12 +95,12 @@ class CategoryRepository {
   ///
   /// Throws [CategoryValidationException] when a rule is broken, or
   /// [StateError] if the category does not exist.
-  Future<Category> rename(int id, String name) async {
+  Future<Category> rename(String id, String name) async {
     await _requireUnlinked(id);
     final trimmedName = await _validName(name, excludingId: id);
     final rows =
         await (_database.update(_categories)
-              ..where((category) => category.id.equals(id)))
+              ..where((category) => category.id.equals(rowIdOf(id))))
             .writeReturning(CategoriesCompanion(name: Value(trimmedName)));
     if (rows.isEmpty) throw StateError('Category $id does not exist.');
     return rows.single.toDomain();
@@ -109,11 +110,11 @@ class CategoryRepository {
   /// history but cannot be used by new transactions.
   ///
   /// Throws [StateError] if the category does not exist.
-  Future<void> setArchived(int id, {required bool archived}) async {
+  Future<void> setArchived(String id, {required bool archived}) async {
     await _requireUnlinked(id);
     final changed =
         await (_database.update(_categories)
-              ..where((category) => category.id.equals(id)))
+              ..where((category) => category.id.equals(rowIdOf(id))))
             .write(CategoriesCompanion(isArchived: Value(archived)));
     if (changed == 0) throw StateError('Category $id does not exist.');
   }
@@ -124,14 +125,14 @@ class CategoryRepository {
   /// Throws [CategoryValidationException] with
   /// [CategoryValidationError.inUse] if a transaction uses it, or
   /// [StateError] if the category does not exist.
-  Future<void> delete(int id) => _database.transaction(() async {
+  Future<void> delete(String id) => _database.transaction(() async {
     await _requireUnlinked(id);
     final transactions = _database.transactions;
     final usage = transactions.id.count();
     final count =
         await (_database.selectOnly(transactions)
               ..addColumns([usage])
-              ..where(transactions.categoryId.equals(id)))
+              ..where(transactions.categoryId.equals(rowIdOf(id))))
             .map((row) => row.read(usage)!)
             .getSingle();
     if (count > 0) {
@@ -139,21 +140,21 @@ class CategoryRepository {
     }
     final deleted = await (_database.delete(
       _categories,
-    )..where((category) => category.id.equals(id))).go();
+    )..where((category) => category.id.equals(rowIdOf(id)))).go();
     if (deleted == 0) throw StateError('Category $id does not exist.');
   });
 
-  Future<void> _requireUnlinked(int id) async {
+  Future<void> _requireUnlinked(String id) async {
     final row = await (_database.select(
       _categories,
-    )..where((category) => category.id.equals(id))).getSingleOrNull();
+    )..where((category) => category.id.equals(rowIdOf(id)))).getSingleOrNull();
     if (row?.linkedAccountId != null) {
       throw StateError('Manage this Plans row through its account.');
     }
   }
 
   /// Returns the trimmed name, or throws if it is invalid or already used.
-  Future<String> _validName(String name, {int? excludingId}) async {
+  Future<String> _validName(String name, {String? excludingId}) async {
     switch (validateCategoryName(name)) {
       case CategoryNameError.empty:
         throw const CategoryValidationException(
@@ -174,7 +175,7 @@ class CategoryRepository {
         final sameName = category.name.equals(trimmed);
         return excludingId == null
             ? sameName
-            : sameName & category.id.equals(excludingId).not();
+            : sameName & category.id.equals(rowIdOf(excludingId)).not();
       });
     if (await query.getSingleOrNull() != null) {
       throw const CategoryValidationException(

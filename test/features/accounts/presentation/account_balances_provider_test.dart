@@ -34,7 +34,7 @@ void main() {
   });
 
   /// Waits for stream updates to reach the provider, then reads balances.
-  Future<Map<int, Money>> balances() async {
+  Future<Map<String, Money>> balances() async {
     await pumpEventQueue();
     return container.read(accountBalancesProvider).requireValue;
   }

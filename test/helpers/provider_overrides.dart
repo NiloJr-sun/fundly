@@ -45,14 +45,14 @@ List<Override> fakeAccounts(
   FakeCustomAccountTypeRepository? customTypeRepository,
 }) {
   final everyAccount = [...accounts, ...archived];
-  Account? accountById(int id) {
+  Account? accountById(String id) {
     for (final account in everyAccount) {
       if (account.id == id) return account;
     }
     return null;
   }
 
-  Transaction? transactionById(int id) {
+  Transaction? transactionById(String id) {
     for (final transaction in transactions) {
       if (transaction.id == id) return transaction;
     }

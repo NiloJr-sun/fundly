@@ -19,7 +19,7 @@ import 'transactions_providers.dart';
 class TransactionDetailScreen extends ConsumerWidget {
   const TransactionDetailScreen({super.key, required this.transactionId});
 
-  final int transactionId;
+  final String transactionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

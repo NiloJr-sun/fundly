@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/custom_account_type.dart';
@@ -58,13 +59,13 @@ class CustomAccountTypeRepository {
   /// Throws [CustomAccountTypeValidationException] when a rule is broken, or
   /// [StateError] if the type does not exist.
   Future<CustomAccountType> update(
-    int id, {
+    String id, {
     String? name,
     AccountType? baseType,
   }) => _database.transaction(() async {
     final existing = await (_database.select(
       _types,
-    )..where((type) => type.id.equals(id))).getSingleOrNull();
+    )..where((type) => type.id.equals(rowIdOf(id)))).getSingleOrNull();
     if (existing == null) throw StateError('Account type $id does not exist.');
 
     final trimmedName = name == null
@@ -80,7 +81,7 @@ class CustomAccountTypeRepository {
     final rows =
         await (_database.update(
           _types,
-        )..where((type) => type.id.equals(id))).writeReturning(
+        )..where((type) => type.id.equals(rowIdOf(id)))).writeReturning(
           CustomAccountTypesCompanion(
             name: Value.absentIfNull(trimmedName),
             baseType: changesBase ? Value(baseType) : const Value.absent(),
@@ -94,7 +95,7 @@ class CustomAccountTypeRepository {
   /// Throws [CustomAccountTypeValidationException] with
   /// [CustomAccountTypeValidationError.inUse] if an account uses it, or
   /// [StateError] if the type does not exist.
-  Future<void> delete(int id) => _database.transaction(() async {
+  Future<void> delete(String id) => _database.transaction(() async {
     if (await _accountCount(id) > 0) {
       throw const CustomAccountTypeValidationException(
         CustomAccountTypeValidationError.inUse,
@@ -102,24 +103,24 @@ class CustomAccountTypeRepository {
     }
     final deleted = await (_database.delete(
       _types,
-    )..where((type) => type.id.equals(id))).go();
+    )..where((type) => type.id.equals(rowIdOf(id)))).go();
     if (deleted == 0) throw StateError('Account type $id does not exist.');
   });
 
   /// How many accounts, active or archived, use type [id].
-  Future<int> _accountCount(int id) {
+  Future<int> _accountCount(String id) {
     final accounts = _database.accounts;
     final usage = accounts.id.count();
     return (_database.selectOnly(accounts)
           ..addColumns([usage])
-          ..where(accounts.customTypeId.equals(id)))
+          ..where(accounts.customTypeId.equals(rowIdOf(id))))
         .map((row) => row.read(usage)!)
         .getSingle();
   }
 
   /// Returns the trimmed name, or throws if it is invalid or already used.
   /// Names follow the account-name rules.
-  Future<String> _validName(String name, {int? excludingId}) async {
+  Future<String> _validName(String name, {String? excludingId}) async {
     switch (validateAccountName(name)) {
       case AccountNameError.empty:
         throw const CustomAccountTypeValidationException(
@@ -145,7 +146,7 @@ class CustomAccountTypeRepository {
         final sameName = type.name.equals(trimmed);
         return excludingId == null
             ? sameName
-            : sameName & type.id.equals(excludingId).not();
+            : sameName & type.id.equals(rowIdOf(excludingId)).not();
       });
     if (await query.getSingleOrNull() != null) {
       throw const CustomAccountTypeValidationException(

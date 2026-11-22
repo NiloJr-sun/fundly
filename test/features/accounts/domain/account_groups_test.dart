@@ -5,7 +5,7 @@ import 'package:fundly/features/accounts/domain/account_groups.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 
-Account account(int id, AccountType type, {int? customTypeId}) => Account(
+Account account(String id, AccountType type, {String? customTypeId}) => Account(
   id: id,
   name: 'Account $id',
   type: type,
@@ -14,7 +14,7 @@ Account account(int id, AccountType type, {int? customTypeId}) => Account(
   customTypeId: customTypeId,
 );
 
-CustomAccountType customType(int id, String name, AccountType baseType) =>
+CustomAccountType customType(String id, String name, AccountType baseType) =>
     CustomAccountType(
       id: id,
       name: name,
@@ -30,19 +30,19 @@ void main() {
   });
 
   group('groupAccounts', () {
-    final eWallet = customType(10, 'E-wallet', AccountType.savingsCash);
-    final payLater = customType(11, 'pay later', AccountType.credit);
-    final debt = customType(12, 'Debt', AccountType.loan);
+    final eWallet = customType('10', 'E-wallet', AccountType.savingsCash);
+    final payLater = customType('11', 'pay later', AccountType.credit);
+    final debt = customType('12', 'Debt', AccountType.loan);
 
     test('orders assets then liabilities, built-in types before custom', () {
       final groups = groupAccounts(
         [
-          account(1, AccountType.savingsCash),
-          account(2, AccountType.savingsCash, customTypeId: eWallet.id),
-          account(3, AccountType.credit),
-          account(4, AccountType.loan),
-          account(5, AccountType.credit, customTypeId: payLater.id),
-          account(6, AccountType.loan, customTypeId: debt.id),
+          account('1', AccountType.savingsCash),
+          account('2', AccountType.savingsCash, customTypeId: eWallet.id),
+          account('3', AccountType.credit),
+          account('4', AccountType.loan),
+          account('5', AccountType.credit, customTypeId: payLater.id),
+          account('6', AccountType.loan, customTypeId: debt.id),
         ],
         [payLater, eWallet, debt],
       );
@@ -67,18 +67,18 @@ void main() {
     test('keeps account order within a group', () {
       final groups = groupAccounts(
         [
-          account(3, AccountType.savingsCash, customTypeId: eWallet.id),
-          account(1, AccountType.savingsCash, customTypeId: eWallet.id),
+          account('3', AccountType.savingsCash, customTypeId: eWallet.id),
+          account('1', AccountType.savingsCash, customTypeId: eWallet.id),
         ],
         [eWallet],
       );
 
-      expect(groups.single.accounts.map((a) => a.id), [3, 1]);
+      expect(groups.single.accounts.map((a) => a.id), ['3', '1']);
     });
 
     test('leaves out types without accounts', () {
       final groups = groupAccounts(
-        [account(1, AccountType.credit)],
+        [account('1', AccountType.credit)],
         [eWallet, payLater],
       );
 
@@ -89,11 +89,11 @@ void main() {
 
     test('an unknown custom type falls back to the built-in type', () {
       final groups = groupAccounts([
-        account(1, AccountType.savingsCash, customTypeId: 99),
+        account('1', AccountType.savingsCash, customTypeId: '99'),
       ], const []);
 
       expect(groups.single.customType, isNull);
-      expect(groups.single.accounts.single.id, 1);
+      expect(groups.single.accounts.single.id, '1');
     });
 
     test('no accounts gives no groups', () {

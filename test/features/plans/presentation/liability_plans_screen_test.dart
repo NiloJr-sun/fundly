@@ -19,7 +19,7 @@ void main() {
     (tester) async {
       final repository = FakePlanRepository();
       const debt = Category(
-        id: 101,
+        id: '101',
         name: 'RCBC Credit',
         kind: CategoryKind.spending,
         planGroup: PlanGroup.liability,
@@ -34,8 +34,8 @@ void main() {
               categories: [categories[foodId]!, debt],
               planRepository: repository,
               transactions: [
-                saved(cardPayment(amount: 20000), id: 1),
-                saved(spending(from: rcbcCardId), id: 2),
+                saved(cardPayment(amount: 20000), id: '1'),
+                saved(spending(from: rcbcCardId), id: '2'),
               ],
             ),
           ],
@@ -62,7 +62,7 @@ void main() {
       final tiles = tester.widgetList<TransactionTile>(
         find.byType(TransactionTile),
       );
-      expect(tiles.map((t) => t.transaction.id), [1]);
+      expect(tiles.map((t) => t.transaction.id), ['1']);
     },
   );
 }

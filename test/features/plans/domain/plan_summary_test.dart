@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
@@ -11,7 +12,7 @@ import '../../transactions/domain/transaction_fixtures.dart';
 
 void main() {
   final november = CalendarMonth(2026, 11);
-  const transportId = 11;
+  const transportId = '11';
   const transport = Category(
     id: transportId,
     name: 'Transport',
@@ -30,12 +31,12 @@ void main() {
   /// A plan with [target] (`null` for none) and [assigned], which defaults
   /// to the target, or zero without one.
   MonthlyPlan plan(
-    int categoryId,
+    String categoryId,
     int? target, {
     int? assigned,
     CalendarMonth? month,
   }) => MonthlyPlan(
-    id: nextPlanId++,
+    id: recordIdOf(nextPlanId++),
     month: month ?? november,
     categoryId: categoryId,
     target: target == null ? null : php(target),
@@ -56,8 +57,10 @@ void main() {
     transactions: transactions,
   );
 
-  CategoryPlanSummary rowFor(List<CategoryPlanSummary> rows, int categoryId) =>
-      rows.singleWhere((row) => row.category.id == categoryId);
+  CategoryPlanSummary rowFor(
+    List<CategoryPlanSummary> rows,
+    String categoryId,
+  ) => rows.singleWhere((row) => row.category.id == categoryId);
 
   test('one row per active spending category, in the given order', () {
     final rows = summarize();

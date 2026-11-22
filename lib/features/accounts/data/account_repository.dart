@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
 import '../../categories/data/liability_plan_categories.dart';
 import '../domain/account.dart';
@@ -35,9 +36,9 @@ class AccountRepository {
   }
 
   /// Emits `null` if the account does not exist.
-  Stream<Account?> watchById(int id) {
+  Stream<Account?> watchById(String id) {
     final query = _database.select(_accounts)
-      ..where((account) => account.id.equals(id));
+      ..where((account) => account.id.equals(rowIdOf(id)));
     return query.watchSingleOrNull().map((row) => row?.toDomain());
   }
 
@@ -53,7 +54,7 @@ class AccountRepository {
     required String name,
     required AccountType type,
     required Money enteredOpeningAmount,
-    int? customTypeId,
+    String? customTypeId,
   }) => _database.transaction(() async {
     final trimmedName = await _validName(name);
     _requireSupportedCurrency(enteredOpeningAmount);
@@ -69,7 +70,7 @@ class AccountRepository {
             openingBalanceMinor: openingBalance.minorUnits,
             currencyCode: Value(openingBalance.currencyCode),
             createdAt: _now().toUtc(),
-            customTypeId: Value(customTypeId),
+            customTypeId: Value(rowIdOrNull(customTypeId)),
           ),
         );
     await syncLiabilityPlanCategories(_database);
@@ -86,14 +87,14 @@ class AccountRepository {
   /// [ArgumentError] if the custom type does not exist or has another base
   /// type, or [StateError] if the account does not exist.
   Future<Account> update(
-    int id, {
+    String id, {
     String? name,
     Money? enteredOpeningAmount,
-    ({int? id})? customType,
+    ({String? id})? customType,
   }) => _database.transaction(() async {
     final existing = await (_database.select(
       _accounts,
-    )..where((account) => account.id.equals(id))).getSingleOrNull();
+    )..where((account) => account.id.equals(rowIdOf(id)))).getSingleOrNull();
     if (existing == null) throw StateError('Account $id does not exist.');
 
     final type = existing.type;
@@ -112,13 +113,13 @@ class AccountRepository {
     final rows =
         await (_database.update(
           _accounts,
-        )..where((account) => account.id.equals(id))).writeReturning(
+        )..where((account) => account.id.equals(rowIdOf(id)))).writeReturning(
           AccountsCompanion(
             name: Value.absentIfNull(trimmedName),
             openingBalanceMinor: Value.absentIfNull(openingBalance?.minorUnits),
             customTypeId: customType == null
                 ? const Value.absent()
-                : Value(customType.id),
+                : Value(rowIdOrNull(customType.id)),
           ),
         );
     await syncLiabilityPlanCategories(_database);
@@ -134,12 +135,12 @@ class AccountRepository {
   ///
   /// Archiving the budget account also stops it being the budget account:
   /// archived accounts are left out of summaries (G7).
-  Future<void> setArchived(int id, {required bool archived}) =>
+  Future<void> setArchived(String id, {required bool archived}) =>
       _database.transaction(() async {
         final changed =
             await (_database.update(
               _accounts,
-            )..where((account) => account.id.equals(id))).write(
+            )..where((account) => account.id.equals(rowIdOf(id)))).write(
               AccountsCompanion(
                 isArchived: Value(archived),
                 isBudgetAccount: archived
@@ -159,30 +160,32 @@ class AccountRepository {
   /// types included), or [StateError] if it does not exist or is archived.
   /// The UI only offers active asset accounts, so these are programming
   /// errors.
-  Future<Account> setBudgetAccount(int id) => _database.transaction(() async {
-    final existing = await (_database.select(
-      _accounts,
-    )..where((account) => account.id.equals(id))).getSingleOrNull();
-    if (existing == null) throw StateError('Account $id does not exist.');
-    if (existing.isArchived) {
-      throw StateError('An archived account cannot be the budget account.');
-    }
-    if (existing.type != AccountType.savingsCash) {
-      throw ArgumentError.value(
-        id,
-        'id',
-        'Only a Savings/Cash account can be the budget account.',
-      );
-    }
-    await clearBudgetAccount();
-    final rows =
-        await (_database.update(
-          _accounts,
-        )..where((account) => account.id.equals(id))).writeReturning(
-          const AccountsCompanion(isBudgetAccount: Value(true)),
+  Future<Account> setBudgetAccount(String id) => _database.transaction(
+    () async {
+      final existing = await (_database.select(
+        _accounts,
+      )..where((account) => account.id.equals(rowIdOf(id)))).getSingleOrNull();
+      if (existing == null) throw StateError('Account $id does not exist.');
+      if (existing.isArchived) {
+        throw StateError('An archived account cannot be the budget account.');
+      }
+      if (existing.type != AccountType.savingsCash) {
+        throw ArgumentError.value(
+          id,
+          'id',
+          'Only a Savings/Cash account can be the budget account.',
         );
-    return rows.single.toDomain();
-  });
+      }
+      await clearBudgetAccount();
+      final rows =
+          await (_database.update(
+            _accounts,
+          )..where((account) => account.id.equals(rowIdOf(id)))).writeReturning(
+            const AccountsCompanion(isBudgetAccount: Value(true)),
+          );
+      return rows.single.toDomain();
+    },
+  );
 
   /// Leaves the app without a budget account.
   Future<void> clearBudgetAccount() =>
@@ -197,10 +200,10 @@ class AccountRepository {
   /// Throws [AccountValidationException] with
   /// [AccountValidationError.hasTransactions] if a transaction uses it, or
   /// [StateError] if the account does not exist or is not archived.
-  Future<void> delete(int id) => _database.transaction(() async {
+  Future<void> delete(String id) => _database.transaction(() async {
     final existing = await (_database.select(
       _accounts,
-    )..where((account) => account.id.equals(id))).getSingleOrNull();
+    )..where((account) => account.id.equals(rowIdOf(id)))).getSingleOrNull();
     if (existing == null) throw StateError('Account $id does not exist.');
     if (!existing.isArchived) {
       throw StateError('Account $id must be archived before deleting.');
@@ -212,8 +215,8 @@ class AccountRepository {
         await (_database.selectOnly(transactions)
               ..addColumns([usage])
               ..where(
-                transactions.sourceAccountId.equals(id) |
-                    transactions.destinationAccountId.equals(id),
+                transactions.sourceAccountId.equals(rowIdOf(id)) |
+                    transactions.destinationAccountId.equals(rowIdOf(id)),
               ))
             .map((row) => row.read(usage)!)
             .getSingle();
@@ -224,11 +227,11 @@ class AccountRepository {
     }
     await (_database.delete(
       _accounts,
-    )..where((account) => account.id.equals(id))).go();
+    )..where((account) => account.id.equals(rowIdOf(id)))).go();
   });
 
   /// Returns the trimmed name, or throws if it is invalid or already used.
-  Future<String> _validName(String name, {int? excludingId}) async {
+  Future<String> _validName(String name, {String? excludingId}) async {
     switch (validateAccountName(name)) {
       case AccountNameError.empty:
         throw const AccountValidationException(
@@ -249,7 +252,7 @@ class AccountRepository {
         final sameName = account.name.equals(trimmed);
         return excludingId == null
             ? sameName
-            : sameName & account.id.equals(excludingId).not();
+            : sameName & account.id.equals(rowIdOf(excludingId)).not();
       });
     if (await query.getSingleOrNull() != null) {
       throw const AccountValidationException(AccountValidationError.nameTaken);
@@ -261,13 +264,14 @@ class AccountRepository {
   /// accounting rule can keep reading [Account.type]. The UI only offers
   /// matching types, so a mismatch is a programming error.
   Future<void> _requireMatchingCustomType(
-    int? customTypeId,
+    String? customTypeId,
     AccountType type,
   ) async {
     if (customTypeId == null) return;
-    final customType = await (_database.select(
-      _database.customAccountTypes,
-    )..where((custom) => custom.id.equals(customTypeId))).getSingleOrNull();
+    final customType =
+        await (_database.select(_database.customAccountTypes)
+              ..where((custom) => custom.id.equals(rowIdOf(customTypeId))))
+            .getSingleOrNull();
     if (customType == null) {
       throw ArgumentError.value(
         customTypeId,

@@ -18,9 +18,9 @@ final class MonthlyPlan {
     required this.updatedAt,
   });
 
-  final int id;
+  final String id;
   final CalendarMonth month;
-  final int categoryId;
+  final String categoryId;
 
   /// The budget for the month: zero or positive, or `null` for no target.
   /// A zero target differs from having none.

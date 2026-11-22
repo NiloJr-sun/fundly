@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
@@ -47,7 +48,7 @@ void main() {
     test('stores and returns the account', () async {
       final account = await create('  BDO Savings  ', entered: 1500000);
 
-      expect(account.id, isPositive);
+      expect(int.parse(account.id), isPositive);
       expect(account.name, 'BDO Savings');
       expect(account.type, AccountType.savingsCash);
       expect(account.openingBalance, php(1500000));
@@ -102,7 +103,7 @@ void main() {
     test('rejects a name used by an archived account', () async {
       final old = await create('Old Wallet');
       await (database.update(database.accounts)
-            ..where((a) => a.id.equals(old.id)))
+            ..where((a) => a.id.equals(rowIdOf(old.id))))
           .write(const AccountsCompanion(isArchived: Value(true)));
 
       expect(
@@ -207,7 +208,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.update(999, name: 'Ghost'), throwsStateError);
+      expect(repository.update('999', name: 'Ghost'), throwsStateError);
     });
   });
 
@@ -234,7 +235,7 @@ void main() {
       await create('Active');
       final archived = await create('Archived');
       await (database.update(database.accounts)
-            ..where((a) => a.id.equals(archived.id)))
+            ..where((a) => a.id.equals(rowIdOf(archived.id))))
           .write(const AccountsCompanion(isArchived: Value(true)));
 
       final visible = await repository.watchAll().first;
@@ -283,7 +284,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.setArchived(999, archived: true), throwsStateError);
+      expect(repository.setArchived('999', archived: true), throwsStateError);
     });
   });
 
@@ -407,7 +408,7 @@ void main() {
     });
 
     test('throws StateError for a missing account', () async {
-      await expectLater(repository.setBudgetAccount(42), throwsStateError);
+      await expectLater(repository.setBudgetAccount('42'), throwsStateError);
     });
   });
 
@@ -458,13 +459,13 @@ void main() {
     });
 
     test('throws StateError for a missing account', () async {
-      await expectLater(repository.delete(42), throwsStateError);
+      await expectLater(repository.delete('42'), throwsStateError);
     });
   });
 
   group('watchById', () {
     test('emits null for a missing account', () async {
-      expect(await repository.watchById(42).first, isNull);
+      expect(await repository.watchById('42').first, isNull);
     });
   });
 
@@ -535,7 +536,7 @@ void main() {
           name: 'GCash',
           type: AccountType.savingsCash,
           enteredOpeningAmount: php(0),
-          customTypeId: 99,
+          customTypeId: '99',
         ),
         throwsArgumentError,
       );
@@ -595,7 +596,7 @@ void main() {
       await expectLater(
         (database.delete(
           database.customAccountTypes,
-        )..where((type) => type.id.equals(eWallet.id))).go(),
+        )..where((type) => type.id.equals(rowIdOf(eWallet.id)))).go(),
         throwsA(isA<Exception>()),
       );
     });

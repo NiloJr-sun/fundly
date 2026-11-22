@@ -18,17 +18,17 @@ void main() {
       payee: 'Jollibee',
       date: CalendarDate(2026, 11, 16),
     ),
-    id: 4,
+    id: '4',
   );
-  final move = saved(transfer(), id: 3); // BDO -> wallet
-  final salary = saved(inflow(), id: 2); // into BDO
+  final move = saved(transfer(), id: '3'); // BDO -> wallet
+  final salary = saved(inflow(), id: '2'); // into BDO
   final oldCoffee = saved(
     spending(
       from: oldWalletId,
       payee: 'Coffee',
       date: CalendarDate(2026, 10, 2),
     ),
-    id: 1,
+    id: '1',
   );
   final transactions = [lunch, move, salary, oldCoffee];
 

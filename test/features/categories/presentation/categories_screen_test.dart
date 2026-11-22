@@ -9,10 +9,10 @@ import 'package:fundly/features/plans/presentation/plans_screen.dart';
 import '../../../helpers/provider_overrides.dart';
 
 void main() {
-  const food = Category(id: 1, name: 'Food', kind: CategoryKind.spending);
-  const salary = Category(id: 2, name: 'Salary', kind: CategoryKind.inflow);
+  const food = Category(id: '1', name: 'Food', kind: CategoryKind.spending);
+  const salary = Category(id: '2', name: 'Salary', kind: CategoryKind.inflow);
   const gifts = Category(
-    id: 3,
+    id: '3',
     name: 'Gifts',
     kind: CategoryKind.spending,
     isArchived: true,
@@ -74,13 +74,13 @@ void main() {
     await pumpScreen(tester, const [
       food,
       Category(
-        id: 4,
+        id: '4',
         name: 'Emergency fund',
         kind: CategoryKind.spending,
         planGroup: PlanGroup.savings,
       ),
       Category(
-        id: 5,
+        id: '5',
         name: 'Old card',
         kind: CategoryKind.spending,
         isArchived: true,

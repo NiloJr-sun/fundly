@@ -27,8 +27,8 @@ void main() {
   late AppDatabase database;
   late TransactionRepository repository;
   late AccountRepository accounts;
-  late int bdo, wallet, card, loan;
-  late int food, salary;
+  late String bdo, wallet, card, loan;
+  late String food, salary;
   var clockTime = DateTime.utc(2026, 11, 16, 9);
 
   setUp(() async {
@@ -37,7 +37,7 @@ void main() {
     repository = TransactionRepository(database, clock: () => clockTime);
     accounts = AccountRepository(database);
 
-    Future<int> account(String name, AccountType type) async =>
+    Future<String> account(String name, AccountType type) async =>
         (await accounts.create(
           name: name,
           type: type,
@@ -59,7 +59,7 @@ void main() {
 
   TransactionDraft spending({
     int amount = 50000,
-    int? from,
+    String? from,
     CalendarDate? date,
     String payee = 'SM Supermarket',
     String note = '',
@@ -73,7 +73,7 @@ void main() {
     note: note,
   );
 
-  TransactionDraft transfer({int amount = 200000, int? from, int? to}) =>
+  TransactionDraft transfer({int amount = 200000, String? from, String? to}) =>
       TransactionDraft(
         type: TransactionType.transfer,
         amount: php(amount),
@@ -88,7 +88,7 @@ void main() {
         spending(payee: '  SM Supermarket ', note: ' weekly groceries '),
       );
 
-      expect(saved.id, isPositive);
+      expect(int.parse(saved.id), isPositive);
       expect(saved.type, TransactionType.spending);
       expect(saved.amount, php(50000));
       expect(saved.date, CalendarDate(2026, 11, 16));
@@ -179,7 +179,7 @@ void main() {
 
     test('rejects unknown accounts and categories', () async {
       await expectLater(
-        repository.create(spending(from: 999)),
+        repository.create(spending(from: '999')),
         throwsValidation({TransactionValidationError.sourceAccountNotFound}),
       );
     });
@@ -261,7 +261,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.update(999, spending()), throwsStateError);
+      expect(repository.update('999', spending()), throwsStateError);
     });
   });
 
@@ -276,7 +276,7 @@ void main() {
     });
 
     test('throws for an unknown id', () {
-      expect(repository.delete(999), throwsStateError);
+      expect(repository.delete('999'), throwsStateError);
     });
   });
 

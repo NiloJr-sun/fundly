@@ -10,16 +10,18 @@ import 'package:fundly/features/accounts/domain/account_validation_exception.dar
 /// `account_repository_test.dart` against an in-memory database.
 class FakeAccountRepository implements AccountRepository {
   final List<
-    ({String name, AccountType type, Money entered, int? customTypeId})
+    ({String name, AccountType type, Money entered, String? customTypeId})
   >
   created = [];
-  final List<({int id, String? name, Money? entered, ({int? id})? customType})>
+  final List<
+    ({String id, String? name, Money? entered, ({String? id})? customType})
+  >
   updated = [];
-  final List<({int id, bool archived})> archivedChanges = [];
-  final List<int> deleted = [];
+  final List<({String id, bool archived})> archivedChanges = [];
+  final List<String> deleted = [];
 
   /// Calls to [setBudgetAccount] (the id) and [clearBudgetAccount] (`null`).
-  final List<int?> budgetAccountChanges = [];
+  final List<String?> budgetAccountChanges = [];
 
   /// When set, the next create/update/delete throws this instead.
   AccountValidationError? failWith;
@@ -29,7 +31,7 @@ class FakeAccountRepository implements AccountRepository {
     required String name,
     required AccountType type,
     required Money enteredOpeningAmount,
-    int? customTypeId,
+    String? customTypeId,
   }) async {
     _maybeFail();
     created.add((
@@ -39,7 +41,7 @@ class FakeAccountRepository implements AccountRepository {
       customTypeId: customTypeId,
     ));
     return Account(
-      id: created.length,
+      id: '${created.length}',
       name: name.trim(),
       type: type,
       openingBalance: openingBalanceFor(type, enteredOpeningAmount),
@@ -50,10 +52,10 @@ class FakeAccountRepository implements AccountRepository {
 
   @override
   Future<Account> update(
-    int id, {
+    String id, {
     String? name,
     Money? enteredOpeningAmount,
-    ({int? id})? customType,
+    ({String? id})? customType,
   }) async {
     _maybeFail();
     updated.add((
@@ -73,12 +75,12 @@ class FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<void> setArchived(int id, {required bool archived}) async {
+  Future<void> setArchived(String id, {required bool archived}) async {
     archivedChanges.add((id: id, archived: archived));
   }
 
   @override
-  Future<Account> setBudgetAccount(int id) async {
+  Future<Account> setBudgetAccount(String id) async {
     _maybeFail();
     budgetAccountChanges.add(id);
     return Account(
@@ -98,7 +100,7 @@ class FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<void> delete(int id) async {
+  Future<void> delete(String id) async {
     _maybeFail();
     deleted.add(id);
   }
@@ -116,5 +118,5 @@ class FakeAccountRepository implements AccountRepository {
       Stream.value(const []);
 
   @override
-  Stream<Account?> watchById(int id) => Stream.value(null);
+  Stream<Account?> watchById(String id) => Stream.value(null);
 }

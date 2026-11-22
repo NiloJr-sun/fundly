@@ -9,8 +9,8 @@ import 'package:fundly/features/transactions/domain/transaction_validation_excep
 /// `transaction_repository_test.dart` against an in-memory database.
 class FakeTransactionRepository implements TransactionRepository {
   final List<TransactionDraft> created = [];
-  final List<({int id, TransactionDraft draft})> updated = [];
-  final List<int> deleted = [];
+  final List<({String id, TransactionDraft draft})> updated = [];
+  final List<String> deleted = [];
 
   /// When set, the next write throws a validation exception with these.
   Set<TransactionValidationError>? failWith;
@@ -19,28 +19,28 @@ class FakeTransactionRepository implements TransactionRepository {
   Future<Transaction> create(TransactionDraft draft) async {
     _maybeFail();
     created.add(draft);
-    return _saved(created.length, draft);
+    return _saved('${created.length}', draft);
   }
 
   @override
-  Future<Transaction> update(int id, TransactionDraft draft) async {
+  Future<Transaction> update(String id, TransactionDraft draft) async {
     _maybeFail();
     updated.add((id: id, draft: draft));
     return _saved(id, draft);
   }
 
   @override
-  Future<void> delete(int id) async => deleted.add(id);
+  Future<void> delete(String id) async => deleted.add(id);
 
   @override
   Stream<List<Transaction>> watchAll({
-    int? accountId,
+    String? accountId,
     CalendarDate? from,
     CalendarDate? to,
   }) => Stream.value(const []);
 
   @override
-  Stream<Transaction?> watchById(int id) => Stream.value(null);
+  Stream<Transaction?> watchById(String id) => Stream.value(null);
 
   void _maybeFail() {
     final errors = failWith;
@@ -50,7 +50,7 @@ class FakeTransactionRepository implements TransactionRepository {
     }
   }
 
-  static Transaction _saved(int id, TransactionDraft draft) => Transaction(
+  static Transaction _saved(String id, TransactionDraft draft) => Transaction(
     id: id,
     type: draft.type,
     amount: draft.amount,

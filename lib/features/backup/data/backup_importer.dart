@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/calendar_date.dart';
 import '../../../core/time/calendar_month.dart';
@@ -221,8 +222,8 @@ class _Parser {
 
   final _customTypes = <int, AccountType>{};
   final _customTypeNames = <String>{};
-  final _accounts = <int, Account>{};
-  final _categories = <int, Category>{};
+  final _accounts = <String, Account>{};
+  final _categories = <String, Category>{};
   final _seenIds = <String, Set<int>>{};
 
   BackupSnapshot parse() {
@@ -278,7 +279,7 @@ class _Parser {
     for (final account in _accounts.values) {
       if (!account.type.isLiability ||
           account.isArchived ||
-          _linkedAccounts.contains(account.id)) {
+          _linkedAccounts.contains(rowIdOf(account.id))) {
         continue;
       }
       var name = account.name;
@@ -292,14 +293,14 @@ class _Parser {
         suffixIndex++;
       }
       _categoryNames.add(name.toLowerCase());
-      _linkedAccounts.add(account.id);
+      _linkedAccounts.add(rowIdOf(account.id));
       rows.add(
         CategoriesCompanion.insert(
           id: Value(nextId++),
           name: name,
           kind: CategoryKind.spending,
           planGroup: const Value(PlanGroup.liability),
-          linkedAccountId: Value(account.id),
+          linkedAccountId: Value(rowIdOf(account.id)),
         ),
       );
     }
@@ -373,14 +374,14 @@ class _Parser {
       }
       _hasBudgetAccount = true;
     }
-    _accounts[id] = Account(
-      id: id,
+    _accounts[recordIdOf(id)] = Account(
+      id: recordIdOf(id),
       name: name,
       type: type,
       openingBalance: opening,
       createdAt: createdAt,
       isArchived: isArchived,
-      customTypeId: customTypeId,
+      customTypeId: recordIdOrNull(customTypeId),
       isBudgetAccount: isBudgetAccount,
     );
     return AccountsCompanion.insert(
@@ -432,7 +433,7 @@ class _Parser {
         ? reader.integerOrNull('linkedAccountId')
         : null;
     if (linkedAccountId != null) {
-      final account = _accounts[linkedAccountId];
+      final account = _accounts[recordIdOf(linkedAccountId)];
       if (account == null ||
           !account.type.isLiability ||
           kind != CategoryKind.spending ||
@@ -445,15 +446,15 @@ class _Parser {
         );
       }
     }
-    _categories[id] = Category(
-      id: id,
+    _categories[recordIdOf(id)] = Category(
+      id: recordIdOf(id),
       name: name,
       kind: kind,
       isArchived: isArchived,
       isPlanArchived: isPlanArchived,
       isPlanDeleted: isPlanDeleted,
       planGroup: planGroup,
-      linkedAccountId: linkedAccountId,
+      linkedAccountId: recordIdOrNull(linkedAccountId),
     );
     return CategoriesCompanion.insert(
       id: Value(id),
@@ -482,9 +483,11 @@ class _Parser {
       amount: reader.money('amountMinor', currencyKey: 'currencyCode'),
       date: reader.date('date'),
       payee: reader.string('payee'),
-      categoryId: reader.integerOrNull('categoryId'),
-      sourceAccountId: reader.integerOrNull('sourceAccountId'),
-      destinationAccountId: reader.integerOrNull('destinationAccountId'),
+      categoryId: recordIdOrNull(reader.integerOrNull('categoryId')),
+      sourceAccountId: recordIdOrNull(reader.integerOrNull('sourceAccountId')),
+      destinationAccountId: recordIdOrNull(
+        reader.integerOrNull('destinationAccountId'),
+      ),
       note: reader.string('note'),
     );
     final errors = validateTransaction(
@@ -502,9 +505,9 @@ class _Parser {
       currencyCode: draft.amount.currencyCode,
       date: draft.date,
       payee: Value(draft.payee),
-      categoryId: Value(draft.categoryId),
-      sourceAccountId: Value(draft.sourceAccountId),
-      destinationAccountId: Value(draft.destinationAccountId),
+      categoryId: Value(rowIdOrNull(draft.categoryId)),
+      sourceAccountId: Value(rowIdOrNull(draft.sourceAccountId)),
+      destinationAccountId: Value(rowIdOrNull(draft.destinationAccountId)),
       note: Value(draft.note),
       createdAt: reader.timestamp('createdAt'),
       updatedAt: reader.timestamp('updatedAt'),
@@ -514,7 +517,7 @@ class _Parser {
   MonthlyPlansCompanion _plan(_Reader reader) {
     final id = _id(reader, 'monthlyPlans');
     final categoryId = reader.integer('categoryId');
-    final category = _categories[categoryId];
+    final category = _categories[recordIdOf(categoryId)];
     if (category == null) reader.fail('categoryId', 'no such category');
     if (category.kind != CategoryKind.spending) {
       reader.fail('categoryId', 'plans need a spending category');

@@ -32,7 +32,7 @@ String accountTypeDescription(AccountType type) => switch (type) {
 /// one in [customTypes], otherwise its built-in type's label.
 String accountTypeName(
   Account account,
-  Map<int, CustomAccountType> customTypes,
+  Map<String, CustomAccountType> customTypes,
 ) => customTypes[account.customTypeId]?.name ?? accountTypeLabel(account.type);
 
 /// Names of [types] and of the [customTypes] based on them, joined for a

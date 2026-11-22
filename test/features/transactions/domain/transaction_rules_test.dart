@@ -84,12 +84,12 @@ void main() {
 
   group('Rule 12: account and category references are validated', () {
     test('unknown accounts', () {
-      expect(validate(spending(from: 99)), {E.sourceAccountNotFound});
-      expect(validate(inflow(to: 99)), {E.destinationAccountNotFound});
+      expect(validate(spending(from: '99')), {E.sourceAccountNotFound});
+      expect(validate(inflow(to: '99')), {E.destinationAccountNotFound});
     });
 
     test('unknown category', () {
-      expect(validate(spending(category: 99)), {E.categoryNotFound});
+      expect(validate(spending(category: '99')), {E.categoryNotFound});
     });
 
     test('missing accounts per type', () {

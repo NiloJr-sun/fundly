@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
@@ -26,7 +27,7 @@ void main() {
   });
   tearDown(() => database.close());
 
-  Future<Category> linked(int accountId) async =>
+  Future<Category> linked(String accountId) async =>
       (await categories.watchAll().first).singleWhere(
         (c) => c.linkedAccountId == accountId,
       );
@@ -168,7 +169,7 @@ void main() {
               linkedAccountId: Value(id),
             ),
           );
-      await expectLater(insert(account.id), throwsA(isA<Exception>()));
+      await expectLater(insert(rowIdOf(account.id)), throwsA(isA<Exception>()));
       await expectLater(insert(999), throwsA(isA<Exception>()));
     },
   );

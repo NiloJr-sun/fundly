@@ -97,7 +97,7 @@ void main() {
   });
 
   group('summarizeBalances (D2)', () {
-    Account withOpening(int id, int openingMinor) =>
+    Account withOpening(String id, int openingMinor) =>
         accounts[id]!.copyWith(openingBalance: php(openingMinor));
 
     final all = [

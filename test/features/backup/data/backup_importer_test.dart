@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/database/app_database.dart';
+import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
@@ -208,7 +209,7 @@ void main() {
       );
       await PlanRepository(source, clock: () => now).save(
         month: CalendarMonth(2026, 11),
-        categoryId: linked.id,
+        categoryId: recordIdOf(linked.id),
         target: php(50000),
         assigned: php(25000),
       );
@@ -271,8 +272,8 @@ void main() {
     final normal = rows.first;
     final debt = rows.singleWhere((c) => c.linkedAccountId != null);
     final repository = PlanRepository(source, clock: () => now);
-    await repository.setArchived(normal.id, archived: true);
-    await repository.setArchived(debt.id, archived: true);
+    await repository.setArchived(recordIdOf(normal.id), archived: true);
+    await repository.setArchived(recordIdOf(debt.id), archived: true);
     final original = await exportJson(source);
     final importer = BackupImporter(target);
     await importer.replaceAll(importer.parse(original));
@@ -338,8 +339,8 @@ void main() {
     final debt = rows.singleWhere((c) => c.linkedAccountId != null);
     final repository = PlanRepository(source, clock: () => now);
     for (final row in [normal, debt]) {
-      await repository.setArchived(row.id, archived: true);
-      await repository.deletePermanently(row.id);
+      await repository.setArchived(recordIdOf(row.id), archived: true);
+      await repository.deletePermanently(recordIdOf(row.id));
     }
     // The ordinary category remains usable after removing its Plans row.
     await TransactionRepository(source, clock: () => now).create(
@@ -348,8 +349,8 @@ void main() {
         amount: php(1000),
         date: CalendarDate(2026, 11, 17),
         payee: 'Shop',
-        categoryId: normal.id,
-        sourceAccountId: 1,
+        categoryId: recordIdOf(normal.id),
+        sourceAccountId: '1',
       ),
     );
     final original = await exportJson(source);
@@ -363,7 +364,7 @@ void main() {
     });
     expect((await target.select(target.accounts).get()).length, 3);
     await AccountRepository(target)
-        .update(debt.linkedAccountId!, name: 'Renamed card');
+        .update(recordIdOf(debt.linkedAccountId!), name: 'Renamed card');
     expect(
       (await target.select(target.categories).get())
           .singleWhere((c) => c.id == debt.id)
@@ -377,7 +378,7 @@ void main() {
     await PlanRepository(
       source,
       clock: () => now,
-    ).setArchived(normal.id, archived: true);
+    ).setArchived(recordIdOf(normal.id), archived: true);
     final backup = await sourceBackup();
     backup['formatVersion'] = 5;
     for (final row in backup['categories']! as List) {

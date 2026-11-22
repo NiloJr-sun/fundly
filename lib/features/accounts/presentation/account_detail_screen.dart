@@ -20,7 +20,7 @@ import 'accounts_providers.dart';
 class AccountDetailScreen extends ConsumerWidget {
   const AccountDetailScreen({super.key, required this.accountId});
 
-  final int accountId;
+  final String accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,7 +122,7 @@ class _AccountDetails extends ConsumerWidget {
 class _AccountTransactions extends ConsumerWidget {
   const _AccountTransactions({required this.accountId});
 
-  final int accountId;
+  final String accountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

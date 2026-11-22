@@ -8,10 +8,10 @@ import 'package:fundly/features/categories/domain/category_validation_exception.
 class FakeCategoryRepository implements CategoryRepository {
   final List<({String name, CategoryKind kind, PlanGroup planGroup})> created =
       [];
-  final List<({int id, PlanGroup planGroup})> groupChanges = [];
-  final List<({int id, String name})> renamed = [];
-  final List<({int id, bool archived})> archivedChanges = [];
-  final List<int> deleted = [];
+  final List<({String id, PlanGroup planGroup})> groupChanges = [];
+  final List<({String id, String name})> renamed = [];
+  final List<({String id, bool archived})> archivedChanges = [];
+  final List<String> deleted = [];
 
   /// When set, the next write throws this instead of saving.
   CategoryValidationError? failWith;
@@ -29,7 +29,7 @@ class FakeCategoryRepository implements CategoryRepository {
     _maybeFail();
     created.add((name: name, kind: kind, planGroup: planGroup));
     return Category(
-      id: 100 + created.length,
+      id: '${100 + created.length}',
       name: name.trim(),
       kind: kind,
       planGroup: planGroup,
@@ -37,7 +37,7 @@ class FakeCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<Category> setPlanGroup(int id, PlanGroup planGroup) async {
+  Future<Category> setPlanGroup(String id, PlanGroup planGroup) async {
     _maybeFail();
     groupChanges.add((id: id, planGroup: planGroup));
     return Category(
@@ -49,20 +49,20 @@ class FakeCategoryRepository implements CategoryRepository {
   }
 
   @override
-  Future<Category> rename(int id, String name) async {
+  Future<Category> rename(String id, String name) async {
     _maybeFail();
     renamed.add((id: id, name: name));
     return Category(id: id, name: name.trim(), kind: CategoryKind.spending);
   }
 
   @override
-  Future<void> setArchived(int id, {required bool archived}) async {
+  Future<void> setArchived(String id, {required bool archived}) async {
     _maybeFail();
     archivedChanges.add((id: id, archived: archived));
   }
 
   @override
-  Future<void> delete(int id) async {
+  Future<void> delete(String id) async {
     _maybeFail();
     deleted.add(id);
   }

@@ -21,14 +21,14 @@ final class TransactionFilter {
   final DateRange? dateRange;
 
   /// Matches transactions where this account is the source or destination.
-  final int? accountId;
+  final String? accountId;
 
   /// Matches transactions in this category. Transfers and card payments have
   /// no category, so they never match a category filter.
-  final int? categoryId;
+  final String? categoryId;
 
   /// Only transfers and credit-card payments into this liability account.
-  final int? paymentAccountId;
+  final String? paymentAccountId;
 
   bool get isEmpty =>
       dateRange == null &&
@@ -68,14 +68,14 @@ final class TransactionFilter {
     paymentAccountId: paymentAccountId,
   );
 
-  TransactionFilter withAccount(int? value) => TransactionFilter(
+  TransactionFilter withAccount(String? value) => TransactionFilter(
     dateRange: dateRange,
     accountId: value,
     categoryId: categoryId,
     paymentAccountId: value == accountId ? paymentAccountId : null,
   );
 
-  TransactionFilter withCategory(int? value) => TransactionFilter(
+  TransactionFilter withCategory(String? value) => TransactionFilter(
     dateRange: dateRange,
     accountId: accountId,
     categoryId: value,

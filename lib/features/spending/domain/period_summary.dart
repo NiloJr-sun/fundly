@@ -76,7 +76,7 @@ final class BalanceSummary {
 /// [balances] are skipped.
 BalanceSummary summarizeBalances(
   Iterable<Account> accounts,
-  Map<int, Money> balances, {
+  Map<String, Money> balances, {
   String currencyCode = Account.defaultCurrency,
 }) {
   final totals = totalsByType(

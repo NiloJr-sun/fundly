@@ -103,7 +103,7 @@ List<CategoryPlanSummary> planSummaries({
   };
 
   final entries = transactions.toList();
-  final activityByCategory = <int, Money>{};
+  final activityByCategory = <String, Money>{};
   for (final category in categories) {
     var activity = Money.zero(currencyCode);
     for (final transaction in entries) {
@@ -227,9 +227,9 @@ ReadyToAssign readyToAssign({
 /// shared by Ready to assign and the archive guard so their rules stay equal.
 Money remainingPlanAllocation({
   required MonthlyPlan plan,
-  required int? budgetAccountId,
+  required String? budgetAccountId,
   required Iterable<TransactionDraft> transactions,
-  int? linkedAccountId,
+  String? linkedAccountId,
 }) {
   var spent = Money.zero(plan.assigned.currencyCode);
   if (budgetAccountId != null) {

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
@@ -43,7 +44,7 @@ class PlanRepository {
   /// existing plan may still be changed; a new one is rejected.
   Future<MonthlyPlan?> save({
     required CalendarMonth month,
-    required int categoryId,
+    required String categoryId,
     required Money? target,
     required Money assigned,
   }) async {
@@ -55,7 +56,7 @@ class PlanRepository {
     return _database.transaction(() async {
       final category = await (_database.select(
         _database.categories,
-      )..where((c) => c.id.equals(categoryId))).getSingleOrNull();
+      )..where((c) => c.id.equals(rowIdOf(categoryId)))).getSingleOrNull();
       if (category == null) {
         throw const PlanValidationException(
           PlanValidationError.categoryNotFound,
@@ -104,7 +105,7 @@ class PlanRepository {
           .insertReturning(
             MonthlyPlansCompanion.insert(
               month: month,
-              categoryId: categoryId,
+              categoryId: rowIdOf(categoryId),
               targetAmountMinor: Value(target?.minorUnits),
               assignedAmountMinor: assigned.minorUnits,
               currencyCode: assigned.currencyCode,
@@ -121,12 +122,12 @@ class PlanRepository {
   /// remain intact. Transaction edits after archiving still count in Ready to
   /// assign, so archiving never silently releases money.
   Future<void> setArchived(
-    int categoryId, {
+    String categoryId, {
     required bool archived,
   }) => _database.transaction(() async {
     final category = await (_database.select(
       _database.categories,
-    )..where((c) => c.id.equals(categoryId))).getSingleOrNull();
+    )..where((c) => c.id.equals(rowIdOf(categoryId)))).getSingleOrNull();
     if (category == null) {
       throw const PlanValidationException(PlanValidationError.categoryNotFound);
     }
@@ -148,7 +149,7 @@ class PlanRepository {
           await (_database.select(_plans)
                 ..where(
                   (p) =>
-                      p.categoryId.equals(categoryId) &
+                      p.categoryId.equals(rowIdOf(categoryId)) &
                       p.month.isBiggerOrEqualValue(currentMonth.toIsoString()),
                 )
                 ..orderBy([(p) => OrderingTerm(expression: p.month)]))
@@ -175,9 +176,11 @@ class PlanRepository {
                     minorUnits: row.amountMinor,
                     currencyCode: row.currencyCode,
                   ),
-                  categoryId: row.categoryId,
-                  sourceAccountId: row.sourceAccountId,
-                  destinationAccountId: row.destinationAccountId,
+                  categoryId: recordIdOrNull(row.categoryId),
+                  sourceAccountId: recordIdOrNull(row.sourceAccountId),
+                  destinationAccountId: recordIdOrNull(
+                    row.destinationAccountId,
+                  ),
                 ),
             ];
       final remaining = <CalendarMonth, Money>{};
@@ -185,8 +188,8 @@ class PlanRepository {
         final plan = _toDomain(row);
         final allocation = remainingPlanAllocation(
           plan: plan,
-          budgetAccountId: budget?.id,
-          linkedAccountId: category.linkedAccountId,
+          budgetAccountId: recordIdOrNull(budget?.id),
+          linkedAccountId: recordIdOrNull(category.linkedAccountId),
           transactions: entries,
         );
         if (!allocation.isZero) remaining[plan.month] = allocation;
@@ -194,19 +197,19 @@ class PlanRepository {
       if (remaining.isNotEmpty) throw PlanArchiveBlocked(remaining);
     }
     await (_database.update(_database.categories)
-          ..where((c) => c.id.equals(categoryId)))
+          ..where((c) => c.id.equals(rowIdOf(categoryId))))
         .write(CategoriesCompanion(isPlanArchived: Value(archived)));
   });
 
   /// Eligibility watches all months and all activity, including backdated or
   /// future transactions. Read errors never enable the destructive action.
-  Stream<PlanDeletionStatus> watchDeletionStatus(int categoryId) =>
+  Stream<PlanDeletionStatus> watchDeletionStatus(String categoryId) =>
       _deletionQuery(categoryId).watchSingleOrNull().map(_deletionStatus);
 
   /// Removes every monthly plan while preserving the category/account. The
   /// deletion flag prevents automatic liability sync or unarchive from reviving
   /// the row. Eligibility is rechecked atomically even if the UI was enabled.
-  Future<void> deletePermanently(int categoryId) =>
+  Future<void> deletePermanently(String categoryId) =>
       _database.transaction(() async {
         final status = _deletionStatus(
           await _deletionQuery(categoryId).getSingleOrNull(),
@@ -216,10 +219,10 @@ class PlanRepository {
         }
         await (_database.delete(
           _plans,
-        )..where((p) => p.categoryId.equals(categoryId))).go();
+        )..where((p) => p.categoryId.equals(rowIdOf(categoryId)))).go();
         await (_database.update(
           _database.categories,
-        )..where((c) => c.id.equals(categoryId))).write(
+        )..where((c) => c.id.equals(rowIdOf(categoryId)))).write(
           const CategoriesCompanion(
             isPlanArchived: Value(true),
             isPlanDeleted: Value(true),
@@ -230,8 +233,9 @@ class PlanRepository {
   /// One query shared by the preview stream and the guarded write. Liability
   /// rows count payments into their account; ordinary rows count spending in
   /// their category, matching their Plans Activity definition.
-  Selectable<QueryRow> _deletionQuery(int categoryId) => _database.customSelect(
-    """
+  Selectable<QueryRow> _deletionQuery(String categoryId) =>
+      _database.customSelect(
+        """
     SELECT c.kind, c.is_archived, c.is_plan_archived, c.is_plan_deleted,
       EXISTS(SELECT 1 FROM monthly_plans p
         WHERE p.category_id = c.id AND p.assigned_amount_minor != 0) AS has_assigned,
@@ -242,9 +246,9 @@ class PlanRepository {
           AND t.type IN ('transfer', 'creditCardPayment'))) AS has_activity
     FROM categories c WHERE c.id = ?
     """,
-    variables: [Variable.withInt(categoryId)],
-    readsFrom: {_database.categories, _plans, _database.transactions},
-  );
+        variables: [Variable.withInt(rowIdOf(categoryId))],
+        readsFrom: {_database.categories, _plans, _database.transactions},
+      );
 
   static PlanDeletionStatus _deletionStatus(QueryRow? row) {
     if (row == null) return PlanDeletionStatus.categoryNotFound;
@@ -269,21 +273,21 @@ class PlanRepository {
   /// Does nothing if there is no such plan.
   Future<void> clear({
     required CalendarMonth month,
-    required int categoryId,
+    required String categoryId,
   }) async {
     await (_database.delete(_plans)..where(
           (plan) =>
               plan.month.equalsValue(month) &
-              plan.categoryId.equals(categoryId),
+              plan.categoryId.equals(rowIdOf(categoryId)),
         ))
         .go();
   }
 
-  Future<MonthlyPlanRow?> _find(CalendarMonth month, int categoryId) =>
+  Future<MonthlyPlanRow?> _find(CalendarMonth month, String categoryId) =>
       (_database.select(_plans)..where(
             (plan) =>
                 plan.month.equalsValue(month) &
-                plan.categoryId.equals(categoryId),
+                plan.categoryId.equals(rowIdOf(categoryId)),
           ))
           .getSingleOrNull();
 
@@ -300,9 +304,9 @@ class PlanRepository {
   }
 
   static MonthlyPlan _toDomain(MonthlyPlanRow row) => MonthlyPlan(
-    id: row.id,
+    id: recordIdOf(row.id),
     month: row.month,
-    categoryId: row.categoryId,
+    categoryId: recordIdOf(row.categoryId),
     target: switch (row.targetAmountMinor) {
       final minor? => Money(minorUnits: minor, currencyCode: row.currencyCode),
       null => null,

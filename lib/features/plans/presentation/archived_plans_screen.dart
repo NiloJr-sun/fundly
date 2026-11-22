@@ -61,7 +61,7 @@ class ArchivedPlansScreen extends ConsumerWidget {
 class _ArchivedPlanDetailScreen extends ConsumerStatefulWidget {
   const _ArchivedPlanDetailScreen({required this.categoryId});
 
-  final int categoryId;
+  final String categoryId;
 
   @override
   ConsumerState<_ArchivedPlanDetailScreen> createState() =>

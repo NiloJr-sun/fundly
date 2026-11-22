@@ -37,7 +37,7 @@ List<AccountGroup> groupAccounts(
 ) {
   final customById = {for (final custom in customTypes) custom.id: custom};
   final builtIn = <AccountType, List<Account>>{};
-  final custom = <int, List<Account>>{};
+  final custom = <String, List<Account>>{};
   for (final account in accounts) {
     final customType = customById[account.customTypeId];
     if (customType == null) {

@@ -17,7 +17,7 @@ Finder inCard(String text) =>
     find.descendant(of: find.byType(Card), matching: find.text(text));
 
 void main() {
-  Account withOpening(int id, int openingMinor) =>
+  Account withOpening(String id, int openingMinor) =>
       accounts[id]!.copyWith(openingBalance: php(openingMinor));
 
   final active = [
@@ -30,12 +30,12 @@ void main() {
 
   final october = CalendarDate(2026, 10, 20);
   final transactions = [
-    saved(inflow(amount: 3000000), id: 1), // +30,000 to BDO
-    saved(spending(amount: 50000), id: 2), // -500 from BDO
-    saved(spending(from: rcbcCardId, amount: 120000), id: 3), // card +1,200
-    saved(transfer(amount: 200000), id: 4), // BDO -> wallet, not counted
-    saved(cardPayment(amount: 300000), id: 5), // not counted
-    saved(spending(amount: 7000, date: october), id: 6), // other month
+    saved(inflow(amount: 3000000), id: '1'), // +30,000 to BDO
+    saved(spending(amount: 50000), id: '2'), // -500 from BDO
+    saved(spending(from: rcbcCardId, amount: 120000), id: '3'), // card +1,200
+    saved(transfer(amount: 200000), id: '4'), // BDO -> wallet, not counted
+    saved(cardPayment(amount: 300000), id: '5'), // not counted
+    saved(spending(amount: 7000, date: october), id: '6'), // other month
   ];
 
   Future<void> pump(

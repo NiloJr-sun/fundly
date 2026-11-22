@@ -11,18 +11,24 @@ void main() {
   // 3: inflow to the card (Salary) on Nov 16.
   // 4: wallet spending (Food) on Oct 31.
   final all = [
-    saved(spending(date: CalendarDate(2026, 11, 1)), id: 1),
-    saved(transfer(), id: 2),
-    saved(inflow(to: rcbcCardId, category: salaryId), id: 3),
-    saved(spending(from: walletId, date: CalendarDate(2026, 10, 31)), id: 4),
+    saved(spending(date: CalendarDate(2026, 11, 1)), id: '1'),
+    saved(transfer(), id: '2'),
+    saved(
+      inflow(to: rcbcCardId, category: salaryId),
+      id: '3',
+    ),
+    saved(
+      spending(from: walletId, date: CalendarDate(2026, 10, 31)),
+      id: '4',
+    ),
   ];
 
-  List<int> ids(TransactionFilter filter) =>
+  List<String> ids(TransactionFilter filter) =>
       filter.apply(all).map((t) => t.id).toList();
 
   test('no filter keeps everything in order', () {
     expect(TransactionFilter.none.isEmpty, isTrue);
-    expect(ids(TransactionFilter.none), [1, 2, 3, 4]);
+    expect(ids(TransactionFilter.none), ['1', '2', '3', '4']);
   });
 
   group('date range', () {
@@ -34,7 +40,7 @@ void main() {
         ),
       );
 
-      expect(ids(filter), [1, 2, 3]);
+      expect(ids(filter), ['1', '2', '3']);
     });
 
     test('excludes dates outside', () {
@@ -45,25 +51,25 @@ void main() {
         ),
       );
 
-      expect(ids(filter), [4]);
+      expect(ids(filter), ['4']);
     });
   });
 
   group('account', () {
     test('matches the source account', () {
-      expect(ids(const TransactionFilter(accountId: bdoId)), [1, 2]);
+      expect(ids(const TransactionFilter(accountId: bdoId)), ['1', '2']);
     });
 
     test('matches the destination account', () {
-      expect(ids(const TransactionFilter(accountId: walletId)), [2, 4]);
-      expect(ids(const TransactionFilter(accountId: rcbcCardId)), [3]);
+      expect(ids(const TransactionFilter(accountId: walletId)), ['2', '4']);
+      expect(ids(const TransactionFilter(accountId: rcbcCardId)), ['3']);
     });
   });
 
   group('category', () {
     test('keeps only that category', () {
-      expect(ids(const TransactionFilter(categoryId: foodId)), [1, 4]);
-      expect(ids(const TransactionFilter(categoryId: salaryId)), [3]);
+      expect(ids(const TransactionFilter(categoryId: foodId)), ['1', '4']);
+      expect(ids(const TransactionFilter(categoryId: salaryId)), ['3']);
     });
 
     test('never matches transfers, which have no category', () {
@@ -84,7 +90,7 @@ void main() {
       categoryId: foodId,
     );
 
-    expect(ids(filter), [1]);
+    expect(ids(filter), ['1']);
   });
 
   test('with... replaces or clears one field and keeps the rest', () {

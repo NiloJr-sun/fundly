@@ -18,7 +18,7 @@ void main() {
   });
 
   test('accountTypeNames lists custom types after their base type', () {
-    CustomAccountType custom(int id, String name, AccountType base) =>
+    CustomAccountType custom(String id, String name, AccountType base) =>
         CustomAccountType(
           id: id,
           name: name,
@@ -26,9 +26,9 @@ void main() {
           createdAt: DateTime.utc(2026, 11, 17),
         );
     final types = [
-      custom(10, 'E-wallet', AccountType.savingsCash),
-      custom(11, 'Pay later', AccountType.credit),
-      custom(12, 'Debt', AccountType.loan),
+      custom('10', 'E-wallet', AccountType.savingsCash),
+      custom('11', 'Pay later', AccountType.credit),
+      custom('12', 'Debt', AccountType.loan),
     ];
 
     expect(
@@ -50,13 +50,13 @@ void main() {
 
   test('accountTypeName prefers the custom type name', () {
     final eWallet = CustomAccountType(
-      id: 10,
+      id: '10',
       name: 'E-wallet',
       baseType: AccountType.savingsCash,
       createdAt: DateTime.utc(2026, 11, 17),
     );
-    Account wallet({int? customTypeId}) => Account(
-      id: 1,
+    Account wallet({String? customTypeId}) => Account(
+      id: '1',
       name: 'GCash',
       type: AccountType.savingsCash,
       openingBalance: const Money.zero('PHP'),
@@ -65,12 +65,12 @@ void main() {
     );
 
     expect(
-      accountTypeName(wallet(customTypeId: 10), {10: eWallet}),
+      accountTypeName(wallet(customTypeId: '10'), {'10': eWallet}),
       'E-wallet',
     );
-    expect(accountTypeName(wallet(), {10: eWallet}), 'Savings / Cash');
+    expect(accountTypeName(wallet(), {'10': eWallet}), 'Savings / Cash');
     expect(
-      accountTypeName(wallet(customTypeId: 10), const {}),
+      accountTypeName(wallet(customTypeId: '10'), const {}),
       'Savings / Cash',
       reason: 'while custom types load',
     );

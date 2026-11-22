@@ -12,7 +12,7 @@ import '../../../helpers/provider_overrides.dart';
 
 void main() {
   final oldWallet = Account(
-    id: 9,
+    id: '9',
     name: 'Old Wallet',
     type: AccountType.savingsCash,
     openingBalance: const Money(minorUnits: 0, currencyCode: 'PHP'),

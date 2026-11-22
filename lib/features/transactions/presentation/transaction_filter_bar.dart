@@ -109,7 +109,7 @@ class TransactionFilterBar extends ConsumerWidget {
     // Archived accounts are included so their history can be found.
     final accounts = ref.read(allAccountsProvider).value ?? const [];
     final customTypes = ref.read(customAccountTypesByIdProvider);
-    final picked = await _pickFromSheet<int>(context, 'Account', [
+    final picked = await _pickFromSheet<String>(context, 'Account', [
       for (final account in accounts)
         (
           value: account.id,
@@ -131,7 +131,7 @@ class TransactionFilterBar extends ConsumerWidget {
   Future<void> _pickCategory(BuildContext context, WidgetRef ref) async {
     // Archived categories are included so their history can be found.
     final categories = ref.read(allCategoriesProvider).value ?? const [];
-    final picked = await _pickFromSheet<int>(context, 'Category', [
+    final picked = await _pickFromSheet<String>(context, 'Category', [
       for (final category in categories)
         if (category.linkedAccountId == null)
           (

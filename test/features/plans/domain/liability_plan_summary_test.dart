@@ -12,21 +12,21 @@ import '../../transactions/domain/transaction_fixtures.dart';
 void main() {
   final month = CalendarMonth(2026, 11);
   const card = Category(
-    id: 101,
+    id: '101',
     name: 'RCBC',
     kind: CategoryKind.spending,
     planGroup: PlanGroup.liability,
     linkedAccountId: rcbcCardId,
   );
   const loan = Category(
-    id: 102,
+    id: '102',
     name: 'Car loan',
     kind: CategoryKind.spending,
     planGroup: PlanGroup.liability,
     linkedAccountId: carLoanId,
   );
   final allCategories = [categories[foodId]!, card, loan];
-  MonthlyPlan plan(int categoryId, int assigned) => MonthlyPlan(
+  MonthlyPlan plan(String categoryId, int assigned) => MonthlyPlan(
     id: categoryId,
     month: month,
     categoryId: categoryId,

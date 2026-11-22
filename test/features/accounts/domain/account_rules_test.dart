@@ -8,7 +8,7 @@ Money php(int minorUnits) =>
     Money(minorUnits: minorUnits, currencyCode: Account.defaultCurrency);
 
 Account accountOf(AccountType type, Money openingBalance) => Account(
-  id: 1,
+  id: '1',
   name: 'Test',
   type: type,
   openingBalance: openingBalance,

@@ -37,7 +37,7 @@ void main() {
     test('stores and returns the trimmed type', () async {
       final type = await create('  Pay later  ', AccountType.credit);
 
-      expect(type.id, isPositive);
+      expect(int.parse(type.id), isPositive);
       expect(type.name, 'Pay later');
       expect(type.baseType, AccountType.credit);
       expect(type.createdAt, fixedNow);
@@ -124,7 +124,10 @@ void main() {
     });
 
     test('throws StateError for a missing type', () async {
-      await expectLater(repository.update(42, name: 'Name'), throwsStateError);
+      await expectLater(
+        repository.update('42', name: 'Name'),
+        throwsStateError,
+      );
     });
 
     test('changes the base type while no account uses it', () async {
@@ -219,7 +222,7 @@ void main() {
     });
 
     test('throws StateError for a missing type', () async {
-      await expectLater(repository.delete(42), throwsStateError);
+      await expectLater(repository.delete('42'), throwsStateError);
     });
   });
 

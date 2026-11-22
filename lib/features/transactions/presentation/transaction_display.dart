@@ -36,7 +36,10 @@ IconData transactionTypeIcon(TransactionType type) => switch (type) {
 /// (from [effectsOf]), e.g. `-₱2,000.00` for a transfer out. Without it,
 /// spending is negative, inflow positive, and transfers and card payments
 /// unsigned because they only move money between the user's own accounts.
-String transactionAmountText(TransactionDraft transaction, {int? accountId}) {
+String transactionAmountText(
+  TransactionDraft transaction, {
+  String? accountId,
+}) {
   if (accountId != null) {
     final change = effectsOf(transaction)
         .where((effect) => effect.accountId == accountId)

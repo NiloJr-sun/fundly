@@ -12,14 +12,14 @@ final allTransactionsProvider = StreamProvider<List<Transaction>>(
 /// Transactions that touch one account (as source or destination), newest
 /// first.
 final transactionsForAccountProvider =
-    StreamProvider.family<List<Transaction>, int>(
+    StreamProvider.family<List<Transaction>, String>(
       (ref, accountId) => ref
           .watch(transactionRepositoryProvider)
           .watchAll(accountId: accountId),
     );
 
 /// One transaction by id, or `null` if it does not exist.
-final transactionByIdProvider = StreamProvider.family<Transaction?, int>(
+final transactionByIdProvider = StreamProvider.family<Transaction?, String>(
   (ref, id) => ref.watch(transactionRepositoryProvider).watchById(id),
 );
 

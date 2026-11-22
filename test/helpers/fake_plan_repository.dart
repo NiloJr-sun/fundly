@@ -10,33 +10,33 @@ import 'package:fundly/features/plans/domain/plan_validation_exception.dart';
 /// `plan_repository_test.dart` against an in-memory database.
 class FakePlanRepository implements PlanRepository {
   final List<
-    ({CalendarMonth month, int categoryId, Money? target, Money assigned})
+    ({CalendarMonth month, String categoryId, Money? target, Money assigned})
   >
   saved = [];
-  final List<({CalendarMonth month, int categoryId})> cleared = [];
+  final List<({CalendarMonth month, String categoryId})> cleared = [];
 
-  final List<({int categoryId, bool archived})> archivedChanges = [];
+  final List<({String categoryId, bool archived})> archivedChanges = [];
   PlanArchiveBlocked? archiveBlocked;
   bool failArchive = false;
-  void Function(int categoryId, bool archived)? onArchive;
+  void Function(String categoryId, bool archived)? onArchive;
 
-  final List<int> deleted = [];
+  final List<String> deleted = [];
   PlanDeletionStatus deletionStatus = PlanDeletionStatus.allowed;
   PlanDeletionStatus? deleteBlocked;
   bool failDeletionCheck = false;
   Stream<PlanDeletionStatus>? deletionStatusStream;
   bool failDelete = false;
-  void Function(int categoryId)? onDelete;
+  void Function(String categoryId)? onDelete;
 
   @override
-  Stream<PlanDeletionStatus> watchDeletionStatus(int categoryId) =>
+  Stream<PlanDeletionStatus> watchDeletionStatus(String categoryId) =>
       deletionStatusStream ??
       (failDeletionCheck
           ? Stream.error(StateError('Deletion check failed'))
           : Stream.value(deletionStatus));
 
   @override
-  Future<void> deletePermanently(int categoryId) async {
+  Future<void> deletePermanently(String categoryId) async {
     if (deleteBlocked case final status?) throw PlanDeletionException(status);
     if (failDelete) throw StateError('Delete failed');
     deleted.add(categoryId);
@@ -44,7 +44,7 @@ class FakePlanRepository implements PlanRepository {
   }
 
   @override
-  Future<void> setArchived(int categoryId, {required bool archived}) async {
+  Future<void> setArchived(String categoryId, {required bool archived}) async {
     if (archiveBlocked case final failure?) throw failure;
     if (failArchive) throw StateError('Archive failed');
     archivedChanges.add((categoryId: categoryId, archived: archived));
@@ -58,7 +58,7 @@ class FakePlanRepository implements PlanRepository {
   @override
   Future<MonthlyPlan?> save({
     required CalendarMonth month,
-    required int categoryId,
+    required String categoryId,
     required Money? target,
     required Money assigned,
   }) async {
@@ -69,7 +69,7 @@ class FakePlanRepository implements PlanRepository {
       assigned: assigned,
     ));
     return MonthlyPlan(
-      id: saved.length,
+      id: '${saved.length}',
       month: month,
       categoryId: categoryId,
       target: target,
@@ -82,7 +82,7 @@ class FakePlanRepository implements PlanRepository {
   @override
   Future<void> clear({
     required CalendarMonth month,
-    required int categoryId,
+    required String categoryId,
   }) async {
     cleared.add((month: month, categoryId: categoryId));
   }
