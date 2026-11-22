@@ -9,6 +9,7 @@ import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
+import 'package:fundly/features/backup/data/backup_importer.dart';
 import 'package:fundly/features/backup/data/cloud_data_resetter.dart';
 import 'package:fundly/features/backup/data/dataset_request.dart';
 import 'package:fundly/features/categories/data/synced_category_repository.dart';
@@ -217,6 +218,18 @@ void main() {
         dataset: secondCopy.dataset,
         expected: countsOf(sampleDeviceRecords()),
       ),
+    };
+    // Restoring backup files while signed in (S6.3): a format 7 file and an
+    // old format 3 file, as parsed and sent by the app.
+    Future<Map<String, Object?>> restoreOf(Map<String, Object?> file) async =>
+        importRequest(
+          replace: false,
+          dataset: datasetRequestFor(parseBackup(jsonEncode(file)).records)
+              .dataset,
+        );
+    copy['restores'] = {
+      'format7': await restoreOf(await sampleBackupJson()),
+      'format3': await restoreOf(await sampleFormat3Json()),
     };
     final out = Platform.environment['FUNDLY_CONTRACT_OUT'];
     if (out != null) {

@@ -20,6 +20,7 @@ import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_rules.dart';
 import '../../transactions/domain/transaction_type.dart';
 import 'backup_exporter.dart';
+import 'backup_source.dart';
 
 /// Why a file cannot be restored.
 enum BackupImportProblem {
@@ -28,10 +29,6 @@ enum BackupImportProblem {
 
   /// Written by a newer version of Fundly, with a format this one can't read.
   newerFormat,
-
-  /// Written while signed in (format 7, UUID IDs), which can't be restored
-  /// yet (cloud sync S6.3).
-  signedInFormat,
 
   /// A Fundly backup, but a record is missing data or breaks a rule.
   invalidData,
@@ -114,6 +111,83 @@ final class BackupSnapshot {
     transactions: _transactions.length,
     monthlyPlans: _monthlyPlans.length,
   );
+
+  /// The checked records, with this restore's local integer IDs, in the shape
+  /// a copy into the signed-in account sends (cloud sync S6.3). Includes the
+  /// liability rows added for older formats. Fields a row leaves to the
+  /// database default take that default here.
+  BackupRecords get records {
+    T value<T>(Value<T> field, T fallback) =>
+        field.present ? field.value : fallback;
+    return (
+      customAccountTypes: [
+        for (final row in _customAccountTypes)
+          (
+            id: row.id.value,
+            name: row.name.value,
+            baseType: row.baseType.value.name,
+            createdAt: row.createdAt.value,
+          ),
+      ],
+      accounts: [
+        for (final row in _accounts)
+          (
+            id: row.id.value,
+            name: row.name.value,
+            type: row.type.value.name,
+            customTypeId: value(row.customTypeId, null),
+            openingBalanceMinor: row.openingBalanceMinor.value,
+            currencyCode: value(row.currencyCode, Account.defaultCurrency),
+            createdAt: row.createdAt.value,
+            isArchived: value(row.isArchived, false),
+            isBudgetAccount: value(row.isBudgetAccount, false),
+          ),
+      ],
+      categories: [
+        for (final row in _categories)
+          (
+            id: row.id.value,
+            name: row.name.value,
+            kind: row.kind.value.name,
+            isArchived: value(row.isArchived, false),
+            isPlanArchived: value(row.isPlanArchived, false),
+            isPlanDeleted: value(row.isPlanDeleted, false),
+            planGroup: value(row.planGroup, PlanGroup.spending).name,
+            linkedAccountId: value(row.linkedAccountId, null),
+          ),
+      ],
+      transactions: [
+        for (final row in _transactions)
+          (
+            id: row.id.value,
+            type: row.type.value.name,
+            amountMinor: row.amountMinor.value,
+            currencyCode: row.currencyCode.value,
+            date: row.date.value.toIsoString(),
+            payee: value(row.payee, ''),
+            categoryId: value(row.categoryId, null),
+            sourceAccountId: value(row.sourceAccountId, null),
+            destinationAccountId: value(row.destinationAccountId, null),
+            note: value(row.note, ''),
+            createdAt: row.createdAt.value,
+            updatedAt: row.updatedAt.value,
+          ),
+      ],
+      monthlyPlans: [
+        for (final row in _monthlyPlans)
+          (
+            id: row.id.value,
+            month: row.month.value.toIsoString(),
+            categoryId: row.categoryId.value,
+            targetAmountMinor: value(row.targetAmountMinor, null),
+            assignedAmountMinor: row.assignedAmountMinor.value,
+            currencyCode: row.currencyCode.value,
+            createdAt: row.createdAt.value,
+            updatedAt: row.updatedAt.value,
+          ),
+      ],
+    );
+  }
 }
 
 /// Restores a backup written by [BackupExporter] (format 1 to 6),
@@ -202,14 +276,88 @@ BackupSnapshot parseBackup(String contents) {
   }
   final header = _Reader(decoded, 'backup');
   final formatVersion = header.integer('formatVersion');
-  if (formatVersion == BackupExporter.syncedFormatVersion) {
-    throw const BackupImportException(BackupImportProblem.signedInFormat);
-  }
   if (formatVersion > BackupExporter.formatVersion) {
     throw const BackupImportException(BackupImportProblem.newerFormat);
   }
   if (formatVersion < 1) header.fail('formatVersion', 'unknown version');
-  return _Parser(header, formatVersion).parse();
+  return _Parser(
+    formatVersion >= 7 ? _Reader(_numberTextIds(decoded), 'backup') : header,
+    formatVersion,
+  ).parse();
+}
+
+/// For each table of a backup, the fields that refer to another table.
+const _references = {
+  'customAccountTypes': <String, String>{},
+  'accounts': {'customTypeId': 'customAccountTypes'},
+  'categories': {'linkedAccountId': 'accounts'},
+  'transactions': {
+    'categoryId': 'categories',
+    'sourceAccountId': 'accounts',
+    'destinationAccountId': 'accounts',
+  },
+  'monthlyPlans': {'categoryId': 'categories'},
+};
+
+/// Format 7 keeps IDs as text: UUIDs from a signed-in account, decimal
+/// strings from this device (cloud sync S6.3). Returns a copy of [backup]
+/// with every ID numbered 1, 2, 3… per table in file order and every
+/// reference rewritten to match, so the format 6 checks apply unchanged.
+///
+/// An ID must be non-empty text of at most 64 characters, unique within its
+/// table. A reference to an ID that is not in the file becomes a number no
+/// record has, which the format 6 checks then refuse ("no such account").
+/// Anything that is not a list of objects is left for those checks too.
+Map<String, Object?> _numberTextIds(Map<String, Object?> backup) {
+  final numbers = <String, Map<String, int>>{};
+  for (final table in _references.keys) {
+    final ids = numbers[table] = {};
+    final records = backup[table];
+    if (records is! List<Object?>) continue;
+    for (final (i, record) in records.indexed) {
+      if (record is! Map<String, Object?>) continue;
+      final reader = _Reader(record, '$table[$i]');
+      final id = reader.string('id');
+      if (id.isEmpty || id.length > 64) {
+        reader.fail('id', 'must be 1-64 characters');
+      }
+      if (ids.containsKey(id)) reader.fail('id', 'used twice');
+      ids[id] = ids.length + 1;
+    }
+  }
+  int numberOf(String table, String id) {
+    final ids = numbers[table]!;
+    // Past every real ID, so it matches no record.
+    return ids[id] ?? ids.length + 1;
+  }
+
+  return {
+    for (final MapEntry(:key, :value) in backup.entries)
+      key: switch (_references[key]) {
+        final references? when value is List<Object?> => [
+          for (final (i, record) in value.indexed)
+            if (record is Map<String, Object?>)
+              {
+                ...record,
+                'id': numberOf(key, record['id']! as String),
+                for (final MapEntry(key: field, value: table)
+                    in references.entries)
+                  if (record.containsKey(field))
+                    field: switch (record[field]) {
+                      null => null,
+                      final String id => numberOf(table, id),
+                      _ => _Reader(
+                        record,
+                        '$key[$i]',
+                      ).fail(field, 'expected text or null'),
+                    },
+              }
+            else
+              record,
+        ],
+        _ => value,
+      },
+  };
 }
 
 /// Turns the checked JSON into database rows, record by record.

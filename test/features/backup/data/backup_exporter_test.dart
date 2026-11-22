@@ -36,7 +36,7 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 6);
+      expect(backup['formatVersion'], 7);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
@@ -45,7 +45,7 @@ void main() {
       expect(backup['monthlyPlans'], isEmpty);
       expect(backup['categories'], hasLength(9));
       expect((backup['categories']! as List).first, {
-        'id': 1,
+        'id': '1',
         'name': 'Rent',
         'kind': 'spending',
         'isArchived': false,
@@ -121,7 +121,7 @@ void main() {
 
     expect(backup['customAccountTypes'], [
       {
-        'id': int.parse(eWallet.id),
+        'id': eWallet.id,
         'name': 'E-wallet',
         'baseType': 'savingsCash',
         'createdAt': '2026-11-16T09:30:00.000Z',
@@ -129,7 +129,7 @@ void main() {
     ]);
     expect(backup['accounts'], [
       {
-        'id': int.parse(bdo.id),
+        'id': bdo.id,
         'name': 'BDO Savings',
         'type': 'savingsCash',
         'customTypeId': null,
@@ -140,10 +140,10 @@ void main() {
         'isBudgetAccount': true,
       },
       {
-        'id': int.parse(gcash.id),
+        'id': gcash.id,
         'name': 'GCash',
         'type': 'savingsCash',
-        'customTypeId': int.parse(eWallet.id),
+        'customTypeId': eWallet.id,
         'openingBalanceMinor': 0,
         'currencyCode': 'PHP',
         'createdAt': '2026-11-16T09:30:00.000Z',
@@ -151,7 +151,7 @@ void main() {
         'isBudgetAccount': false,
       },
       {
-        'id': int.parse(card.id),
+        'id': card.id,
         'name': 'RCBC Credit',
         'type': 'credit',
         'customTypeId': null,
@@ -164,7 +164,7 @@ void main() {
       },
     ]);
     expect((backup['categories']! as List).last, {
-      'id': int.parse(gifts.id),
+      'id': gifts.id,
       'name': 'Gifts',
       'kind': 'spending',
       'isArchived': false,
@@ -175,29 +175,29 @@ void main() {
     });
     expect(backup['transactions'], [
       {
-        'id': 1,
+        'id': '1',
         'type': 'spending',
         'amountMinor': 50025,
         'currencyCode': 'PHP',
         'date': '2026-11-10',
         'payee': 'SM Supermarket',
-        'categoryId': int.parse(gifts.id),
-        'sourceAccountId': int.parse(card.id),
+        'categoryId': gifts.id,
+        'sourceAccountId': card.id,
         'destinationAccountId': null,
         'note': 'Birthday',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'updatedAt': '2026-11-16T09:30:00.000Z',
       },
       {
-        'id': 2,
+        'id': '2',
         'type': 'transfer',
         'amountMinor': 200000,
         'currencyCode': 'PHP',
         'date': '2026-11-11',
         'payee': '',
         'categoryId': null,
-        'sourceAccountId': int.parse(bdo.id),
-        'destinationAccountId': int.parse(gcash.id),
+        'sourceAccountId': bdo.id,
+        'destinationAccountId': gcash.id,
         'note': '',
         'createdAt': '2026-11-16T09:30:00.000Z',
         'updatedAt': '2026-11-16T09:30:00.000Z',
@@ -205,9 +205,9 @@ void main() {
     ]);
     expect(backup['monthlyPlans'], [
       {
-        'id': 1,
+        'id': '1',
         'month': '2026-11',
-        'categoryId': int.parse(gifts.id),
+        'categoryId': gifts.id,
         'targetAmountMinor': null,
         'assignedAmountMinor': 100000,
         'currencyCode': 'PHP',

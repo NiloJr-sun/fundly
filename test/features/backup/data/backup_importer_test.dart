@@ -13,6 +13,8 @@ import 'package:fundly/features/accounts/data/custom_account_type_repository.dar
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
+import 'package:fundly/features/backup/data/backup_source.dart';
+import 'package:fundly/features/backup/data/dataset_request.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/data/plan_repository.dart';
@@ -28,6 +30,34 @@ Matcher throwsProblem(BackupImportProblem problem, [String detail = '']) =>
           .having((e) => e.problem, 'problem', problem)
           .having((e) => e.detail, 'detail', contains(detail)),
     );
+
+/// [backup] (format 7) with every ID and reference as an integer again, and
+/// format 6 in its header.
+Map<String, Object?> asFormat6(Map<String, Object?> backup) {
+  const idFields = {
+    'id',
+    'customTypeId',
+    'linkedAccountId',
+    'categoryId',
+    'sourceAccountId',
+    'destinationAccountId',
+  };
+  return {
+    for (final MapEntry(:key, :value) in backup.entries)
+      key: value is List<Object?>
+          ? [
+              for (final record in value.cast<Map<String, Object?>>())
+                {
+                  for (final MapEntry(key: field, value: v) in record.entries)
+                    field: idFields.contains(field) && v is String
+                        ? int.parse(v)
+                        : v,
+                },
+            ]
+          : value,
+    'formatVersion': 6,
+  };
+}
 
 void main() {
   // Each test uses two in-memory databases (source and target) on purpose.
@@ -113,8 +143,14 @@ void main() {
   Future<String> exportJson(AppDatabase database) async =>
       (await BackupExporter(database, clock: () => now).createFile()).contents;
 
-  Future<Map<String, Object?>> sourceBackup() async =>
+  /// The source exported (format 7, text IDs).
+  Future<Map<String, Object?>> exportedBackup() async =>
       jsonDecode(await exportJson(source)) as Map<String, Object?>;
+
+  /// The source as a format 6 backup: integer IDs, as older app versions
+  /// wrote them. Tests of formats 1–6 start from this.
+  Future<Map<String, Object?>> sourceBackup() async =>
+      asFormat6(await exportedBackup());
 
   test('export → restore → export gives the same backup', () async {
     // The target starts with different data, which must disappear.
@@ -517,22 +553,11 @@ void main() {
 
     test('a newer backup format', () async {
       final backup = await sourceBackup();
-      backup['formatVersion'] = BackupExporter.syncedFormatVersion + 1;
+      backup['formatVersion'] = BackupExporter.formatVersion + 1;
 
       await expectLater(
         restore(json: backup),
         throwsProblem(BackupImportProblem.newerFormat),
-      );
-      await expectUnchanged();
-    });
-
-    test('a signed-in (format 7) backup, not restorable yet', () async {
-      final backup = await sourceBackup();
-      backup['formatVersion'] = BackupExporter.syncedFormatVersion;
-
-      await expectLater(
-        restore(json: backup),
-        throwsProblem(BackupImportProblem.signedInFormat),
       );
       await expectUnchanged();
     });
@@ -782,6 +807,206 @@ void main() {
         throwsProblem(BackupImportProblem.invalidData, 'spending category'),
       );
       await expectUnchanged();
+    });
+  });
+
+  group('format 7 (text IDs, cloud sync S6.3)', () {
+    /// [backup] with every ID and reference replaced by a UUID, the way a
+    /// signed-in export writes them.
+    Map<String, Object?> withUuids(Map<String, Object?> backup) {
+      final uuids = <String, String>{};
+      String uuid(String table, String id) => uuids.putIfAbsent(
+        '$table:$id',
+        () =>
+            '00000000-0000-4000-8000-${uuids.length.toString().padLeft(12, '0')}',
+      );
+      const references = {
+        'customTypeId': 'customAccountTypes',
+        'linkedAccountId': 'accounts',
+        'categoryId': 'categories',
+        'sourceAccountId': 'accounts',
+        'destinationAccountId': 'accounts',
+      };
+      return {
+        for (final MapEntry(:key, :value) in backup.entries)
+          key: value is List<Object?>
+              ? [
+                  for (final record in value.cast<Map<String, Object?>>())
+                    {
+                      for (final MapEntry(key: field, value: v)
+                          in record.entries)
+                        field: switch ((field, v)) {
+                          ('id', final String id) => uuid(key, id),
+                          (_, final String id)
+                              when references.containsKey(field) =>
+                            uuid(references[field]!, id),
+                          _ => v,
+                        },
+                    },
+                ]
+              : value,
+      };
+    }
+
+    test(
+      'a signed-out export is format 7 and restores to the same data',
+      () async {
+        final backup = await exportedBackup();
+        expect(backup['formatVersion'], 7);
+        expect(
+          (backup['accounts']! as List).first,
+          containsPair('id', isA<String>()),
+        );
+
+        final importer = BackupImporter(target);
+        await importer.replaceAll(importer.parse(jsonEncode(backup)));
+        expect(await exportJson(target), await exportJson(source));
+      },
+    );
+
+    test('a signed-in export with UUIDs restores signed out', () async {
+      final original = await exportedBackup();
+      final importer = BackupImporter(target);
+      final snapshot = importer.parse(jsonEncode(withUuids(original)));
+      expect(snapshot.counts, await BackupImporter(source).currentCounts());
+
+      await importer.replaceAll(snapshot);
+      // Restored with local numbers 1, 2, 3… in file order; the records and
+      // their references are the same as in the source.
+      final restored =
+          jsonDecode(await exportJson(target)) as Map<String, Object?>;
+      String names(Map<String, Object?> backup) {
+        final accounts = {
+          for (final a
+              in (backup['accounts']! as List).cast<Map<String, Object?>>())
+            a['id']: a['name'],
+        };
+        return [
+          for (final t
+              in (backup['transactions']! as List).cast<Map<String, Object?>>())
+            '${t['amountMinor']} ${accounts[t['sourceAccountId']]} '
+                '${accounts[t['destinationAccountId']]}',
+        ].join('; ');
+      }
+
+      expect(names(restored), names(original));
+    });
+
+    test('the parsed records are what the restore writes', () async {
+      final importer = BackupImporter(target);
+      final snapshot = importer.parse(await exportJson(source));
+      await importer.replaceAll(snapshot);
+
+      final records = snapshot.records;
+      final identity = <String, Map<String, String>>{
+        'custom_account_types': {
+          for (final r in records.customAccountTypes) '${r.id}': '${r.id}',
+        },
+        'accounts': {for (final r in records.accounts) '${r.id}': '${r.id}'},
+        'categories': {
+          for (final r in records.categories) '${r.id}': '${r.id}',
+        },
+        'transactions': {
+          for (final r in records.transactions) '${r.id}': '${r.id}',
+        },
+        'monthly_plans': {
+          for (final r in records.monthlyPlans) '${r.id}': '${r.id}',
+        },
+      };
+      expect(
+        firstDifference(
+          records,
+          await LocalBackupSource(target).read(),
+          identity,
+        ),
+        isNull,
+      );
+    });
+
+    test(
+      'the records include the liability rows added for old formats',
+      () async {
+        final backup = await sourceBackup();
+        backup['formatVersion'] = 3;
+        for (final category
+            in (backup['categories']! as List).cast<Map<String, Object?>>()) {
+          category.remove('linkedAccountId');
+          category.remove('isPlanArchived');
+          category.remove('isPlanDeleted');
+        }
+        final records = BackupImporter(target)
+            .parse(jsonEncode(backup))
+            .records;
+        final linked = records.categories.where(
+          (c) => c.linkedAccountId != null,
+        );
+        expect(linked.map((c) => c.planGroup), everyElement('liability'));
+        expect(linked, isNotEmpty);
+      },
+    );
+
+    group('rejects', () {
+      Matcher invalid(String detail) =>
+          throwsProblem(BackupImportProblem.invalidData, detail);
+
+      Future<Map<String, Object?>> changed(
+        String list,
+        int index,
+        void Function(Map<String, Object?> record) change,
+      ) async {
+        final backup = await exportedBackup();
+        change((backup[list]! as List)[index] as Map<String, Object?>);
+        return backup;
+      }
+
+      BackupSnapshot parse(Map<String, Object?> backup) =>
+          BackupImporter(target).parse(jsonEncode(backup));
+
+      test('an ID used twice in one table', () async {
+        final backup = await changed('accounts', 1, (a) => a['id'] = '1');
+        expect(() => parse(backup), invalid('accounts[1].id: used twice'));
+      });
+
+      test('a number where text is expected', () async {
+        final number = await changed('accounts', 0, (a) => a['id'] = 1);
+        expect(() => parse(number), invalid('accounts[0].id: expected text'));
+        final reference = await changed(
+          'transactions',
+          0,
+          (t) => t['categoryId'] = 1,
+        );
+        expect(
+          () => parse(reference),
+          invalid('transactions[0].categoryId: expected text or null'),
+        );
+      });
+
+      test('an empty or overlong ID', () async {
+        final empty = await changed('categories', 0, (c) => c['id'] = '');
+        expect(() => parse(empty), invalid('categories[0].id: must be 1-64'));
+        final long = await changed('categories', 0, (c) => c['id'] = 'x' * 65);
+        expect(() => parse(long), invalid('categories[0].id: must be 1-64'));
+      });
+
+      test('a reference to a record that is not in the file', () async {
+        final plan = await changed(
+          'monthlyPlans',
+          0,
+          (p) => p['categoryId'] = 'missing',
+        );
+        expect(() => parse(plan), invalid('no such category'));
+        final account = await changed(
+          'accounts',
+          1,
+          (a) => a['customTypeId'] = 'missing',
+        );
+        expect(() => parse(account), invalid('no such account type'));
+      });
+
+      test('the format 6 rules, reached through format 7', () async {
+        final name = await changed('accounts', 0, (a) => a['name'] = '');
+        expect(() => parse(name), invalid('accounts[0].name'));
+      });
     });
   });
 }

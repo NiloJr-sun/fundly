@@ -78,12 +78,6 @@ Future<String?> signedInServerBlockerText(
   return null;
 }
 
-/// Shown after a signed-in backup is saved: format 7 files cannot be
-/// restored until cloud sync S6.3.
-const signedInBackupSavedMessage =
-    'Backup saved. Backups made while signed in can be restored in a later '
-    'update.';
-
 /// Whether this device's data can be backed up now. Signed out it always can.
 /// Signed in, the synchronized store must match the server; otherwise this
 /// explains why in a snackbar and returns false.

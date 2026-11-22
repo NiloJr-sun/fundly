@@ -121,7 +121,6 @@ void main() {
     final backup = await export();
 
     expect(backup['app'], 'fundly');
-    expect(backup['formatVersion'], BackupExporter.syncedFormatVersion);
     expect(backup['formatVersion'], 7);
     expect(backup['schemaVersion'], store.database.schemaVersion);
     expect(backup['exportedAt'], '2026-11-22T06:30:00.000Z');
@@ -337,7 +336,7 @@ void main() {
 
       final backup = await container.read(backupExporterProvider).export();
 
-      expect(backup['formatVersion'], 6);
+      expect(backup['formatVersion'], 7);
     });
   });
 }

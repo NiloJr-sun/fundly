@@ -142,7 +142,6 @@ void main() {
     await tapExport(tester);
 
     expect(shared.single.contents, contains('"formatVersion": 7'));
-    expect(find.text(signedInBackupSavedMessage), findsOneWidget);
   });
 
   for (final (name, setUpStore, blocker) in [

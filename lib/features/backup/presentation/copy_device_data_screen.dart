@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
+import '../../../core/formatting/date_formatter.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../data/backup_exporter.dart';
+import '../data/backup_importer.dart';
 import '../data/backup_source.dart';
 import '../data/cloud_dataset_import.dart';
 import '../data/dataset_request.dart';
@@ -18,24 +20,104 @@ import 'export_backup.dart';
 import 'restore_backup.dart' show describeCounts;
 import 'signed_in_backup.dart';
 
-/// What the user types to replace the account's data with this device's.
+/// What the user types to replace the account's data.
 const replaceConfirmationPhrase = 'replace my data';
 
-/// Opens [CopyDeviceDataScreen].
+/// Opens [CopyDeviceDataScreen] for this device's signed-out data.
 Future<void> openCopyDeviceData(BuildContext context) => Navigator.of(
   context,
 ).push(MaterialPageRoute<void>(builder: (_) => const CopyDeviceDataScreen()));
 
-/// Copies this device's signed-out data into the signed-in account and checks
-/// the copy record by record (cloud sync S6.2). The device's data never
-/// changes. When the account already has records, they are replaced on every
-/// device, after a checkpoint export and a typed confirmation.
+/// Opens [CopyDeviceDataScreen] to restore the checked [backup] into the
+/// signed-in account (cloud sync S6.3).
+Future<void> openRestoreToAccount(
+  BuildContext context,
+  BackupSnapshot backup,
+) => Navigator.of(context).push(
+  MaterialPageRoute<void>(builder: (_) => CopyDeviceDataScreen(backup: backup)),
+);
+
+/// Sends records into the signed-in account and checks the result record by
+/// record: this device's signed-out data (cloud sync S6.2), or a [backup]
+/// file (S6.3). Neither source changes. When the account already has
+/// records, they are replaced on every device, after a checkpoint export and
+/// a typed confirmation.
 class CopyDeviceDataScreen extends ConsumerStatefulWidget {
-  const CopyDeviceDataScreen({super.key});
+  const CopyDeviceDataScreen({super.key, this.backup});
+
+  /// The backup to restore; `null` to copy this device's data.
+  final BackupSnapshot? backup;
 
   @override
   ConsumerState<CopyDeviceDataScreen> createState() =>
       _CopyDeviceDataScreenState();
+}
+
+/// What the screen says, for this device's data or a backup.
+final class _Words {
+  const _Words.device()
+    : title = "Copy this device's data",
+      source = 'On this device',
+      go = 'Copy to my account',
+      working = 'Copying your data…',
+      fillsEmpty = "Copying puts this device's data in their place.",
+      replaces = "then copies this device's data into it.",
+      footnote =
+          "This device's data stays as it is. After copying, Fundly checks "
+          'every record in your account against it.',
+      replacedWith = "this device's data. This device's data doesn't change.",
+      passed = 'Copied and checked',
+      passedDetail = "Every record in your account matches this device's data.",
+      failed = "The copy doesn't match this device",
+      failedDetail = "This device's data is unchanged. Please report this.",
+      late =
+          'Copied. This device will check it after it syncs: open this '
+          'screen again later.',
+      unreachable =
+          "Couldn't reach the server. Open this screen again later: if the "
+          'copy went through, your account already shows the same counts as '
+          'this device.',
+      tooLarge = 'This device holds more than one copy can send',
+      refused = 'The copy was refused';
+
+  _Words.backup(DateTime exportedAt)
+    : title = 'Restore a backup',
+      source = 'In the backup (${DateFormatter.localDate(exportedAt)})',
+      go = 'Restore into my account',
+      working = 'Restoring the backup…',
+      fillsEmpty = "Restoring puts the backup's data in their place.",
+      replaces = 'then restores the backup into it.',
+      footnote =
+          'After restoring, Fundly checks every record in your account '
+          'against the backup.',
+      replacedWith = "the backup's data.",
+      passed = 'Restored and checked',
+      passedDetail = 'Every record in your account matches the backup.',
+      failed = "The restored account doesn't match the backup",
+      failedDetail = 'Please report this.',
+      late = 'Restored. This device will show it after it syncs.',
+      unreachable =
+          "Couldn't reach the server. If the restore went through, your "
+          "account shows the backup's counts after it syncs.",
+      tooLarge = 'This backup holds more than one restore can send',
+      refused = 'The restore was refused';
+
+  final String title;
+  final String source;
+  final String go;
+  final String working;
+  final String fillsEmpty;
+  final String replaces;
+  final String footnote;
+  final String replacedWith;
+  final String passed;
+  final String passedDetail;
+  final String failed;
+  final String failedDetail;
+  final String late;
+  final String unreachable;
+  final String tooLarge;
+  final String refused;
 }
 
 sealed class _Stage {
@@ -66,7 +148,14 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
   _Stage _stage = const _Working('Reading your data…');
 
   static const _offline =
-      "You're offline. Connect to the internet to copy your data.";
+      "You're offline. Connect to the internet to change your account's data.";
+
+  BackupSnapshot? get _backup => widget.backup;
+
+  late final _Words _words = switch (_backup) {
+    null => const _Words.device(),
+    final backup => _Words.backup(backup.exportedAt),
+  };
 
   @override
   void initState() {
@@ -96,12 +185,21 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
     final identity = _identity;
     final copier = ref.read(deviceDataCopierProvider);
     if (identity == null || copier == null) {
-      _show(const _Message('Copying is not available in this version.'));
+      _show(const _Message('This is not available in this version.'));
       return;
     }
+    // Only a copy of this device's data can be checked on a later visit:
+    // a backup file is not kept.
     final pending = ref.read(deviceCopyStateProvider).pending;
-    if (pending != null && pending.userId == identity.userId) {
-      await _check(copier, pending);
+    if (_backup == null &&
+        pending != null &&
+        pending.userId == identity.userId) {
+      await _check(
+        copier,
+        ids: pending.ids,
+        counts: pending.counts,
+        source: await ref.read(deviceDataReaderProvider).read(),
+      );
     } else {
       await _loadPreview(copier);
     }
@@ -112,8 +210,8 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
     try {
       final blocked = await signedInServerBlockerText(ref, offline: _offline);
       if (blocked != null) return _show(_Message(blocked));
-      final preview = await copier.preview();
-      if (!hasDeviceData(preview.device)) {
+      final preview = await copier.preview(backup: _backup?.records);
+      if (_backup == null && !hasDeviceData(preview.source)) {
         return _show(
           const _Message(
             "There's nothing to copy: this device has only the default "
@@ -123,7 +221,7 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
       }
       _show(_Preview(preview));
     } on Object {
-      _show(const _Message("Your data couldn't be read. Nothing was copied."));
+      _show(const _Message("Your data couldn't be read. Nothing was changed."));
     }
   }
 
@@ -143,7 +241,7 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
     }
     if (blocked != null) return _show(_Message(blocked));
 
-    _show(const _Working('Copying your data…'));
+    _show(_Working(_words.working));
     final CopySent sent;
     try {
       sent = await copier.send(preview);
@@ -151,8 +249,8 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
       final megabytes = (error.bytes / (1024 * 1024)).toStringAsFixed(1);
       return _show(
         _Message(
-          'This device holds more than one copy can send ($megabytes MB; '
-          'the limit is 8 MB). Nothing was copied.',
+          '${_words.tooLarge} ($megabytes MB; the limit is 8 MB). Nothing '
+          'was changed.',
         ),
       );
     } on CloudImportException catch (error) {
@@ -160,86 +258,80 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
         case CloudImportProblem.datasetChanged:
           _snack(
             'Your account changed on another device. Check the new counts '
-            'before copying.',
+            'before going on.',
           );
           return _loadPreview(copier);
         case CloudImportProblem.unreachable:
-          return _show(
-            const _Message(
-              "Couldn't reach the server. Open this screen again later: if "
-              'the copy went through, your account already shows the same '
-              'counts as this device.',
-            ),
-          );
+          return _show(_Message(_words.unreachable));
         case CloudImportProblem.refused:
           return _show(
-            _Message(
-              'The copy was refused (${error.code}). Nothing was changed.',
-            ),
+            _Message('${_words.refused} (${error.code}). Nothing was changed.'),
           );
       }
     } on Object {
       return _show(
-        const _Message(
-          "This device's data couldn't be sent. Nothing was "
-          'copied.',
-        ),
+        const _Message("The data couldn't be sent. Nothing was changed."),
       );
     }
 
-    final pending = PendingCopyCheck(
-      userId: identity.userId,
-      email: identity.email,
+    if (_backup == null) {
+      await ref
+          .read(deviceCopyStateProvider.notifier)
+          .setPending(
+            PendingCopyCheck(
+              userId: identity.userId,
+              email: identity.email,
+              ids: sent.ids,
+              counts: sent.counts,
+            ),
+          );
+    }
+    await _check(
+      copier,
       ids: sent.ids,
       counts: sent.counts,
+      source: preview.source,
     );
-    await ref.read(deviceCopyStateProvider.notifier).setPending(pending);
-    await _check(copier, pending, source: preview.device);
   }
 
-  /// Waits for this device to download the copy, then compares it with the
-  /// device's data. [source] is what was sent; read again when the check
-  /// runs on a later visit.
+  /// Waits for this device to download the account, then compares it with
+  /// [source], which was sent with [ids]. A checked copy of this device's
+  /// data is remembered; a restore is not (Decision S6.3-3).
   Future<void> _check(
-    DeviceDataCopier copier,
-    PendingCopyCheck pending, {
-    BackupRecords? source,
+    DeviceDataCopier copier, {
+    required ImportIdMap ids,
+    required BackupCounts counts,
+    required BackupRecords source,
   }) async {
-    _show(const _Working('Checking the copy…'));
-    final notifier = ref.read(deviceCopyStateProvider.notifier);
+    _show(const _Working('Checking…'));
     final CopyCheck? check;
     try {
       check = await copier.check(
-        source: source ?? await ref.read(deviceDataReaderProvider).read(),
-        ids: pending.ids,
-        counts: pending.counts,
+        source: source,
+        ids: ids,
+        counts: counts,
         wait: ref.read(copyCheckWaitProvider),
       );
     } on Object {
       return _show(
-        const _Message(
-          "The copy couldn't be checked. Open this screen again to retry.",
-        ),
+        const _Message("The result couldn't be checked. Nothing was undone."),
       );
     }
-    if (check == null) {
-      return _show(
-        const _Message(
-          'Copied. This device will check it after it syncs: open this '
-          'screen again later.',
-        ),
-      );
-    }
-    if (check.passed) {
-      await notifier.recordCopy(
-        DeviceCopy(
-          userId: pending.userId,
-          email: pending.email,
-          copiedAt: DateTime.now(),
-        ),
-      );
-    } else {
-      await notifier.clearPending();
+    if (check == null) return _show(_Message(_words.late));
+    final identity = _identity;
+    if (_backup == null && identity != null) {
+      final notifier = ref.read(deviceCopyStateProvider.notifier);
+      if (check.passed) {
+        await notifier.recordCopy(
+          DeviceCopy(
+            userId: identity.userId,
+            email: identity.email,
+            copiedAt: DateTime.now(),
+          ),
+        );
+      } else {
+        await notifier.clearPending();
+      }
     }
     _show(_Checked(check));
   }
@@ -253,8 +345,8 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
           current: preview.account,
           consequence:
               'Everything in your account is deleted on every device signed '
-              'in as ${identity.email}, then replaced with this device\'s '
-              "data. This device's data doesn't change.",
+              'in as ${identity.email}, then replaced with '
+              '${_words.replacedWith}',
           phrase: replaceConfirmationPhrase,
           confirmLabel: 'Replace',
           exportCheckpoint: (dialogContext) => exportBackup(
@@ -272,17 +364,18 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text("Copy this device's data")),
+    appBar: AppBar(title: Text(_words.title)),
     body: SafeArea(
       child: switch (_stage) {
         _Working(:final text) => _ProgressView(text),
         _Message(:final text) => _MessageView(text),
         _Preview(:final preview) => _PreviewView(
           preview,
+          words: _words,
           email: _identity?.email ?? '',
           onCopy: () => _copy(preview),
         ),
-        _Checked(:final check) => _CheckedView(check),
+        _Checked(:final check) => _CheckedView(check, words: _words),
       },
     ),
   );
@@ -329,9 +422,15 @@ class _MessageView extends StatelessWidget {
 }
 
 class _PreviewView extends StatelessWidget {
-  const _PreviewView(this.preview, {required this.email, required this.onCopy});
+  const _PreviewView(
+    this.preview, {
+    required this.words,
+    required this.email,
+    required this.onCopy,
+  });
 
   final CopyPreview preview;
+  final _Words words;
   final String email;
   final VoidCallback onCopy;
 
@@ -343,8 +442,8 @@ class _PreviewView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
-        Text('On this device', style: theme.textTheme.titleSmall),
-        Text(describeCounts(preview.deviceCounts)),
+        Text(words.source, style: theme.textTheme.titleSmall),
+        Text(describeCounts(preview.sourceCounts)),
         const SizedBox(height: Spacing.md),
         Text('In your account ($email)', style: theme.textTheme.titleSmall),
         Text(describeCounts(preview.account)),
@@ -352,15 +451,13 @@ class _PreviewView extends StatelessWidget {
         Text(
           replace
               ? 'Your account already has data. Replacing deletes it on every '
-                    "device signed in as $email, then copies this device's "
-                    'data into it.'
-              : 'Your account has only the default categories. Copying puts '
-                    "this device's data in their place.",
+                    'device signed in as $email, ${words.replaces}'
+              : 'Your account has only the default categories. '
+                    '${words.fillsEmpty}',
         ),
         const SizedBox(height: Spacing.sm),
         Text(
-          "This device's data stays as it is. After copying, Fundly checks "
-          'every record in your account against it.',
+          words.footnote,
           style: theme.textTheme.bodySmall?.copyWith(
             color: colors.onSurfaceVariant,
           ),
@@ -376,10 +473,7 @@ class _PreviewView extends StatelessWidget {
             child: const Text("Replace my account's data"),
           )
         else
-          FilledButton(
-            onPressed: onCopy,
-            child: const Text('Copy to my account'),
-          ),
+          FilledButton(onPressed: onCopy, child: Text(words.go)),
         const SizedBox(height: Spacing.sm),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -391,9 +485,10 @@ class _PreviewView extends StatelessWidget {
 }
 
 class _CheckedView extends StatelessWidget {
-  const _CheckedView(this.check);
+  const _CheckedView(this.check, {required this.words});
 
   final CopyCheck check;
+  final _Words words;
 
   @override
   Widget build(BuildContext context) {
@@ -411,9 +506,7 @@ class _CheckedView extends StatelessWidget {
             const SizedBox(width: Spacing.sm),
             Expanded(
               child: Text(
-                check.passed
-                    ? 'Copied and checked'
-                    : "The copy doesn't match this device",
+                check.passed ? words.passed : words.failed,
                 style: theme.textTheme.titleMedium,
               ),
             ),
@@ -422,15 +515,14 @@ class _CheckedView extends StatelessWidget {
         const SizedBox(height: Spacing.sm),
         Text(
           check.passed
-              ? "Every record in your account matches this device's data."
-              : 'First difference: ${check.difference}. This device\'s data '
-                    'is unchanged. Please report this.',
+              ? words.passedDetail
+              : 'First difference: ${check.difference}. ${words.failedDetail}',
         ),
-        if (check.deviceBalances.isNotEmpty) ...[
+        if (check.sourceBalances.isNotEmpty) ...[
           const SizedBox(height: Spacing.lg),
           Text('Balances', style: theme.textTheme.titleSmall),
           for (final MapEntry(key: name, value: balance)
-              in check.deviceBalances.entries)
+              in check.sourceBalances.entries)
             ListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
@@ -439,7 +531,8 @@ class _CheckedView extends StatelessWidget {
               subtitle: check.accountBalances[name] == balance
                   ? const Text('Same in your account')
                   : Text(
-                      'In your account: ${_balanceText(check.accountBalances[name])}',
+                      'In your account: '
+                      '${_balanceText(check.accountBalances[name])}',
                       style: TextStyle(color: colors.error),
                     ),
             ),

@@ -14,7 +14,9 @@ tombstone every earlier record, return the stored result when resent, refuse
 stale counts, and leave an account that a later into_empty import accepts.
 Then the requests that copy a device's data (S6.2) go to a second new user:
 into_empty must store every field as sent, and a replace with fresh IDs must
-swap the whole dataset and tombstone the first copy.
+swap the whole dataset and tombstone the first copy. Last, requests built
+from a parsed format 7 backup and an old format 3 backup (S6.3) must each be
+accepted into an empty account.
 Never reads .env or hosted credentials.
 """
 
@@ -217,6 +219,22 @@ def check_copy(data):
         cleanup(actor)
 
 
+def check_restores(data):
+    for name, request in data['copy']['restores'].items():
+        actor = str(uuid.uuid4())
+        execute(f"INSERT INTO auth.users(id,email) VALUES({literal(actor)},'client-restore@example.invalid');")
+        try:
+            result = import_dataset(actor, str(uuid.uuid4()), request)
+            expected = {t: len(rows) for t, rows in request['dataset'].items()}
+            assert result['counts'] == expected, (name, result)
+            for table in expected:
+                assert len(server_rows(actor, table)) == expected[table], (name, table)
+        finally:
+            cleanup(actor)
+        print(f'PASS: a restore request from a {name} backup is accepted into an empty account',
+              flush=True)
+
+
 def cleanup(actor):
     execute(f'BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id={literal(actor)}; '
             f'DELETE FROM public.fundly_import_receipts WHERE owner_id={literal(actor)}; '
@@ -257,9 +275,10 @@ def main():
         check_refusals(actor, data['batches'])
         check_reset(actor, data)
         check_copy(data)
+        check_restores(data)
     finally:
         cleanup(actor)
-    print('All 12 client-contract checks passed; disposable fixtures removed.', flush=True)
+    print('All 14 client-contract checks passed; disposable fixtures removed.', flush=True)
 
 
 if __name__ == '__main__':

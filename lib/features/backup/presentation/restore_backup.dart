@@ -10,6 +10,7 @@ import '../../../core/formatting/date_formatter.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../data/backup_importer.dart';
+import 'copy_device_data_screen.dart';
 import 'export_backup.dart';
 
 /// Lets the user pick a backup file and returns its text, or `null` if they
@@ -31,27 +32,11 @@ Future<String?> _pickWithFilesApp() async {
 
 /// Restore replaces all data, and doing that to a signed-in (cloud) dataset
 /// needs its own design (cloud sync S6). Until then it only works signed out.
-Future<void> _explainRestoreUnavailable(BuildContext context) =>
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restore is not available while signed in'),
-        content: const Text(
-          'Restoring a backup replaces all data. To restore, sign out first: '
-          'the backup then replaces the data on this device that is not '
-          'linked to an account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-
 /// Picks a backup, checks it, asks the user to confirm replacing all data
 /// (offering to export the current data first), then restores it.
+///
+/// Signed in, the checked backup goes to the account instead, through the
+/// same screen that copies this device's data (cloud sync S6.3).
 ///
 /// Nothing changes unless the file is valid and the user chooses Replace.
 /// [origin] is where the export share sheet points on iPad.
@@ -60,11 +45,6 @@ Future<void> restoreBackup(
   WidgetRef ref, {
   Rect? origin,
 }) async {
-  if (ref.read(authIdentityProvider) is SignedIn) {
-    await _explainRestoreUnavailable(context);
-    return;
-  }
-
   final messenger = ScaffoldMessenger.of(context);
   void tell(String message) =>
       messenger.showSnackBar(SnackBar(content: Text(message)));
@@ -77,6 +57,21 @@ Future<void> restoreBackup(
     return;
   }
   if (contents == null || !context.mounted) return;
+
+  if (ref.read(authIdentityProvider) is SignedIn) {
+    final BackupSnapshot snapshot;
+    try {
+      snapshot = parseBackup(contents);
+    } on BackupImportException catch (exception) {
+      tell(backupImportErrorText(exception));
+      return;
+    } on Object {
+      tell('The backup could not be read.');
+      return;
+    }
+    await openRestoreToAccount(context, snapshot);
+    return;
+  }
 
   final importer = ref.read(backupImporterProvider);
   final BackupSnapshot snapshot;
@@ -145,9 +140,6 @@ String backupImportErrorText(BackupImportException exception) =>
       BackupImportProblem.newerFormat =>
         'This backup is from a newer version of Fundly. Update the app to '
             'restore it.',
-      BackupImportProblem.signedInFormat =>
-        'This backup was made while signed in. Restoring it is not available '
-            'yet.',
       BackupImportProblem.invalidData =>
         'This backup has invalid data (${exception.detail}). Nothing was '
             'changed.',

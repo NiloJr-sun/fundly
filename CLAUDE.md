@@ -520,7 +520,7 @@ Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
 refinements (R.1–R.17 in the roadmap, including automatic liability rows,
 Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
-v12 and backups at format 6. [AGENTS.md](AGENTS.md) summarises the current
+v12 and backups at format 7. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
@@ -1105,10 +1105,9 @@ suggestions as approved decisions.
                           first full download,
                           or (web) with
                           unreadable rows.
-                          Signed-out export stays
-                          format 6. Format 7 is
-                          not restorable until
-                          S6.3; restore says so.
+                          Signed-out export also
+                          writes format 7 since
+                          S6.3 (row below).
                           Reset checks counts
                           only; refused changes
                           do not block a reset.
@@ -1141,5 +1140,34 @@ suggestions as approved decisions.
                           out shows "copied to
                           <email> on <date>".
                           No schema change.
+
+  2026-11-22              Backups (S6.3, S6.3-1 toConfirmed
+                          4): every export writes
+                          format 7: format 6 with
+                          IDs and references as
+                          text (signed-out IDs as
+                          decimal strings). Text
+                          IDs are 1-64 characters,
+                          unique per table; on
+                          restore they become
+                          local numbers in file
+                          order, then format 6
+                          rules apply. Restore
+                          accepts formats 1–7.
+                          Signed in, Restore from
+                          backup checks the file
+                          locally, then uses the
+                          copy screen: Restore
+                          into an account with
+                          only defaults, else
+                          Replace (checkpoint and
+                          "replace my data");
+                          fresh UUIDs; checked
+                          field by field. A late
+                          download is not checked
+                          later; restores set no
+                          "copied to" note.
+                          Older app versions
+                          cannot read format 7.
 
   -----------------------------------------------------------------------

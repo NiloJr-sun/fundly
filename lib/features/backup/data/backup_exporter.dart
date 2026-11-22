@@ -39,9 +39,9 @@ final class BackupFile {
 /// records survive. Balances and totals are left out: they are always derived
 /// from the opening balances and transactions.
 ///
-/// Signed out, the backup is [formatVersion] with integer IDs. Signed in, it
-/// is [syncedFormatVersion]: the same shape with UUID string IDs. Bump these
-/// whenever the shape of the backup changes.
+/// Every ID is written as text (format 7): the signed-out database's integers
+/// as decimal strings, a signed-in account's UUIDs as they are. Bump
+/// [formatVersion] whenever the shape of the backup changes.
 class BackupExporter {
   /// Exports this device's signed-out [database].
   BackupExporter(AppDatabase database, {DateTime Function()? clock})
@@ -51,14 +51,12 @@ class BackupExporter {
   BackupExporter.from(this._source, {DateTime Function()? clock})
     : _now = clock ?? DateTime.now;
 
-  /// Version of the signed-out backup format, independent of the database
-  /// schema. 2 added `planGroup` to categories; 3 added `isBudgetAccount` to
+  /// Version of the backup format, independent of the database schema.
+  /// 2 added `planGroup` to categories; 3 added `isBudgetAccount` to
   /// accounts. Format 4 adds category `linkedAccountId`; 5 adds
-  /// `isPlanArchived`; 6 adds `isPlanDeleted`.
-  static const int formatVersion = 6;
-
-  /// Format 6 with UUID string IDs, written while signed in (cloud sync S6).
-  static const int syncedFormatVersion = 7;
+  /// `isPlanArchived`; 6 adds `isPlanDeleted`; 7 writes every ID and
+  /// reference as text (cloud sync S6, Decision 6).
+  static const int formatVersion = 7;
 
   final BackupSource _source;
   final DateTime Function() _now;
@@ -68,13 +66,13 @@ class BackupExporter {
     final records = await _source.read();
     return {
       'app': 'fundly',
-      'formatVersion': _source.formatVersion,
+      'formatVersion': formatVersion,
       'schemaVersion': _source.schemaVersion,
       'exportedAt': _timestamp(_now()),
       'customAccountTypes': [
         for (final type in records.customAccountTypes)
           {
-            'id': type.id,
+            'id': _id(type.id),
             'name': type.name,
             'baseType': type.baseType,
             'createdAt': _timestamp(type.createdAt),
@@ -83,10 +81,10 @@ class BackupExporter {
       'accounts': [
         for (final account in records.accounts)
           {
-            'id': account.id,
+            'id': _id(account.id),
             'name': account.name,
             'type': account.type,
-            'customTypeId': account.customTypeId,
+            'customTypeId': _id(account.customTypeId),
             'openingBalanceMinor': account.openingBalanceMinor,
             'currencyCode': account.currencyCode,
             'createdAt': _timestamp(account.createdAt),
@@ -97,28 +95,28 @@ class BackupExporter {
       'categories': [
         for (final category in records.categories)
           {
-            'id': category.id,
+            'id': _id(category.id),
             'name': category.name,
             'kind': category.kind,
             'isArchived': category.isArchived,
             'isPlanArchived': category.isPlanArchived,
             'isPlanDeleted': category.isPlanDeleted,
             'planGroup': category.planGroup,
-            'linkedAccountId': category.linkedAccountId,
+            'linkedAccountId': _id(category.linkedAccountId),
           },
       ],
       'transactions': [
         for (final transaction in records.transactions)
           {
-            'id': transaction.id,
+            'id': _id(transaction.id),
             'type': transaction.type,
             'amountMinor': transaction.amountMinor,
             'currencyCode': transaction.currencyCode,
             'date': transaction.date,
             'payee': transaction.payee,
-            'categoryId': transaction.categoryId,
-            'sourceAccountId': transaction.sourceAccountId,
-            'destinationAccountId': transaction.destinationAccountId,
+            'categoryId': _id(transaction.categoryId),
+            'sourceAccountId': _id(transaction.sourceAccountId),
+            'destinationAccountId': _id(transaction.destinationAccountId),
             'note': transaction.note,
             'createdAt': _timestamp(transaction.createdAt),
             'updatedAt': _timestamp(transaction.updatedAt),
@@ -127,9 +125,9 @@ class BackupExporter {
       'monthlyPlans': [
         for (final plan in records.monthlyPlans)
           {
-            'id': plan.id,
+            'id': _id(plan.id),
             'month': plan.month,
-            'categoryId': plan.categoryId,
+            'categoryId': _id(plan.categoryId),
             'targetAmountMinor': plan.targetAmountMinor,
             'assignedAmountMinor': plan.assignedAmountMinor,
             'currencyCode': plan.currencyCode,
@@ -164,6 +162,9 @@ class BackupExporter {
       contents: '${const JsonEncoder.withIndent('  ').convert(backup)}\n',
     );
   }
+
+  /// An ID or reference as text; `null` stays `null`.
+  static String? _id(Object? id) => id?.toString();
 
   static String _timestamp(DateTime instant) =>
       instant.toUtc().toIso8601String();

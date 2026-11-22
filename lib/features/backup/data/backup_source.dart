@@ -74,9 +74,6 @@ typedef BackupRecords = ({
 
 /// Where a backup's records come from.
 abstract interface class BackupSource {
-  /// The backup format these records are written in.
-  int get formatVersion;
-
   /// The store's schema version, recorded in the file for reference.
   int get schemaVersion;
 
@@ -84,14 +81,11 @@ abstract interface class BackupSource {
   Future<BackupRecords> read();
 }
 
-/// This device's signed-out database: format 6, integer IDs.
+/// This device's signed-out database: integer IDs.
 class LocalBackupSource implements BackupSource {
   LocalBackupSource(this._database);
 
   final AppDatabase _database;
-
-  @override
-  int get formatVersion => 6;
 
   @override
   int get schemaVersion => _database.schemaVersion;

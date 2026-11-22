@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 1087 tests passing as of 2026-11-22
+flutter test                      # 1102 tests passing as of 2026-11-22
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -72,11 +72,19 @@ simulator build for anything that changes app code. macOS has no
   `plan_group`, `linked_account_id`), `transactions`,
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
-- **Backup format 6** (JSON export and replace-all restore from the Profile
-  tab). Restore accepts formats 1–6. Signed in, Export backup writes
-  **format 7** (format 6 with UUID string IDs, `SyncedBackupSource`), only
-  when the synced store matches the server (`signedInExportBlocker`); format 7
-  restore is not built yet (S6.3) and is refused with its own message.
+- **Backup format 7** (JSON export and replace-all restore from the Profile
+  tab): format 6 with every ID and reference as text. Signed out, IDs are
+  decimal strings (`LocalBackupSource`); signed in, UUIDs
+  (`SyncedBackupSource`), and only when the synced store matches the server
+  (`signedInExportBlocker`).
+  - Restore accepts formats 1–7. `_numberTextIds` in `backup_importer.dart`
+    turns format 7 IDs into local numbers in file order, so the format 6
+    checks apply unchanged.
+  - Signed in, Restore from backup parses the file locally, then opens the
+    copy screen with the backup as its source (`openRestoreToAccount`,
+    S6.3).
+  - Importer tests build format 1–6 files with `asFormat6`, which turns an
+    export's text IDs back into numbers.
 - **Reset all data** (Profile): a saved
   `YYYY-MM-DD_HHmm_reset_checkpoint.json` export, then "delete my data"
   typed. Signed out, `DataResetter` re-adds the defaults in one local

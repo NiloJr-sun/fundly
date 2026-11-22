@@ -3,8 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/sync/synced_database.dart';
 import 'backup_source.dart';
 
-/// A signed-in user's synchronized store: format 7, UUID string IDs
-/// (cloud sync S6 Decision 6).
+/// A signed-in user's synchronized store: UUID string IDs.
 ///
 /// It reads every downloaded row, including any the web app hides because a
 /// number is too large to read exactly there; callers refuse to export in
@@ -13,9 +12,6 @@ class SyncedBackupSource implements BackupSource {
   SyncedBackupSource(this._database);
 
   final SyncedDatabase _database;
-
-  @override
-  int get formatVersion => 7;
 
   @override
   int get schemaVersion => _database.schemaVersion;

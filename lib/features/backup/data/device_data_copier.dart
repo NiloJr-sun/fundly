@@ -54,13 +54,14 @@ final deviceDataReaderProvider = Provider<DeviceDataReader>(
 /// What the copy screen shows before the user chooses.
 final class CopyPreview {
   const CopyPreview({
-    required this.device,
+    required this.source,
     required this.account,
     required this.accountIsEmpty,
   });
 
-  /// This device's signed-out records, as read for this preview.
-  final BackupRecords device;
+  /// The records to send: this device's signed-out records as read for this
+  /// preview, or a checked backup's (cloud sync S6.3).
+  final BackupRecords source;
 
   /// The account's counts, as this device downloaded them.
   final BackupCounts account;
@@ -69,7 +70,7 @@ final class CopyPreview {
   /// data can be copied without replacing anything.
   final bool accountIsEmpty;
 
-  BackupCounts get deviceCounts => countsOf(device);
+  BackupCounts get sourceCounts => countsOf(source);
 }
 
 /// The copy the server accepted, before it is checked.
@@ -87,7 +88,7 @@ final class CopySent {
 final class CopyCheck {
   const CopyCheck({
     required this.difference,
-    required this.deviceBalances,
+    required this.sourceBalances,
     required this.accountBalances,
   });
 
@@ -95,8 +96,8 @@ final class CopyCheck {
   /// the account matches this device's.
   final String? difference;
 
-  /// Each account's balance on this device and in the account, by name.
-  final Map<String, Money> deviceBalances;
+  /// Each account's balance in the source and in the account, by name.
+  final Map<String, Money> sourceBalances;
   final Map<String, Money> accountBalances;
 
   bool get passed => difference == null;
@@ -128,23 +129,24 @@ class DeviceDataCopier {
   final DeviceDataReader _device;
   final String Function() _newId;
 
-  /// Reads both sides for the preview.
-  Future<CopyPreview> preview() async {
-    final device = await _device.read();
+  /// Reads both sides for the preview: [backup]'s records when given,
+  /// otherwise this device's.
+  Future<CopyPreview> preview({BackupRecords? backup}) async {
+    final source = backup ?? await _device.read();
     final account = await watchSyncedCounts(_synced).first;
     return CopyPreview(
-      device: device,
+      source: source,
       account: account,
       accountIsEmpty: await accountHoldsOnlyDefaults(_synced),
     );
   }
 
-  /// Sends [preview]'s device records: `into_empty` when the account was
+  /// Sends [preview]'s records: `into_empty` when the account was
   /// empty, otherwise `replace` with the counts the user confirmed. Throws
   /// [CopyTooLargeException] before sending anything too large, and
   /// [CloudImportException] when the server does not accept it.
   Future<CopySent> send(CopyPreview preview) async {
-    final request = datasetRequestFor(preview.device, newId: _newId);
+    final request = datasetRequestFor(preview.source, newId: _newId);
     final body = importRequest(
       replace: !preview.accountIsEmpty,
       dataset: request.dataset,
@@ -176,7 +178,7 @@ class DeviceDataCopier {
     final copy = await SyncedBackupSource(_synced).read();
     return CopyCheck(
       difference: firstDifference(source, copy, ids),
-      deviceBalances: balancesByName(source),
+      sourceBalances: balancesByName(source),
       accountBalances: balancesByName(copy),
     );
   }

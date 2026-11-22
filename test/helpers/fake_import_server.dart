@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:fundly/core/sync/dataset_import.dart';
+import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/data/backup_source.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
@@ -274,3 +277,84 @@ List<Map<String, Object?>> serverDefaults() => [
   ].indexed)
     SyncedRows.category('d$index', name, kind: kind),
 ];
+
+/// Fixed records as a backup source.
+class RecordsSource implements BackupSource {
+  RecordsSource(this.records);
+
+  final BackupRecords records;
+
+  @override
+  int get schemaVersion => 12;
+
+  @override
+  Future<BackupRecords> read() async => records;
+}
+
+/// [sampleDeviceRecords] exported as a backup file's JSON (format 7).
+Future<Map<String, Object?>> sampleBackupJson() async => jsonDecode(
+  jsonEncode(
+    await BackupExporter.from(
+      RecordsSource(sampleDeviceRecords()),
+      clock: () => DateTime.utc(2026, 11, 17, 9),
+    ).export(),
+  ),
+) as Map<String, Object?>;
+
+/// [sampleBackupJson] as an old format 3 file: integer IDs, no linked
+/// liability rows (the importer adds them), no Plans archive or deletion
+/// flags, and no plans on rows that format 3 could not hold.
+Future<Map<String, Object?>> sampleFormat3Json() async {
+  final backup = await sampleBackupJson();
+  const idFields = {
+    'id',
+    'customTypeId',
+    'linkedAccountId',
+    'categoryId',
+    'sourceAccountId',
+    'destinationAccountId',
+  };
+  Map<String, Object?> integers(Map<String, Object?> record) => {
+    for (final MapEntry(:key, :value) in record.entries)
+      if (!const {
+        'linkedAccountId',
+        'isPlanArchived',
+        'isPlanDeleted',
+      }.contains(key))
+        key: idFields.contains(key) && value is String
+            ? int.parse(value)
+            : value,
+  };
+  List<Map<String, Object?>> rows(String table) => [
+    for (final record in (backup[table]! as List<Object?>))
+      record! as Map<String, Object?>,
+  ];
+  final linked = {
+    for (final category in rows('categories'))
+      if (category['linkedAccountId'] != null) category['id'],
+  };
+  final planDeleted = {
+    for (final category in rows('categories'))
+      if (category['isPlanDeleted'] == true) category['id'],
+  };
+  return {
+    ...backup,
+    'formatVersion': 3,
+    'customAccountTypes': [
+      for (final r in rows('customAccountTypes')) integers(r),
+    ],
+    'accounts': [for (final r in rows('accounts')) integers(r)],
+    'categories': [
+      for (final r in rows('categories'))
+        if (!linked.contains(r['id'])) integers(r),
+    ],
+    'transactions': [
+      for (final r in rows('transactions'))
+        if (!planDeleted.contains(r['categoryId'])) integers(r),
+    ],
+    'monthlyPlans': [
+      for (final r in rows('monthlyPlans'))
+        if (!linked.contains(r['categoryId'])) integers(r),
+    ],
+  };
+}

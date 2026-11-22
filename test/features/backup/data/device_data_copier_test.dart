@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -8,6 +9,7 @@ import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
+import 'package:fundly/features/backup/data/backup_importer.dart';
 import 'package:fundly/features/backup/data/backup_source.dart';
 import 'package:fundly/features/backup/data/cloud_dataset_import.dart';
 import 'package:fundly/features/backup/data/dataset_request.dart';
@@ -57,7 +59,7 @@ void main() {
     final preview = await copier.preview();
     final sent = await copier.send(preview);
     return copier.check(
-      source: preview.device,
+      source: preview.source,
       ids: sent.ids,
       counts: sent.counts,
       wait: wait,
@@ -70,7 +72,7 @@ void main() {
       final preview = await copier.preview();
       expect(preview.accountIsEmpty, isTrue);
       expect(preview.account.categories, 9);
-      expect(preview.deviceCounts, countsOf(sampleDeviceRecords()));
+      expect(preview.sourceCounts, countsOf(sampleDeviceRecords()));
     });
 
     test(
@@ -98,7 +100,7 @@ void main() {
       final request = server.requests.single.request;
       expect(request['mode'], 'into_empty');
       expect(request.containsKey('expected'), isFalse);
-      expect(sent.counts, preview.deviceCounts);
+      expect(sent.counts, preview.sourceCounts);
       expect(sent.ids['transactions'], hasLength(5));
     });
 
@@ -195,9 +197,9 @@ void main() {
       expect(check, isNotNull);
       expect(check!.difference, isNull);
       expect(check.passed, isTrue);
-      expect(check.accountBalances, check.deviceBalances);
+      expect(check.accountBalances, check.sourceBalances);
       expect(
-        check.deviceBalances['GCash'],
+        check.sourceBalances['GCash'],
         const Money(minorUnits: 200000, currencyCode: 'PHP'),
       );
     });
@@ -221,6 +223,49 @@ void main() {
         isNull,
       );
     });
+  });
+
+  group('restoring a backup file (S6.3)', () {
+    for (final (name, file) in [
+      ('format 7', sampleBackupJson),
+      ('format 3', sampleFormat3Json),
+    ]) {
+      test('a $name file is sent and checks out', () async {
+        await store.download({'categories': serverDefaults()});
+        final snapshot = parseBackup(jsonEncode(await file()));
+        final preview = await copier.preview(backup: snapshot.records);
+        expect(preview.sourceCounts, snapshot.counts);
+        expect(preview.accountIsEmpty, isTrue);
+
+        final sent = await copier.send(preview);
+        final check = await copier.check(
+          source: preview.source,
+          ids: sent.ids,
+          counts: sent.counts,
+          wait: const Duration(seconds: 2),
+        );
+        expect(check?.difference, isNull);
+        expect(check?.accountBalances, check?.sourceBalances);
+      });
+    }
+
+    test(
+      'a format 3 file sends the liability rows the importer adds',
+      () async {
+        final snapshot = parseBackup(jsonEncode(await sampleFormat3Json()));
+        final preview = await copier.preview(backup: snapshot.records);
+        await copier.send(preview);
+        final dataset =
+            server.requests.single.request['dataset']! as Map<String, Object?>;
+        final linked = [
+          for (final c
+              in (dataset['categories']! as List).cast<Map<String, Object?>>())
+            if (c['linked_account_id'] != null) c['name'],
+        ];
+        // RCBC Credit is active; the archived Old card gets no new row.
+        expect(linked, ['RCBC Credit']);
+      },
+    );
   });
 
   test(

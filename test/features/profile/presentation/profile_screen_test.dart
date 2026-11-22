@@ -155,7 +155,7 @@ void main() {
     expect(find.textContaining('Signed in as'), findsNothing);
   });
 
-  testWidgets('restore is blocked while signed in and never opens a file', (
+  testWidgets('signed in, restore opens the file picker (S6.3)', (
     tester,
   ) async {
     var picked = 0;
@@ -170,11 +170,9 @@ void main() {
     await tester.tap(find.text('Restore from backup'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Restore is not available while signed in'),
-      findsOneWidget,
-    );
-    expect(picked, 0);
+    // Cancelling the picker leaves everything as it was.
+    expect(picked, 1);
+    expect(find.text('Restore a backup'), findsNothing);
   });
 
   testWidgets('restore still opens the file picker while signed out', (

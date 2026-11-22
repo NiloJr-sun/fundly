@@ -4,8 +4,8 @@ Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S6.1
 is implemented, verified locally and deployed to the hosted project (2026-11-22).
-S6.2 is implemented and verified with automated tests (2026-11-22); the
-manual device checks remain. S6.3 is not started. S6 is split into three sub-slices; each is planned in more
+S6.2 and S6.3 are implemented and verified with automated tests (2026-11-22);
+the manual device checks remain (deferred by the product owner). S6 is split into three sub-slices; each is planned in more
 detail, implemented, verified and reviewed on its own, and the agent stops
 after each.
 
@@ -480,7 +480,24 @@ its tests stay the same.
    (recommended). Alternative: offered but optional.
 4. **Typed phrase for Replace:** "replace my data" (recommended).
 
-#### S6.3 detailed plan (proposal, not approved)
+#### S6.3 detailed plan (approved and implemented 2026-11-22)
+
+Approved with Decisions S6.3-1 to S6.3-4, each as recommended.
+
+**Result:**
+
+- Implemented as planned. 1,102 Flutter tests pass, 15 of them new;
+  `flutter analyze` and `dart format` are clean, and the iOS simulator build
+  succeeds.
+- The client contract runner passes 14 checks on local Supabase. That
+  includes restore requests built from a format 7 file and a format 3 file.
+- **Format 1–6 tests:** existing importer tests still use real format 6
+  files. The `asFormat6` test helper turns an export's text IDs back into
+  numbers.
+- **Removed:** the old Profile test "restore is blocked while signed in"
+  now checks that the file picker opens instead. The `signedInFormat`
+  refusal and the "restored in a later update" export note are gone.
+- **Not done yet:** manual checks on devices (deferred, as for S6.2).
 
 S6.3 has no server change and no database schema change. It changes the
 **backup format** in one way: signed-out Export now writes format 7

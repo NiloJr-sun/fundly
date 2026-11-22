@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -12,6 +14,7 @@ import 'package:fundly/features/backup/data/device_data_copier.dart';
 import 'package:fundly/features/backup/presentation/copy_device_data_screen.dart';
 import 'package:fundly/features/backup/presentation/device_data_prompt.dart';
 import 'package:fundly/features/backup/presentation/export_backup.dart';
+import 'package:fundly/features/backup/presentation/restore_backup.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
@@ -279,7 +282,9 @@ void main() {
     await openScreen(tester);
 
     expect(
-      find.text("You're offline. Connect to the internet to copy your data."),
+      find.text(
+        "You're offline. Connect to the internet to change your account's data.",
+      ),
       findsOneWidget,
     );
   });
@@ -446,6 +451,109 @@ void main() {
       );
       await pumpShell(tester);
       expect(find.text("Copy this device's data?"), findsNothing);
+    });
+  });
+
+  group('restoring a backup while signed in (S6.3)', () {
+    late String file;
+
+    Future<void> pumpProfile(WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...overrides(),
+            pickBackupFileProvider.overrideWithValue(() async => file),
+          ],
+          child: const MaterialApp(home: ProfileScreen()),
+        ),
+      );
+      await settle(tester);
+    }
+
+    Future<void> tapRestore(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Restore from backup'));
+      await tester.tap(find.text('Restore from backup'));
+      await settle(tester);
+    }
+
+    testWidgets(
+      'a format 7 file restores into an empty account and checks out',
+      (tester) async {
+        file = jsonEncode(await sampleBackupJson());
+        await seedEmptyAccount(tester);
+        await pumpProfile(tester);
+        await tapRestore(tester);
+
+        expect(find.text('Restore a backup'), findsOneWidget);
+        expect(find.text('In the backup (Nov 17, 2026)'), findsOneWidget);
+        expect(find.text(deviceSummary), findsOneWidget);
+        await tester.tap(find.text('Restore into my account'));
+        await settle(tester);
+
+        expect(server.requests.single.request['mode'], 'into_empty');
+        expect(find.text('Restored and checked'), findsOneWidget);
+        // Only a copy of this device's data is remembered.
+        expect(copies.read().lastCopy, isNull);
+        expect(copies.read().pending, isNull);
+      },
+    );
+
+    testWidgets('a format 3 file replaces a used account', (tester) async {
+      file = jsonEncode(await sampleFormat3Json());
+      await seedUsedAccount(tester);
+      await pumpProfile(tester);
+      await tapRestore(tester);
+
+      await tester.tap(find.text("Replace my account's data"));
+      await settle(tester);
+      expect(
+        find.textContaining("then replaced with the backup's data."),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Export checkpoint'));
+      await settle(tester);
+      await tester.enterText(find.byType(TextField), 'replace my data');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Replace'));
+      await settle(tester);
+
+      expect(server.requests.single.request['mode'], 'replace');
+      expect(find.text('Restored and checked'), findsOneWidget);
+    });
+
+    testWidgets('a late download says so and keeps no check', (tester) async {
+      file = jsonEncode(await sampleBackupJson());
+      server.downloads = false;
+      await seedEmptyAccount(tester);
+      await pumpProfile(tester);
+      await tapRestore(tester);
+
+      await tester.tap(find.text('Restore into my account'));
+      await settle(tester);
+
+      expect(
+        find.text('Restored. This device will show it after it syncs.'),
+        findsOneWidget,
+      );
+      expect(copies.read().pending, isNull);
+    });
+
+    testWidgets('an invalid file is refused before anything is sent', (
+      tester,
+    ) async {
+      final backup = await sampleBackupJson();
+      ((backup['accounts']! as List).first as Map<String, Object?>)['id'] = '2';
+      file = jsonEncode(backup);
+      await seedEmptyAccount(tester);
+      await pumpProfile(tester);
+      await tapRestore(tester);
+
+      expect(
+        find.textContaining('This backup has invalid data'),
+        findsOneWidget,
+      );
+      expect(find.text('Restore a backup'), findsNothing);
+      expect(server.requests, isEmpty);
     });
   });
 

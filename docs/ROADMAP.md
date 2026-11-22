@@ -242,7 +242,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 
 | ID | Task | Status |
 |---|---|---|
-| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 6) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 7) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
@@ -253,15 +253,18 @@ categories, format 3 added `isBudgetAccount` to accounts, and format 4 adds
 `linkedAccountId` to categories for automatic liability Plans rows. Format 5
 adds `isPlanArchived` to categories, independent of category/account archives.
 Format 6 adds `isPlanDeleted`, preserving permanent plan removal while keeping
-its category/account. Restore accepts formats 1–5 (the deletion flag defaults
+its category/account. Restore accepts formats 1–5 as well (the deletion flag defaults
 false; the archive flag defaults false for formats 1–4).
 Formats 1–3 retain their previous defaults (format 1 categories default to
 Spending; formats 1–2 have no budget account). Missing liability rows are
 generated and included in the restore preview counts. Money is integer minor units, dates
 `YYYY-MM-DD`, months `YYYY-MM`, timestamps UTC ISO-8601; IDs are kept and
-derived balances are left out. Format 7 (2026-11-22) is format 6 with UUID
-string IDs and references, written only while signed in; it is not
-restorable until cloud sync S6.3. Field names are mapped explicitly in
+derived balances are left out. Format 7 (2026-11-22, cloud sync S6.3) is
+format 6 with every ID and reference written as text: UUIDs from a signed-in
+account, decimal strings from this device. It is what every export writes.
+On restore, text IDs (1–64 characters, unique per table) become local numbers
+in file order and the format 6 checks apply; restore accepts formats 1–7.
+Signed in, a restore goes into the account through the copy screen. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;
 bump `formatVersion` when the format changes.
 
