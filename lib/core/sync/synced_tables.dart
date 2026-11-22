@@ -172,3 +172,50 @@ class SyncedMonthlyPlans extends Table {
     'FOREIGN KEY (category_id) REFERENCES categories (id) $_deferred',
   ];
 }
+
+/// Changes the server refused (cloud sync S5.4). Local only: it is not one of
+/// PowerSync's raw tables, so it is never downloaded or uploaded.
+@DataClassName('SyncRejectionRow')
+class SyncRejections extends Table {
+  @override
+  String get tableName => 'sync_rejections';
+
+  /// The refused batch's UUID. One entry per batch, so a retry after a crash
+  /// cannot record it twice.
+  TextColumn get batchId => text()();
+
+  /// `rejected`, or `dependency_rejected` for a batch that was never sent
+  /// because it relied on a refused one.
+  TextColumn get kind => text()();
+
+  /// The server's message code; null for `dependency_rejected`.
+  TextColumn get code => text().nullable()();
+
+  /// The server's JSON detail, when it sent one.
+  TextColumn get detail => text().nullable()();
+
+  /// For `dependency_rejected`: the batch it relied on.
+  TextColumn get causedBy => text().nullable()();
+
+  /// The batch envelope exactly as queued: what the user tried to do.
+  TextColumn get operations => text()();
+
+  /// JSON list of the IDs the batch would have created.
+  TextColumn get createdIds => text()();
+
+  /// JSON object of record ID → name (or payee) as the device showed them
+  /// when the change was refused, so it can still be described after the
+  /// records return to the server's state.
+  TextColumn get labels => text()();
+
+  /// UTC, ISO 8601.
+  TextColumn get rejectedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {batchId};
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (kind IN ('rejected', 'dependency_rejected'))",
+  ];
+}

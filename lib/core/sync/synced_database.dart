@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../time/calendar_date.dart';
+import 'synced_database.steps.dart';
 import 'synced_tables.dart';
 
 part 'synced_database.g.dart';
@@ -18,16 +19,22 @@ part 'synced_database.g.dart';
     SyncedCategories,
     SyncedTransactions,
     SyncedMonthlyPlans,
+    SyncRejections,
   ],
 )
 class SyncedDatabase extends _$SyncedDatabase {
   SyncedDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: stepByStep(
+      // v2 (S5.4): the local log of refused changes.
+      from1To2: (migrator, schema) =>
+          migrator.createTable(schema.syncRejections),
+    ),
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
 

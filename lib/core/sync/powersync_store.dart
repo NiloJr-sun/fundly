@@ -37,8 +37,8 @@ final syncedRawSchema = ps.Schema(
 ///
 /// [lastUploadFailure] is the connector's own record of the failing upload.
 /// On web, PowerSync runs sync in a shared worker and hands [uploadError]
-/// back as plain text, so whether the server refused a change (stuck) is
-/// only known from that record. A temporary upload failure (offline, server
+/// back as plain text, so whether the upload is blocked (stuck) is only
+/// known from that record. A temporary upload failure (offline, server
 /// busy) is retried with the same batch, so it is not an error: it becomes
 /// [SyncState.uploadRetry], which says why changes are still waiting.
 SyncState syncStateFor({

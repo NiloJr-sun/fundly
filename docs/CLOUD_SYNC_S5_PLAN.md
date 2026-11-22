@@ -3,7 +3,7 @@
 Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–4; Decision 5 is confirmed when
-S5.5 starts). S5.1–S5.3 are implemented; S5.4 and S5.5 are not started. S5 is split into five sub-slices; each is planned in more detail,
+S5.5 starts). S5.1–S5.4 are implemented; S5.5 is not started. S5 is split into five sub-slices; each is planned in more detail,
 implemented, verified and reviewed on its own, and the agent stops after each.
 
 ## Starting point
@@ -253,6 +253,145 @@ totals and Plans; check in the SQL editor that each record exists once.
   device") with what the user tried to do, to reapply by hand or dismiss.
   No automatic merging.
 
+#### S5.4 detailed plan (approved and implemented 2026-11-22)
+
+Approved as proposed (revert by marking every row, schema v2, list on
+Profile only, dismiss deletes). Implemented as planned. The open risk is
+settled in the SDK: once the queue is empty, PowerSync always requests a write
+checkpoint and applies the next checkpoint that includes it, refused uploads
+included. The real-SDK test emulates that step. Verified: the real-SDK
+revert and uploader tests, the v1 → v2 migration test, the description and
+screen tests, the local contract runner (now also a real `revision_conflict`
+and `record_deleted`), full suite, analyzer, iOS simulator and web builds.
+The live two-device check is the owner's step below.
+
+**What the host experiment showed (2026-11-22).** I tested the real
+PowerSync SDK 2.6.2, feeding checkpoints through its core extension
+(`powersync_control`), with no service involved:
+- An optimistic insert, edit or delete that PowerSync was not told about
+  **survives** every later download. Without extra work, a refused change
+  would therefore stay on the device for good. The open proof from S2.3 fails
+  as things stand.
+- Rows listed in PowerSync's `ps_updated_rows` table are put back to the
+  server's version by the next applied checkpoint: a refused insert is removed,
+  a refused edit is undone and a refused delete comes back. This is the same
+  mechanism PowerSync uses for its own managed tables. It runs only while the
+  upload queue is empty, so changes still queued are never overwritten.
+
+**Revert (Decision S5.4-1).** When a batch is refused, the device marks
+**every** synced row in `ps_updated_rows`: each row of the five tables, plus
+every row the download log holds, so locally deleted rows are covered too.
+This happens in the same local transaction as the log entry. Once the queue
+is empty, the next checkpoint puts every row back to the server's state. A
+refusal is rare, and the dataset is one person's records, so redoing them all
+costs little and needs no knowledge of what each write touched (side effects
+such as liability rows and plans removed with a category included).
+- Alternative: mark only the rows each write touched. That means more code in
+  every repository and a missed side effect stays wrong.
+- Alternative: rebuild rows from the download log ourselves. That
+  reimplements PowerSync.
+
+**Rejection log (local schema change: synced database v1 → v2).** A new
+local-only table `sync_rejections` that PowerSync does not sync:
+
+| Column | Meaning |
+|---|---|
+| `batch_id` (key) | The refused batch's UUID. Writing the same one again is ignored, so a crash and retry cannot add it twice. |
+| `kind` | `rejected` or `dependency_rejected` |
+| `code`, `detail` | The server's message code and JSON detail (none for dependency) |
+| `caused_by` | For `dependency_rejected`: the batch it depended on |
+| `operations` | The batch envelope exactly as queued: what the user tried to do |
+| `created_ids` | IDs the batch would have created (`*.create`, `plan.save` without `previous`, `account.create`'s `linked_category_id`) |
+| `labels` | Names of the records it refers to, taken from the device at the moment of refusal (account, category and type names, the transaction payee), so the screen can describe them after the revert removes them |
+| `rejected_at` | UTC |
+
+Not in backups, which are unavailable while signed in. It stays in the user's
+store file across sign-out. Migration v1 → v2 creates the table, with
+`make-migrations` and a migration test.
+
+**Uploader.** For the oldest batch:
+1. If it refers to an ID in any logged entry's `created_ids`, it is not sent.
+   It is logged as `dependency_rejected` (with `caused_by`), its own creates
+   are added, and it is completed.
+2. Otherwise it is sent.
+   - Accepted: completed, and any stale log entry for that batch is removed.
+     This covers a batch that was refused, the app was killed before the queue
+     moved on, and the batch was accepted on retry.
+   - Rejected: logged, all rows marked, then completed, and the loop continues.
+   - Transient or blocked: unchanged from S5.3. A blocked batch still shows
+     "Sync stuck" and is never discarded.
+
+**Screen: "Refused changes".**
+- **Opening it:** while the log has entries, the Profile status line adds
+  " · 2 changes refused · Review", shown in the error colour. Tapping the line
+  opens the screen.
+- **Each entry** shows:
+  - what was tried, built from the operation, its data and the stored
+    labels, for example "Edit transaction · Jollibee · ₱250.00 · 20 Nov 2026"
+    or "Create account · BPI Savings";
+  - why, in plain words: changed on another device first
+    (`revision_conflict`, `plan_conflict`, `budget_conflict`); deleted on
+    another device (`record_deleted`); depended on a change that was refused
+    (`dependency_rejected`); otherwise "the server's rules refused it" plus
+    the code;
+  - when it was refused;
+  - expandable details of the entered values, to reapply by hand.
+- **Actions:** Dismiss on each entry, and Dismiss all. There is no automatic
+  reapply or merge.
+
+**Files likely to change.**
+- `lib/core/sync/`:
+  - `synced_tables.dart` and `synced_database.dart` (+ generated code, schema
+    v2 snapshot, migration test);
+  - `batch_uploader.dart`;
+  - new `sync_rejections.dart` (record, write and mark helpers, watch and
+    dismiss);
+  - `synced_store.dart` (provider; `stuck` now means blocked only).
+- `lib/features/sync/presentation/`:
+  - `sync_status_line.dart`;
+  - new `refused_changes_screen.dart`;
+  - new `refused_change_description.dart`.
+- Tests and fakes.
+- Docs: `SYNC_PROTOCOL.md` (proof result, revert), this plan, `AGENTS.md`.
+
+No server change, no new dependency, no change to local (signed-out) mode.
+
+**Tests.**
+- **Real SDK revert:** refused insert, edit and delete are restored after
+  marking and a checkpoint; nothing reverts while the queue still holds a
+  batch.
+- **Uploader** (real SDK queue, fake RPC):
+  - a refusal is logged and later batches still upload;
+  - dependency chains: an account whose create was refused, then a
+    transaction in it, then an edit of that transaction;
+  - a re-refusal after a crash does not duplicate the entry;
+  - acceptance after an earlier refusal removes the stale entry;
+  - transient and blocked behave as before.
+- **Migration** v1 → v2.
+- **Descriptions** for every operation kind and code.
+- **Widgets:** the status line text and tap, the screen's list, Dismiss and
+  Dismiss all, and its empty state.
+- **Local server:** extend `client_contract_test.py` with a real
+  `revision_conflict` and a `record_deleted`. They check that the codes and
+  JSON detail the app parses are what the server sends.
+
+**Live check (owner)**, iOS and Chrome, same account:
+1. Device A goes offline and edits transaction T. Device B edits T online.
+   A reconnects: the entry "changed on another device" appears, and A shows
+   B's version of T.
+2. A, offline, creates an account and a transaction in it, while B creates
+   an account with the same name. A reconnects: two entries (the account
+   refused, the transaction dependent), both records are gone from A, and the
+   balances match B.
+
+**Risks.**
+- `ps_updated_rows` is PowerSync's internal table. The version is pinned, and
+  the real-SDK test fails if an upgrade changes its behaviour.
+- The revert needs a checkpoint after the queue empties. PowerSync asks for
+  one after uploads, but a refusal changes nothing on the server, so the live
+  check must confirm one arrives. If it doesn't, the revert waits for the next
+  server change or reconnect. I'll report which happens.
+
 ### S5.5 — Sync status and safety
 
 - A status line on Profile: synced, syncing, offline (changes saved on this
@@ -297,4 +436,5 @@ ended by S5.3), 4 (server `dataset.initialize`, implemented in S5.3). Open: 5.
   devices are unverified (S1). Each slice runs on iOS and Chrome.
 - Two SQLite WASM builds on web (drift's for local mode, PowerSync's for the
   synced store) must coexist; checked first in S5.2.
-- The raw-table rollback after a rejection is unproven (S5.4).
+- The raw-table rollback after a rejection relies on PowerSync's internal
+  `ps_updated_rows` (proved on SDK 2.6.2, S5.4); recheck on SDK upgrades.

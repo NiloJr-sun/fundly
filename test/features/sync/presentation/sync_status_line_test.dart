@@ -36,8 +36,8 @@ void main() {
     );
     expect(
       text(SyncConnection.stuck),
-      'Sync stuck: the server refused a change (timeout). It is kept on '
-      'this device',
+      "Sync stuck: the server can't process a change yet (timeout). It is "
+      'kept on this device',
     );
     expect(syncStatusText(null), 'Opening your data…');
   });
@@ -76,6 +76,20 @@ void main() {
       'Sync problem, retrying: timeout · 3 changes waiting to upload',
     );
     expect(retrying(SyncConnection.stuck), isNot(contains('PGRST301')));
+  });
+
+  test('refused changes are counted with a way to review them', () {
+    String refused(int count, {int pending = 0}) => syncStatusText(
+      const SyncState(connection: SyncConnection.connected, hasSynced: true),
+      pendingUploads: pending,
+      refusedChanges: count,
+    );
+
+    expect(refused(1), 'Up to date · 1 change refused · Review');
+    expect(
+      refused(2, pending: 1),
+      'Uploading · 1 change waiting to upload · 2 changes refused · Review',
+    );
   });
 
   test('hidden rows are reported', () {

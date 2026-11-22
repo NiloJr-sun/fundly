@@ -3150,6 +3150,592 @@ class SyncedMonthlyPlansCompanion
   }
 }
 
+class $SyncRejectionsTable extends SyncRejections
+    with TableInfo<$SyncRejectionsTable, SyncRejectionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncRejectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _batchIdMeta = const VerificationMeta(
+    'batchId',
+  );
+  @override
+  late final GeneratedColumn<String> batchId = GeneratedColumn<String>(
+    'batch_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+    'code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _causedByMeta = const VerificationMeta(
+    'causedBy',
+  );
+  @override
+  late final GeneratedColumn<String> causedBy = GeneratedColumn<String>(
+    'caused_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _operationsMeta = const VerificationMeta(
+    'operations',
+  );
+  @override
+  late final GeneratedColumn<String> operations = GeneratedColumn<String>(
+    'operations',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdIdsMeta = const VerificationMeta(
+    'createdIds',
+  );
+  @override
+  late final GeneratedColumn<String> createdIds = GeneratedColumn<String>(
+    'created_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelsMeta = const VerificationMeta('labels');
+  @override
+  late final GeneratedColumn<String> labels = GeneratedColumn<String>(
+    'labels',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rejectedAtMeta = const VerificationMeta(
+    'rejectedAt',
+  );
+  @override
+  late final GeneratedColumn<String> rejectedAt = GeneratedColumn<String>(
+    'rejected_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    batchId,
+    kind,
+    code,
+    detail,
+    causedBy,
+    operations,
+    createdIds,
+    labels,
+    rejectedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_rejections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncRejectionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('batch_id')) {
+      context.handle(
+        _batchIdMeta,
+        batchId.isAcceptableOrUnknown(data['batch_id']!, _batchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_batchIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    }
+    if (data.containsKey('caused_by')) {
+      context.handle(
+        _causedByMeta,
+        causedBy.isAcceptableOrUnknown(data['caused_by']!, _causedByMeta),
+      );
+    }
+    if (data.containsKey('operations')) {
+      context.handle(
+        _operationsMeta,
+        operations.isAcceptableOrUnknown(data['operations']!, _operationsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_operationsMeta);
+    }
+    if (data.containsKey('created_ids')) {
+      context.handle(
+        _createdIdsMeta,
+        createdIds.isAcceptableOrUnknown(data['created_ids']!, _createdIdsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdIdsMeta);
+    }
+    if (data.containsKey('labels')) {
+      context.handle(
+        _labelsMeta,
+        labels.isAcceptableOrUnknown(data['labels']!, _labelsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelsMeta);
+    }
+    if (data.containsKey('rejected_at')) {
+      context.handle(
+        _rejectedAtMeta,
+        rejectedAt.isAcceptableOrUnknown(data['rejected_at']!, _rejectedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rejectedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {batchId};
+  @override
+  SyncRejectionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncRejectionRow(
+      batchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}batch_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      ),
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      ),
+      causedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}caused_by'],
+      ),
+      operations: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operations'],
+      )!,
+      createdIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_ids'],
+      )!,
+      labels: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}labels'],
+      )!,
+      rejectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rejected_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncRejectionsTable createAlias(String alias) {
+    return $SyncRejectionsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncRejectionRow extends DataClass
+    implements Insertable<SyncRejectionRow> {
+  /// The refused batch's UUID. One entry per batch, so a retry after a crash
+  /// cannot record it twice.
+  final String batchId;
+
+  /// `rejected`, or `dependency_rejected` for a batch that was never sent
+  /// because it relied on a refused one.
+  final String kind;
+
+  /// The server's message code; null for `dependency_rejected`.
+  final String? code;
+
+  /// The server's JSON detail, when it sent one.
+  final String? detail;
+
+  /// For `dependency_rejected`: the batch it relied on.
+  final String? causedBy;
+
+  /// The batch envelope exactly as queued: what the user tried to do.
+  final String operations;
+
+  /// JSON list of the IDs the batch would have created.
+  final String createdIds;
+
+  /// JSON object of record ID → name (or payee) as the device showed them
+  /// when the change was refused, so it can still be described after the
+  /// records return to the server's state.
+  final String labels;
+
+  /// UTC, ISO 8601.
+  final String rejectedAt;
+  const SyncRejectionRow({
+    required this.batchId,
+    required this.kind,
+    this.code,
+    this.detail,
+    this.causedBy,
+    required this.operations,
+    required this.createdIds,
+    required this.labels,
+    required this.rejectedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['batch_id'] = Variable<String>(batchId);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || code != null) {
+      map['code'] = Variable<String>(code);
+    }
+    if (!nullToAbsent || detail != null) {
+      map['detail'] = Variable<String>(detail);
+    }
+    if (!nullToAbsent || causedBy != null) {
+      map['caused_by'] = Variable<String>(causedBy);
+    }
+    map['operations'] = Variable<String>(operations);
+    map['created_ids'] = Variable<String>(createdIds);
+    map['labels'] = Variable<String>(labels);
+    map['rejected_at'] = Variable<String>(rejectedAt);
+    return map;
+  }
+
+  SyncRejectionsCompanion toCompanion(bool nullToAbsent) {
+    return SyncRejectionsCompanion(
+      batchId: Value(batchId),
+      kind: Value(kind),
+      code: code == null && nullToAbsent ? const Value.absent() : Value(code),
+      detail: detail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detail),
+      causedBy: causedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(causedBy),
+      operations: Value(operations),
+      createdIds: Value(createdIds),
+      labels: Value(labels),
+      rejectedAt: Value(rejectedAt),
+    );
+  }
+
+  factory SyncRejectionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncRejectionRow(
+      batchId: serializer.fromJson<String>(json['batchId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      code: serializer.fromJson<String?>(json['code']),
+      detail: serializer.fromJson<String?>(json['detail']),
+      causedBy: serializer.fromJson<String?>(json['causedBy']),
+      operations: serializer.fromJson<String>(json['operations']),
+      createdIds: serializer.fromJson<String>(json['createdIds']),
+      labels: serializer.fromJson<String>(json['labels']),
+      rejectedAt: serializer.fromJson<String>(json['rejectedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'batchId': serializer.toJson<String>(batchId),
+      'kind': serializer.toJson<String>(kind),
+      'code': serializer.toJson<String?>(code),
+      'detail': serializer.toJson<String?>(detail),
+      'causedBy': serializer.toJson<String?>(causedBy),
+      'operations': serializer.toJson<String>(operations),
+      'createdIds': serializer.toJson<String>(createdIds),
+      'labels': serializer.toJson<String>(labels),
+      'rejectedAt': serializer.toJson<String>(rejectedAt),
+    };
+  }
+
+  SyncRejectionRow copyWith({
+    String? batchId,
+    String? kind,
+    Value<String?> code = const Value.absent(),
+    Value<String?> detail = const Value.absent(),
+    Value<String?> causedBy = const Value.absent(),
+    String? operations,
+    String? createdIds,
+    String? labels,
+    String? rejectedAt,
+  }) => SyncRejectionRow(
+    batchId: batchId ?? this.batchId,
+    kind: kind ?? this.kind,
+    code: code.present ? code.value : this.code,
+    detail: detail.present ? detail.value : this.detail,
+    causedBy: causedBy.present ? causedBy.value : this.causedBy,
+    operations: operations ?? this.operations,
+    createdIds: createdIds ?? this.createdIds,
+    labels: labels ?? this.labels,
+    rejectedAt: rejectedAt ?? this.rejectedAt,
+  );
+  SyncRejectionRow copyWithCompanion(SyncRejectionsCompanion data) {
+    return SyncRejectionRow(
+      batchId: data.batchId.present ? data.batchId.value : this.batchId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      code: data.code.present ? data.code.value : this.code,
+      detail: data.detail.present ? data.detail.value : this.detail,
+      causedBy: data.causedBy.present ? data.causedBy.value : this.causedBy,
+      operations: data.operations.present
+          ? data.operations.value
+          : this.operations,
+      createdIds: data.createdIds.present
+          ? data.createdIds.value
+          : this.createdIds,
+      labels: data.labels.present ? data.labels.value : this.labels,
+      rejectedAt: data.rejectedAt.present
+          ? data.rejectedAt.value
+          : this.rejectedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionRow(')
+          ..write('batchId: $batchId, ')
+          ..write('kind: $kind, ')
+          ..write('code: $code, ')
+          ..write('detail: $detail, ')
+          ..write('causedBy: $causedBy, ')
+          ..write('operations: $operations, ')
+          ..write('createdIds: $createdIds, ')
+          ..write('labels: $labels, ')
+          ..write('rejectedAt: $rejectedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    batchId,
+    kind,
+    code,
+    detail,
+    causedBy,
+    operations,
+    createdIds,
+    labels,
+    rejectedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncRejectionRow &&
+          other.batchId == this.batchId &&
+          other.kind == this.kind &&
+          other.code == this.code &&
+          other.detail == this.detail &&
+          other.causedBy == this.causedBy &&
+          other.operations == this.operations &&
+          other.createdIds == this.createdIds &&
+          other.labels == this.labels &&
+          other.rejectedAt == this.rejectedAt);
+}
+
+class SyncRejectionsCompanion extends UpdateCompanion<SyncRejectionRow> {
+  final Value<String> batchId;
+  final Value<String> kind;
+  final Value<String?> code;
+  final Value<String?> detail;
+  final Value<String?> causedBy;
+  final Value<String> operations;
+  final Value<String> createdIds;
+  final Value<String> labels;
+  final Value<String> rejectedAt;
+  final Value<int> rowid;
+  const SyncRejectionsCompanion({
+    this.batchId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.code = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.causedBy = const Value.absent(),
+    this.operations = const Value.absent(),
+    this.createdIds = const Value.absent(),
+    this.labels = const Value.absent(),
+    this.rejectedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncRejectionsCompanion.insert({
+    required String batchId,
+    required String kind,
+    this.code = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.causedBy = const Value.absent(),
+    required String operations,
+    required String createdIds,
+    required String labels,
+    required String rejectedAt,
+    this.rowid = const Value.absent(),
+  }) : batchId = Value(batchId),
+       kind = Value(kind),
+       operations = Value(operations),
+       createdIds = Value(createdIds),
+       labels = Value(labels),
+       rejectedAt = Value(rejectedAt);
+  static Insertable<SyncRejectionRow> custom({
+    Expression<String>? batchId,
+    Expression<String>? kind,
+    Expression<String>? code,
+    Expression<String>? detail,
+    Expression<String>? causedBy,
+    Expression<String>? operations,
+    Expression<String>? createdIds,
+    Expression<String>? labels,
+    Expression<String>? rejectedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (batchId != null) 'batch_id': batchId,
+      if (kind != null) 'kind': kind,
+      if (code != null) 'code': code,
+      if (detail != null) 'detail': detail,
+      if (causedBy != null) 'caused_by': causedBy,
+      if (operations != null) 'operations': operations,
+      if (createdIds != null) 'created_ids': createdIds,
+      if (labels != null) 'labels': labels,
+      if (rejectedAt != null) 'rejected_at': rejectedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncRejectionsCompanion copyWith({
+    Value<String>? batchId,
+    Value<String>? kind,
+    Value<String?>? code,
+    Value<String?>? detail,
+    Value<String?>? causedBy,
+    Value<String>? operations,
+    Value<String>? createdIds,
+    Value<String>? labels,
+    Value<String>? rejectedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncRejectionsCompanion(
+      batchId: batchId ?? this.batchId,
+      kind: kind ?? this.kind,
+      code: code ?? this.code,
+      detail: detail ?? this.detail,
+      causedBy: causedBy ?? this.causedBy,
+      operations: operations ?? this.operations,
+      createdIds: createdIds ?? this.createdIds,
+      labels: labels ?? this.labels,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (batchId.present) {
+      map['batch_id'] = Variable<String>(batchId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    if (causedBy.present) {
+      map['caused_by'] = Variable<String>(causedBy.value);
+    }
+    if (operations.present) {
+      map['operations'] = Variable<String>(operations.value);
+    }
+    if (createdIds.present) {
+      map['created_ids'] = Variable<String>(createdIds.value);
+    }
+    if (labels.present) {
+      map['labels'] = Variable<String>(labels.value);
+    }
+    if (rejectedAt.present) {
+      map['rejected_at'] = Variable<String>(rejectedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncRejectionsCompanion(')
+          ..write('batchId: $batchId, ')
+          ..write('kind: $kind, ')
+          ..write('code: $code, ')
+          ..write('detail: $detail, ')
+          ..write('causedBy: $causedBy, ')
+          ..write('operations: $operations, ')
+          ..write('createdIds: $createdIds, ')
+          ..write('labels: $labels, ')
+          ..write('rejectedAt: $rejectedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SyncedDatabase extends GeneratedDatabase {
   _$SyncedDatabase(QueryExecutor e) : super(e);
   $SyncedDatabaseManager get managers => $SyncedDatabaseManager(this);
@@ -3163,6 +3749,7 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
       $SyncedTransactionsTable(this);
   late final $SyncedMonthlyPlansTable syncedMonthlyPlans =
       $SyncedMonthlyPlansTable(this);
+  late final $SyncRejectionsTable syncRejections = $SyncRejectionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3173,6 +3760,7 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
     syncedCategories,
     syncedTransactions,
     syncedMonthlyPlans,
+    syncRejections,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -4807,6 +5395,307 @@ typedef $$SyncedMonthlyPlansTableProcessedTableManager =
       SyncedMonthlyPlanRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncRejectionsTableCreateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      required String batchId,
+      required String kind,
+      Value<String?> code,
+      Value<String?> detail,
+      Value<String?> causedBy,
+      required String operations,
+      required String createdIds,
+      required String labels,
+      required String rejectedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncRejectionsTableUpdateCompanionBuilder =
+    SyncRejectionsCompanion Function({
+      Value<String> batchId,
+      Value<String> kind,
+      Value<String?> code,
+      Value<String?> detail,
+      Value<String?> causedBy,
+      Value<String> operations,
+      Value<String> createdIds,
+      Value<String> labels,
+      Value<String> rejectedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncRejectionsTableFilterComposer
+    extends Composer<_$SyncedDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get batchId => $composableBuilder(
+    column: $table.batchId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get causedBy => $composableBuilder(
+    column: $table.causedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operations => $composableBuilder(
+    column: $table.operations,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdIds => $composableBuilder(
+    column: $table.createdIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rejectedAt => $composableBuilder(
+    column: $table.rejectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncRejectionsTableOrderingComposer
+    extends Composer<_$SyncedDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get batchId => $composableBuilder(
+    column: $table.batchId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get causedBy => $composableBuilder(
+    column: $table.causedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operations => $composableBuilder(
+    column: $table.operations,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdIds => $composableBuilder(
+    column: $table.createdIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get labels => $composableBuilder(
+    column: $table.labels,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rejectedAt => $composableBuilder(
+    column: $table.rejectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncRejectionsTableAnnotationComposer
+    extends Composer<_$SyncedDatabase, $SyncRejectionsTable> {
+  $$SyncRejectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get batchId =>
+      $composableBuilder(column: $table.batchId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+
+  GeneratedColumn<String> get causedBy =>
+      $composableBuilder(column: $table.causedBy, builder: (column) => column);
+
+  GeneratedColumn<String> get operations => $composableBuilder(
+    column: $table.operations,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdIds => $composableBuilder(
+    column: $table.createdIds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get labels =>
+      $composableBuilder(column: $table.labels, builder: (column) => column);
+
+  GeneratedColumn<String> get rejectedAt => $composableBuilder(
+    column: $table.rejectedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncRejectionsTableTableManager
+    extends
+        RootTableManager<
+          _$SyncedDatabase,
+          $SyncRejectionsTable,
+          SyncRejectionRow,
+          $$SyncRejectionsTableFilterComposer,
+          $$SyncRejectionsTableOrderingComposer,
+          $$SyncRejectionsTableAnnotationComposer,
+          $$SyncRejectionsTableCreateCompanionBuilder,
+          $$SyncRejectionsTableUpdateCompanionBuilder,
+          (
+            SyncRejectionRow,
+            BaseReferences<
+              _$SyncedDatabase,
+              $SyncRejectionsTable,
+              SyncRejectionRow
+            >,
+          ),
+          SyncRejectionRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncRejectionsTableTableManager(
+    _$SyncedDatabase db,
+    $SyncRejectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncRejectionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncRejectionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncRejectionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> batchId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> code = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+                Value<String?> causedBy = const Value.absent(),
+                Value<String> operations = const Value.absent(),
+                Value<String> createdIds = const Value.absent(),
+                Value<String> labels = const Value.absent(),
+                Value<String> rejectedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncRejectionsCompanion(
+                batchId: batchId,
+                kind: kind,
+                code: code,
+                detail: detail,
+                causedBy: causedBy,
+                operations: operations,
+                createdIds: createdIds,
+                labels: labels,
+                rejectedAt: rejectedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String batchId,
+                required String kind,
+                Value<String?> code = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+                Value<String?> causedBy = const Value.absent(),
+                required String operations,
+                required String createdIds,
+                required String labels,
+                required String rejectedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncRejectionsCompanion.insert(
+                batchId: batchId,
+                kind: kind,
+                code: code,
+                detail: detail,
+                causedBy: causedBy,
+                operations: operations,
+                createdIds: createdIds,
+                labels: labels,
+                rejectedAt: rejectedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncRejectionsTable, SyncRejectionRow>(table),
+                  BaseReferences<
+                    _$SyncedDatabase,
+                    $SyncRejectionsTable,
+                    SyncRejectionRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncRejectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SyncedDatabase,
+      $SyncRejectionsTable,
+      SyncRejectionRow,
+      $$SyncRejectionsTableFilterComposer,
+      $$SyncRejectionsTableOrderingComposer,
+      $$SyncRejectionsTableAnnotationComposer,
+      $$SyncRejectionsTableCreateCompanionBuilder,
+      $$SyncRejectionsTableUpdateCompanionBuilder,
+      (
+        SyncRejectionRow,
+        BaseReferences<
+          _$SyncedDatabase,
+          $SyncRejectionsTable,
+          SyncRejectionRow
+        >,
+      ),
+      SyncRejectionRow,
+      PrefetchHooks Function()
+    >;
 
 class $SyncedDatabaseManager {
   final _$SyncedDatabase _db;
@@ -4824,4 +5713,6 @@ class $SyncedDatabaseManager {
       $$SyncedTransactionsTableTableManager(_db, _db.syncedTransactions);
   $$SyncedMonthlyPlansTableTableManager get syncedMonthlyPlans =>
       $$SyncedMonthlyPlansTableTableManager(_db, _db.syncedMonthlyPlans);
+  $$SyncRejectionsTableTableManager get syncRejections =>
+      $$SyncRejectionsTableTableManager(_db, _db.syncRejections);
 }

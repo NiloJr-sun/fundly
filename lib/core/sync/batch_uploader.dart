@@ -2,6 +2,7 @@ import 'package:powersync/powersync.dart' as ps;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'sync_queue.dart';
+import 'sync_rejections.dart';
 
 /// What happened to one upload, following the outcome classes in
 /// supabase/SYNC_PROTOCOL.md.
@@ -11,8 +12,8 @@ enum UploadOutcome {
   /// Network, server availability or session trouble: retry the same batch.
   transient,
 
-  /// A final rejection, such as a revision conflict or a broken rule. Kept in
-  /// the queue until the rejection log arrives (S5.4).
+  /// A final rejection, such as a revision conflict or a broken rule. Logged
+  /// as a refused change and taken off the queue, so later changes continue.
   rejected,
 
   /// The server cannot process the batch at all (for example an operation it
@@ -32,10 +33,9 @@ class SyncUploadException implements Exception {
   final String code;
   final String? detail;
 
-  /// True when retrying alone will not help: the queue waits for S5.4's
-  /// rejection handling or a newer server.
-  bool get isStuck =>
-      outcome == UploadOutcome.rejected || outcome == UploadOutcome.blocked;
+  /// True when retrying alone will not help and the queue waits (a newer
+  /// server or app is needed). A rejection never stays in the queue.
+  bool get isStuck => outcome == UploadOutcome.blocked;
 
   @override
   String toString() => code;
@@ -56,28 +56,59 @@ ApplyBatch supabaseApplyBatch(SupabaseClient client) =>
 
 /// Uploads the oldest queued batch. Returns false when the queue is empty.
 ///
-/// On success the batch leaves the queue. On failure it stays, unchanged, and
-/// a [SyncUploadException] says why; the next attempt resends the same batch
-/// ID and payload, which the server's receipts make safe.
+/// - Accepted: the batch leaves the queue.
+/// - Refused by the server, or relying on a record that a refused batch would
+///   have created (never sent): logged in `sync_rejections` with every synced
+///   row marked for restoring, then the batch leaves the queue so later
+///   changes continue (supabase/SYNC_PROTOCOL.md).
+/// - Temporary or blocked: the batch stays, unchanged, and a
+///   [SyncUploadException] says why; the next attempt resends the same batch
+///   ID and payload, which the server's receipts make safe.
 Future<bool> uploadNextBatch(
   ps.PowerSyncDatabase sync,
-  ApplyBatch apply,
-) async {
+  ApplyBatch apply, {
+  DateTime Function() clock = DateTime.now,
+}) async {
   final transaction = await sync.getNextCrudTransaction();
   if (transaction == null) return false;
   for (final entry in transaction.crud) {
-    if (entry.table != syncBatchType || entry.opData == null) {
+    final envelope = entry.opData;
+    if (entry.table != syncBatchType || envelope == null) {
       throw SyncUploadException(
         UploadOutcome.blocked,
         'unknown_queue_entry',
         detail: entry.table,
       );
     }
-    try {
-      await apply(entry.id, entry.opData!);
-    } on Object catch (error) {
-      throw classifyUploadError(error);
+    final cause = await dependencyOf(sync, entry.id, envelope);
+    if (cause != null) {
+      await recordRejection(
+        sync,
+        batchId: entry.id,
+        envelope: envelope,
+        kind: RejectionKind.dependencyRejected,
+        causedBy: cause,
+        now: clock(),
+      );
+      continue;
     }
+    try {
+      await apply(entry.id, envelope);
+    } on Object catch (error) {
+      final failure = classifyUploadError(error);
+      if (failure.outcome != UploadOutcome.rejected) throw failure;
+      await recordRejection(
+        sync,
+        batchId: entry.id,
+        envelope: envelope,
+        kind: RejectionKind.rejected,
+        code: failure.code,
+        detail: failure.detail,
+        now: clock(),
+      );
+      continue;
+    }
+    await forgetRejection(sync, entry.id);
   }
   await transaction.complete();
   return true;

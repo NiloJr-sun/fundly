@@ -97,12 +97,17 @@ simulator build for anything that changes app code. macOS has no
   sign-in (S4). Domain record IDs are `String` (S5.1); the signed-out database
   keeps integer keys, converted only in `core/database/record_id.dart`.
   Signed in, records come from a per-user synchronized store
-  (`core/sync/`, PowerSync downloads into Drift raw tables, schema v1). Each
+  (`core/sync/`, PowerSync downloads into Drift raw tables, schema v2). Each
   synced repository write is one local transaction: optimistic rows (revision
   +1, mirroring the server, including its side effects) plus one queued
   protocol-1 batch in PowerSync's `powersync_crud` (`SyncQueue.writeAndQueue`).
-  `uploadNextBatch` sends batches to `fundly_apply_operations`; a refused
-  batch stays queued ("Sync stuck") until S5.4. Export and restore stay
+  `uploadNextBatch` sends batches to `fundly_apply_operations`. A refused
+  batch (or one relying on a refused create) goes to the local-only
+  `sync_rejections` log, every synced row is marked in `ps_updated_rows` so
+  the next download restores server state, and the queue moves on (S5.4,
+  `core/sync/sync_rejections.dart`, "Refused changes" screen from the
+  Profile status line). Only a blocked batch stays queued ("Sync stuck").
+  Export and restore stay
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run
   `python3 supabase/tests/client_contract_test.py` (local Supabase).
@@ -119,7 +124,7 @@ code in `lib/core` and `lib/app`. Tests mirror `lib/` under `test/`.
 | Money, parsing, formatting | `core/money/` (`Money` = integer minor units), `core/formatting/` (`MoneyFormatter`, `DateFormatter`) |
 | Dates | `core/time/` (`CalendarDate`, `CalendarMonth`, `DateRange`) |
 | Database, migrations | `core/database/app_database.dart` (`schemaVersion`, `stepByStep` migrations), snapshots in `drift_schemas/`, tests in `test/drift/` |
-| Synced store | `core/sync/` (`SyncedDatabase` raw tables, `PowerSyncStore`, `syncedStoreProvider`, `SyncQueue`, `uploadNextBatch`); `Synced…Repository` beside each local repository; snapshots in `drift_schemas/synced_database/` |
+| Synced store | `core/sync/` (`SyncedDatabase` raw tables, `PowerSyncStore`, `syncedStoreProvider`, `SyncQueue`, `uploadNextBatch`, `sync_rejections.dart`); `Synced…Repository` beside each local repository; snapshots in `drift_schemas/synced_database/` |
 | Balances | `accounts/domain/account_balance.dart` (`balancesFor`, `totalsByType`, `totalBalance`) |
 | Account grouping | `accounts/domain/account_groups.dart` (`groupAccounts`) |
 | Transaction rules | `transactions/domain/transaction_rules.dart` (`validateTransaction`, allowed account types per transaction type) |

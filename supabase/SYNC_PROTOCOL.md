@@ -75,13 +75,36 @@ rejection. Unrelated batches upload normally.
 optimistic rows and one queued batch (PowerSync `powersync_crud`, type
 `fundly_batch`, id = batch UUID, data = the protocol-1 envelope) in a single
 local transaction. The connector uploads the oldest batch first and resends
-the same UUID and payload after a transient failure. Until S5.4, a rejected
-or blocked batch stays queued and the app shows "Sync stuck".
+the same UUID and payload after a transient failure. A blocked batch stays
+queued and the app shows "Sync stuck".
 
-**Open proof for S5.** After a rejection, the next complete download must return
-local rows to server state, including removing an optimistic insert the server
-never accepted. S1 proved retention and retry, not this rollback for raw tables.
-S5 must prove it or add an explicit local revert.
+**Refused changes (implemented in S5.4).** A final rejection, and a batch
+that refers to an ID a logged rejected batch would have created
+(`dependency_rejected`, never sent), is written to the local-only
+`sync_rejections` table, then the queue item completes. The entry keeps the
+batch envelope, code, detail, the would-be created IDs and the names of the
+records it mentions. Writing the same batch ID twice keeps one entry; a batch
+accepted on a later attempt removes its entry. The app lists entries on a
+"Refused changes" screen to redo by hand or dismiss.
+
+**Restoring server state (proof result, S5.4).** Tested on the real
+PowerSync SDK 2.6.2 by feeding checkpoints through its core extension
+(`test/core/sync/batch_uploader_test.dart`):
+- Optimistic raw-table rows PowerSync was not told about survive every
+  download. On its own, the next download does **not** undo a refusal.
+- Rows listed in `ps_updated_rows` are put back to the downloaded state by
+  the next applied checkpoint: a refused insert is removed, a refused edit is
+  undone and a refused delete comes back.
+- PowerSync applies a checkpoint only with an empty queue, and after uploads
+  only once it includes the write checkpoint the SDK requests when the queue
+  empties. It requests one whether the uploads were accepted or refused.
+
+So each logged rejection also marks every row of the five tables and every
+row in `ps_oplog` (which covers locally deleted rows) in `ps_updated_rows`, in
+the same local transaction. Once the queue is empty, the next checkpoint
+restores the device to the server's state. `ps_updated_rows` is PowerSync's
+internal table; the SDK version is pinned and the test above fails if that
+behaviour changes.
 
 ## Verification
 
@@ -90,6 +113,7 @@ npx --yes supabase@3.2.0 db reset --yes
 npx --yes supabase@3.2.0 test db
 npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
 python3 supabase/tests/concurrency/sync_protocol_test.py
+python3 supabase/tests/client_contract_test.py   # app batches and refusals
 ```
 
 The runner covers a delete committed before a waiting edit (`record_deleted`),

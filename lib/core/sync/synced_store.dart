@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/domain/auth_identity.dart';
+import 'sync_rejections.dart';
 import 'synced_database.dart';
 
 /// How the synchronized store's connection is doing, for the status line.
@@ -18,8 +19,10 @@ enum SyncConnection {
   /// Connecting or downloading failed; PowerSync keeps retrying.
   failed,
 
-  /// The server refused the oldest queued change, so later changes wait
-  /// (S5.4 adds the way past it). Nothing is discarded.
+  /// The server cannot process the oldest queued change at all (for example,
+  /// an operation it does not know yet), so later changes wait. Nothing is
+  /// discarded. Changes the server refuses do not get stuck: they move to
+  /// the refused-changes log (S5.4).
   stuck,
 }
 
@@ -40,7 +43,7 @@ class SyncState {
   final DateTime? lastSyncedAt;
 
   /// The last connection or download error ("failed"), or the code the
-  /// server refused a change with ("stuck").
+  /// server could not process a change with ("stuck").
   final String? error;
 
   /// Why the last upload attempt failed when PowerSync just retries it (for
@@ -125,4 +128,11 @@ final pendingUploadCountProvider = StreamProvider<int>((ref) {
   final store = ref.watch(syncedStoreProvider);
   if (store == null) return Stream.value(0);
   return store.watchPendingUploads();
+});
+
+/// Changes the server refused, newest first; empty while signed out.
+final refusedChangesProvider = StreamProvider<List<SyncRejection>>((ref) {
+  final store = ref.watch(syncedStoreProvider);
+  if (store == null) return Stream.value(const []);
+  return store.database.watchRejections();
 });

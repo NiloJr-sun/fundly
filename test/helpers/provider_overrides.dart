@@ -65,6 +65,7 @@ List<Override> fakeAccounts(
     // Signed-in widget tests get an empty in-memory synchronized store.
     syncedStoreOpenerProvider.overrideWithValue(FakeSyncedStore.new),
     unsafeSyncedRowCountProvider.overrideWith((ref) => Stream.value(0)),
+    refusedChangesProvider.overrideWith((ref) => Stream.value(const [])),
     activeAccountsProvider.overrideWith((ref) => Stream.value(accounts)),
     archivedAccountsProvider.overrideWith((ref) => Stream.value(archived)),
     allAccountsProvider.overrideWith((ref) => Stream.value(everyAccount)),

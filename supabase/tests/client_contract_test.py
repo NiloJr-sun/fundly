@@ -1,16 +1,19 @@
-"""S5.3 client contract: the app's queued batches on the real server; local only.
+"""S5.3/S5.4 client contract: the app's queued batches on the real server; local only.
 
 Run from the repository root: python3 supabase/tests/client_contract_test.py
 Runs test/core/sync/client_contract_test.dart, which performs every kind of
 synchronized write offline and records the queued batches and the rows the
 device shows. Every batch is then applied in order to the disposable local
 database as a new user, the first batch is retried (idempotent), and the
-server's rows must equal the device's, revisions included. Never reads .env
-or hosted credentials.
+server's rows must equal the device's, revisions included. Then a stale edit
+and an edit of a deleted record are replayed as new batches: the refusals must
+carry the SQLSTATE, message and JSON detail the app's uploader classifies and
+logs (S5.4). Never reads .env or hosted credentials.
 """
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -46,6 +49,40 @@ def apply(actor, batch):
                    f'{literal(envelope)}::jsonb); COMMIT;')
 
 
+def refusal(actor, item):
+    """Sends [item] as a new batch; returns (SQLSTATE, message, detail)."""
+    envelope = json.dumps({'version': 1, 'items': [item]})
+    try:
+        execute('\\set VERBOSITY verbose\n' + authenticated(actor, 'fundly_client_contract') +
+                f'SELECT public.fundly_apply_operations({literal(str(uuid.uuid4()))}::uuid,'
+                f'{literal(envelope)}::jsonb); COMMIT;')
+    except AssertionError as error:
+        text = str(error)
+        state, message = re.search(r'ERROR:\s+(\w+): (\w+)', text).groups()
+        detail = re.search(r'DETAIL:\s+(\{.*\})', text)
+        return state, message, json.loads(detail.group(1)) if detail else None
+    raise AssertionError(f'{item["operation"]} was accepted')
+
+
+def check_refusals(actor, batches):
+    items = [item for batch in batches for item in batch['envelope']['items']]
+    deleted = {item['id'] for item in items if item['operation'].endswith('.delete')}
+    stale = next(item for item in items if item['operation'] == 'transaction.update'
+                 and item['id'] not in deleted)
+    state, message, detail = refusal(actor, stale)
+    assert (state, message) == ('P0001', 'revision_conflict'), (state, message)
+    assert detail['index'] == 0 and detail['operation'] == 'transaction.update', detail
+    assert int(detail['current_revision']) > int(stale['expected_revision']), detail
+    print('PASS: a stale edit is refused as revision_conflict with current_revision', flush=True)
+    deleted_transaction = next(item['id'] for item in items
+                               if item['operation'] == 'transaction.delete')
+    gone = {**stale, 'id': deleted_transaction, 'expected_revision': '1'}
+    state, message, detail = refusal(actor, gone)
+    assert (state, message) == ('P0001', 'record_deleted'), (state, message)
+    assert detail['deleted_id'] == gone['id'] and detail['entity'] == 'transactions', detail
+    print('PASS: an edit of a deleted record is refused as record_deleted', flush=True)
+
+
 def normalized(rows, columns):
     return sorted(({key: int(row[key]) if isinstance(row[key], bool) else row[key]
                     for key in columns} for row in rows), key=lambda row: row['id'])
@@ -71,6 +108,7 @@ def main():
                 f'WHERE owner_id={literal(actor)}) t;'))
             assert normalized(server, keys) == normalized(data['state'][table], keys), table
         print('PASS: the server rows equal the rows the device showed, revisions included', flush=True)
+        check_refusals(actor, data['batches'])
     finally:
         execute(f'BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.transactions WHERE owner_id={literal(actor)}; '
@@ -80,7 +118,7 @@ def main():
                 f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
-    print('All 3 client-contract checks passed; disposable fixtures removed.', flush=True)
+    print('All 5 client-contract checks passed; disposable fixtures removed.', flush=True)
 
 
 if __name__ == '__main__':
