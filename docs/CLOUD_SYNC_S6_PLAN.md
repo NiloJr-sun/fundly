@@ -2,10 +2,11 @@
 
 Date: 2026-11-22
 
-Status: **proposal, not approved.** Nothing here starts until the product
-owner approves the decisions below. S6 is split into three sub-slices; each
-is planned in more detail, implemented, verified and reviewed on its own, and
-the agent stops after each.
+Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). The
+S6.1 detailed plan below is a proposal awaiting approval; nothing is
+implemented. S6 is split into three sub-slices; each is planned in more
+detail, implemented, verified and reviewed on its own, and the agent stops
+after each.
 
 ## Goal
 
@@ -155,7 +156,132 @@ A new RPC, separate from `fundly_apply_operations`:
 | S6.2 | App: snapshot and UUID mapping, preview, the three choices, pending-upload guard, verification after download, "copied to" marker; unit and widget tests; iOS simulator and Chrome checks against a test account. | Owner's phone data copied and verified |
 | S6.3 | Format 7 export (both modes), signed-in restore via import, format 7 restore signed out; tests for formats 1–7 in every direction. | Every format restores under the approved rules |
 
+#### S6.1 detailed plan (proposal, not approved)
+
+Server only. No app, local schema (v12) or backup format changes. It adds one
+migration, so it changes the **server schema**: a new backend-only receipts
+table and a new RPC. Existing tables, constraints and `fundly_apply_operations`
+are unchanged.
+
+**Migration** `supabase/migrations/20261122020000_dataset_import.sql`:
+
+- `public.fundly_import_receipts(owner_id, import_id, request_fingerprint,
+  mode, result, created_at)`, primary key `(owner_id, import_id)`, RLS on, no
+  grants (like `fundly_write_receipts`). It is a separate table because batch
+  receipts are pinned to protocol 1 and hold per-item results.
+- `public.fundly_import_dataset(import_id uuid, request jsonb)`, security
+  definer, executable by `authenticated` only. Mode, expected counts and
+  dataset travel in one versioned body, so one fingerprint covers all of them:
+
+  ```json
+  { "version": 1, "mode": "into_empty" | "replace",
+    "expected": { "custom_account_types": 0, "accounts": 0, "categories": 9,
+                  "transactions": 0, "monthly_plans": 0 },
+    "dataset": { "custom_account_types": [...], "accounts": [...],
+                 "categories": [...], "transactions": [...], "monthly_plans": [...] } }
+  ```
+
+  Records use the download wire shape (snake_case, money and revisions as
+  decimal strings, dates `YYYY-MM-DD` with year 0000 mapped as today, UTC
+  timestamps), without `owner_id` or `revision`. Missing timestamps are
+  set to the import time; categories have none in backups today.
+
+**Order inside the function** (one transaction; any failure changes nothing):
+
+1. Authentication, then size (8 MB) and shape: known keys only, five arrays,
+   `version` 1.
+2. Fingerprint; take the **same per-user advisory lock as batches**, so an
+   import and any device's uploads never interleave.
+3. Receipt lookup: same `import_id` and body returns the stored result; a
+   different body is refused with `import_key_reused`.
+4. Mode check against the current rows:
+   - `into_empty`: refused with `dataset_not_empty` unless the owner has no
+     custom types, accounts, transactions or plans, and every category is an
+     untouched default (default name and kind, revision 1, no flags, no link).
+   - `replace`: current counts must equal `expected`, otherwise
+     `dataset_changed`, with the current counts in the detail so the app can
+     show them again.
+5. Load the five arrays into temporary tables (`on commit drop`) with typed
+   parsing that reuses the existing helpers (`json_uuid`, `iso_date`,
+   `trim_text`, `utf16_length`).
+6. **Validate the final state**, set-based, failing on the first broken rule
+   with `invalid_import` and a detail of `{table, index, field, rule}`:
+   - IDs: UUIDs, unique within the import, not used by any existing row of
+     any owner and not retired (otherwise `record_id_unavailable`, which never
+     says whose ID it was).
+   - Names: trimmed, 1–40 UTF-16 units, unique per table ignoring ASCII case;
+     custom type names are not built-in names.
+   - Accounts: the custom type exists and has the account's base type; the
+     opening balance has the right sign; PHP only; at most one budget account,
+     and it is an active Savings/Cash account.
+   - Categories: plan group and plan flags follow the table rules; a linked
+     row links a liability account in the import, is a Liability-group
+     spending category, matches its account's archive status, and is the only
+     row for that account; every **active** Credit or Loan account has one.
+   - Transactions: the shape rules per type; the allowed account types per
+     type (Spending from Savings/Cash or Credit, Inflow to Savings/Cash or
+     Credit, Transfer from Savings/Cash to Savings/Cash or Loan, Card Payment
+     from Savings/Cash to Credit); no self-transfers; category kind matches
+     (Spending needs a spending category, an Inflow category is optional and
+     must be an inflow category); linked debt rows are not used as
+     categories; positive amounts; payee and note limits. Archived accounts
+     and categories may hold history, as in a local restore.
+   - Plans: spending categories only, not on a plan-deleted row, one per
+     category per month, non-negative amounts.
+7. Delete the owner's current rows (plans, transactions, categories,
+   accounts, custom types). The existing trigger writes a tombstone for each,
+   so other devices remove them at their next download.
+8. Insert the imported rows in reference order, with timestamps and flags as
+   sent; the revision trigger sets revision 1.
+9. Store the receipt and return `{version, import_id, mode, counts}`.
+
+The table constraints and foreign keys stay as a second check. A constraint
+error that slips past step 6 is reported as `invalid_import` and is a bug to
+fix in step 6.
+
+**Documentation:** `supabase/IMPORT_API.md` (request, response, errors and
+the client retry rules: resend the same `import_id` and body after a lost
+response, or start again with a new one after `dataset_changed`), and the
+file list in `supabase/README.md`.
+
+**Tests:**
+
+- pgTAP `supabase/tests/database/dataset_import_test.sql`:
+  - authentication, shape and size refusals;
+  - every step 6 rule, failing one fixture each;
+  - `into_empty` accepted with untouched defaults and refused after a
+    renamed default, an account or a plan;
+  - `replace` with matching and with stale `expected`;
+  - tombstones for every replaced row;
+  - retired IDs and another owner's IDs refused without revealing the owner;
+  - timestamps, flags, budget account and linked rows preserved, revision 1;
+  - a retry returns the stored result, and a changed body is refused;
+  - other owners' rows untouched;
+  - year 0000 dates.
+- Concurrency, `supabase/tests/concurrency/dataset_import_test.py`, using
+  the existing session harness:
+  - an import racing a batch: whichever runs second sees the first;
+  - two imports with different IDs: the second gets `dataset_changed`;
+  - the same `import_id` sent twice at once imports once.
+- **Timing check:** a script that builds 10,000 transactions (about 4 MB)
+  across 20 accounts with plans and times the call locally under
+  `statement_timeout = 8s`, which is Supabase's default for `authenticated`.
+
+**Open risk and fallback:** if the timing check takes too long or the 8 MB
+body is too large for the hosted API gateway, the fallback keeps the import
+atomic. The app would upload the dataset in chunks to a backend staging
+table under the `import_id`, then make one short commit call that runs steps
+3–9. That changes the client contract, so it would come back for approval
+rather than be built silently.
+
+Done when: the migration applies to a fresh local stack (`db reset`), all
+pgTAP and concurrency tests pass, `db lint` is clean, and the timing result is
+recorded in this document. Hosted deployment is not part of S6.1. It happens
+with the owner's go-ahead before S6.2 uses it.
+
 ## Decisions
+
+Approved 2026-11-22: 1–7, each as recommended.
 
 1. **Import mechanism:** a dedicated atomic server import that checks the
    final state (recommended). Alternative: replay through the existing
