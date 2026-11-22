@@ -315,7 +315,11 @@ them:
 
 -   Bank account synchronization or open banking.
 -   Automatic transaction imports.
--   Multi-user collaboration or household sharing.
+-   Multi-user collaboration or household sharing. (Approved 2026-11-22
+    as a later scope: shared spaces with collaborators, per
+    [docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md).
+    Work starts after cloud sync S6 and S7, one slice at a time, each
+    planned and approved before implementation.)
 -   Cloud sync and account registration.
 -   Recurring transactions and scheduled payments.
 -   Investment and net-worth tracking.
@@ -1027,5 +1031,37 @@ suggestions as approved decisions.
                           is still allowed. Backup
                           format 6 adds the flag;
                           formats 1–5 use false.
+
+  2026-11-22              Shared spaces (proposal Approved, not
+                          decisions 1–10):        started
+                          signed-in users keep
+                          separate "spaces" (e.g.
+                          Personal,
+                          Household), each with
+                          its own accounts,
+                          categories, plans and
+                          budget account; rules
+                          unchanged inside each.
+                          Private spaces first
+                          (C0–C2), sharing after
+                          (C3–C4), all after S6
+                          and S7. Roles: owner,
+                          editor, viewer.
+                          Email-bound invite link
+                          shared by the owner; no
+                          app email. One device
+                          store per space. Store
+                          and show who added or
+                          changed a record. No
+                          cross-space transfers.
+                          Leaving/removal removes
+                          the space from that
+                          member's devices; their
+                          unsent changes go to
+                          Refused changes. Only an
+                          owner deletes a space,
+                          after typing its name.
+                          Existing data moves to
+                          a Personal space.
 
   -----------------------------------------------------------------------

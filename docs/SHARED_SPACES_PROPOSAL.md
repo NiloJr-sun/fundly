@@ -2,10 +2,10 @@
 
 Date: 2026-11-22
 
-Status: **proposal, not approved.** Multi-user collaboration and household
-sharing are out of scope in CLAUDE.md §6. Nothing here starts until the
-product owner approves the scope change and the decisions below; CLAUDE.md
-§6 and §11 are updated only then.
+Status: **approved 2026-11-22** (scope change and Decisions 1–10, all as
+recommended). Recorded in CLAUDE.md §6 and §11. Not started: per Decision
+10, C0 begins after cloud sync S6 and S7. Each slice is planned in detail
+and approved before implementation.
 
 ## Goal
 
@@ -132,7 +132,9 @@ on its own, and the agent stops after each one.
 
 Recommended order: finish cloud sync S6 and S7 first, then C0–C2, then C3–C4.
 
-## Decisions to make before C0
+## Decisions
+
+Approved 2026-11-22: 1–10, each as recommended.
 
 1. **User-facing name.** "Space" (recommended: neutral, and avoids clashing
    with the *budget account* and the Profile tab). Alternatives: "Budget",
