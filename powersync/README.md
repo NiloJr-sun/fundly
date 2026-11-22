@@ -28,7 +28,7 @@ or replication password into this repository, a config file or a chat.
 | PowerSync publication name | `powersync` (confirm in the PowerSync dashboard) |
 | Google OAuth web client ID | `655206339590-4l4kulvsr3ptsmftiiu9eqlna6pbl1en.apps.googleusercontent.com` |
 | Google OAuth iOS client ID | `655206339590-gv8k3be2tshp60ucmn5s1qa0c7e86b8l.apps.googleusercontent.com` (bundle ID `com.nilojr.fundly`) |
-| Supabase allowed redirect URLs | `http://localhost:7358/**` only, until S7 picks the web origin |
+| Supabase allowed redirect URLs | `https://fundly-budget.vercel.app/**` (production web, S7 Decision 2) and `http://localhost:7358/**` (development); owner to confirm both in the dashboard (S7.1) |
 
 The project URL, publishable key and PowerSync URL used by the checks stay in
 the ignored `tool/sync_probe/config.local.json`.
@@ -186,3 +186,9 @@ confirms it (see `docs/CLOUD_SYNC_S5_PLAN.md`, S5.5).
 | 2026-11-22 | Owner-approved `migration repair --status applied 20261122010000 --remote`, then dry run, then `db push --remote` | History row added without re-running S5.3; the dry run listed only S6.1; S6.1 applied. A second dry run reported "Remote database is up to date"; history now ends `…050000, 20261122010000, 20261122020000` |
 | 2026-11-22 | `db lint --remote --schema public,fundly_private --fail-on warning` and `db advisors --remote` after S6.1 | No schema errors. Advisors: the known `fundly_apply_operations` and leaked-password warnings, plus `fundly_import_dataset` as an `authenticated` SECURITY DEFINER function: intended, it imports only into the caller's own dataset |
 | 2026-11-22 | Read-only state check after S6.1 | `fundly_import_dataset` is SECURITY DEFINER, executable by `authenticated` only; `fundly_import_receipts` has RLS on and no client grants; `powersync` still lists exactly the five Fundly tables |
+| 2026-11-22 | S7.1: `db push --remote --dry-run` | "Remote database is up to date"; no migrations, seeds or roles |
+| 2026-11-22 | S7.1: `db lint --remote --schema public,fundly_private --fail-on warning` | No schema errors found |
+| 2026-11-22 | S7.1: `db advisors --remote` | The 3 known warnings only: `fundly_apply_operations` and `fundly_import_dataset` are SECURITY DEFINER functions executable by `authenticated` (intended), and leaked password protection is off (accepted, S7 Decision 7: Google sign-in only). No performance findings |
+| 2026-11-22 | S7.1: read-only publication check | `powersync` lists exactly `accounts, categories, custom_account_types, monthly_plans, transactions`; not FOR ALL TABLES |
+| 2026-11-22 | S7.1: read-only size check | Database 12 MB of the 500 MB free limit; 4 Auth users; 0 transactions; 54 tombstones |
+| 2026-11-22 | S7.1: hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Not run yet:** the test users' credentials were not in the agent's shell. Owner to export them (step 5) and ask the agent to run both |

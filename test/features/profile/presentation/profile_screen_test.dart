@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/app/app_version.dart';
 import 'package:fundly/core/time/clock_provider.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
@@ -73,6 +74,19 @@ void main() {
     expect(find.text('Up to date'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Continue with Google'), findsNothing);
+  });
+
+  testWidgets('shows the app version at the bottom, signed in or out', (
+    tester,
+  ) async {
+    for (final auth in [
+      FakeAuthRepository(initial: userA),
+      FakeAuthRepository(),
+    ]) {
+      await pumpProfile(tester, auth: auth);
+      await tester.scrollUntilVisible(find.text(appVersionText), 200);
+      expect(find.text(appVersionText), findsOneWidget);
+    }
   });
 
   testWidgets('the card greets the user by first name for the time of day', (

@@ -49,7 +49,7 @@ best-effort.
 flutter pub get
 dart format .                     # must leave no changes to review
 flutter analyze                   # must report "No issues found!"
-flutter test                      # 1102 tests passing as of 2026-11-22
+flutter test                      # 1104 tests passing as of 2026-11-22
 flutter build ios --simulator --debug
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 xcrun simctl launch booted com.nilojr.fundly
@@ -59,6 +59,11 @@ dart run build_runner build --delete-conflicting-outputs
 dart run drift_dev make-migrations   # after bumping schemaVersion
 dart fix --apply --code=directives_ordering   # fixes import order lints
 ```
+
+The app version lives in `pubspec.yaml` and `lib/app/app_version.dart`
+(shown on Profile); a test fails unless both match, so bump them together.
+The web build on Vercel is configured in `vercel.json`
+(`tool/vercel_build.sh`).
 
 Run format, analyze and the full test suite for every task, and the iOS
 simulator build for anything that changes app code. macOS has no

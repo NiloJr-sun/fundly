@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/app_version.dart';
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../auth/data/auth_repository.dart';
@@ -84,6 +85,8 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ],
+          const SizedBox(height: Spacing.lg),
+          const _VersionLine(),
         ],
       ),
     );
@@ -125,6 +128,24 @@ class _CopiedNote extends StatelessWidget {
       child: Text(
         "This device's data was copied to ${copy.email} on "
         '${DateFormatter.localDate(copy.copiedAt)}.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+/// The app's version and build, quietly at the bottom of Profile.
+class _VersionLine extends StatelessWidget {
+  const _VersionLine();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Text(
+        appVersionText,
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
         ),

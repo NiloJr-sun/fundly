@@ -1,9 +1,9 @@
-# Cloud sync S7: deployment and release verification (proposal)
+# Cloud sync S7: deployment and release verification
 
 Date: 2026-11-22
 
-Status: **proposal, not approved.** Nothing here starts until the product
-owner approves the decisions below. S7 is split into three sub-slices; each
+Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S7.1
+is in progress. S7 is split into three sub-slices; each
 is planned in detail, done, verified and reviewed on its own, and the agent
 stops after each.
 
@@ -47,6 +47,57 @@ The only app change, in S7.1, is showing the version (Decision 5).
 ## Sub-slices
 
 ### S7.1: Release readiness (agent, with owner dashboard steps)
+
+**Result (2026-11-22): done by the agent. Four owner steps remain, listed at
+the end.**
+
+| Check | Result |
+|---|---|
+| Hosted migrations | `db push --remote --dry-run`: up to date |
+| Hosted lint | No schema errors |
+| Hosted advisors | The 3 known warnings only (accepted; Decision 7) |
+| Publication | Exactly the five Fundly tables, not FOR ALL TABLES |
+| Hosted size | 12 MB database, 4 Auth users |
+| Isolation checks on hosted | **Not run:** test user credentials not available in the agent's shell |
+| `vercel.json` | Committed: build command, `build/web` output, `.wasm` type, `no-cache` on the start-up, main and worker files. The live site already sends `public, max-age=0, must-revalidate` and `application/wasm`, so behaviour is unchanged. The file keeps the settings in the repository. Flutter's file names carry no content hash, so nothing gets long-term caching |
+| Version | `1.1.0+2`; Profile shows "Version 1.1.0 (2)"; a test keeps `lib/app/app_version.dart` equal to `pubspec.yaml` |
+| Builds | `flutter build ios --release` (25.9 MB) and `flutter build web --release`, both with `config/cloud.json` |
+| Local suite | Format clean, analyze clean, 1,104 Flutter tests, 789 pgTAP assertions, local lint clean, 29 concurrency checks, 14 contract checks, 10,000 transactions imported in 0.60 s |
+
+**Free-tier limits**, read from the providers' pages on 2026-11-22:
+
+| Service | Limit | Fundly now | What it means |
+|---|---|---|---|
+| Supabase database | 500 MB per project | 12 MB | Years of personal use |
+| Supabase egress | 5 GB a month | Small | Each full download is under 1 MB today |
+| Supabase monthly active users | 50,000 | 4 | Not a constraint |
+| Supabase inactivity | Free projects **pause after 1 week of inactivity**. A paused project can be restored for 90 days | — | **Can stop sync.** Daily use keeps it active. The runbook (S7.3) covers restoring it |
+| PowerSync data synced | 2 GB a month | Small | Not a constraint |
+| PowerSync hosted data | 500 MB | Small | Not a constraint |
+| PowerSync peak concurrent clients | 50 | 2–3 devices | Not a constraint |
+| PowerSync inactivity | Free instances are **deactivated after about 1 week without deploys or client connections**; the pricing page also mentions 2 weeks. A restarted instance reprocesses from scratch and every device downloads again | — | **Can stop sync.** Device data keeps working; the runbook covers the restart |
+| PowerSync logs and alerts | Logs kept 24 hours; one email alert rule; no usage alerts | — | Check soon after a problem |
+
+Sources: [Supabase pricing](https://supabase.com/pricing),
+[Supabase billing](https://supabase.com/docs/guides/platform/billing-on-supabase),
+[PowerSync pricing](https://powersync.com/pricing),
+[PowerSync usage and billing](https://docs.powersync.com/resources/usage-and-billing).
+Some figures differ between pages; the runbook uses the strictest one.
+
+**Owner steps still open:**
+
+1. Export the two test users' credentials (powersync/README.md step 5) and
+   ask the agent to run the hosted isolation checks.
+2. In the PowerSync dashboard, confirm the deployed Sync Streams match
+   `powersync/sync-config.yaml`.
+3. In Supabase → Authentication → URL Configuration, confirm the redirect
+   URLs list `https://fundly-budget.vercel.app/**` and
+   `http://localhost:7358/**`.
+4. After pushing (which deploys to Vercel through Git), check the Vercel
+   build log shows `bash tool/vercel_build.sh`, and that the web app still
+   signs in and syncs. The agent can then re-read the live headers.
+
+**Plan as approved:**
 
 1. **Hosted server check, read only.** The agent runs these and records the
    results in powersync/README.md:
@@ -177,6 +228,8 @@ S7.2 results. Cloud sync is then released, and shared spaces (C0) can be
 planned.
 
 ## Decisions for the product owner
+
+Approved 2026-11-22: 1–7, each as recommended.
 
 1. **Distribution:** personal use. iOS is installed straight from the Mac
    with `devicectl`, and the web app is on Vercel (recommended).
