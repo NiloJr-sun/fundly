@@ -480,6 +480,139 @@ its tests stay the same.
    (recommended). Alternative: offered but optional.
 4. **Typed phrase for Replace:** "replace my data" (recommended).
 
+#### S6.3 detailed plan (proposal, not approved)
+
+S6.3 has no server change and no database schema change. It changes the
+**backup format** in one way: signed-out Export now writes format 7
+(Decision 6, approved). Format 7 export while signed in already exists from
+the reset work (B1).
+
+**1. Restoring format 7 while signed out.**
+
+- The importer reads format 7 by first turning its string IDs into local
+  integers, then running the existing format 6 checks unchanged. Every rule
+  a format 6 restore checks applies to format 7 too.
+- Within each table, every string ID gets a new integer in file order, and
+  every reference is rewritten through that map.
+- A reference to an ID that is not in the file gets an integer no record
+  has. The existing checks then refuse it as "no such account" or "no such
+  category".
+- A format 7 ID must be a non-empty text value of at most 64 characters,
+  unique within its table (Decision S6.3-1). That covers the UUIDs of a
+  signed-in export and the decimal strings of a signed-out one. A number
+  where text is expected is refused.
+- The "Backups made while signed in can be restored in a later update"
+  refusal (`signedInFormat`) is removed, and so is the matching message
+  after a signed-in export.
+
+**2. Signed-out Export writes format 7.**
+
+- `LocalBackupSource` reports format 7 and writes its integer IDs as
+  decimal strings (`"12"`). Nothing else in the file changes.
+- Older app versions cannot restore these files; they say the backup is
+  from a newer version. Formats 1–6 still restore everywhere.
+
+**3. Restoring while signed in, through the copy flow.**
+
+- Profile → Restore from backup, while signed in, picks a file. Any format
+  1–7 is parsed and checked locally first. It then opens the S6.2 screen
+  with the backup as the source instead of this device's data:
+  - the screen is titled "Restore a backup to your account";
+  - it shows the backup's counts and date next to the account's counts;
+  - the account's state decides the step: **Restore into my account**
+    (`into_empty`) or **Replace my account's data** (`replace`, with a
+    checkpoint export and "replace my data" typed);
+  - after the download, every record is compared field by field, as in
+    S6.2;
+  - the same guards apply: connected, a full download finished, nothing
+    waiting to upload, not stuck, and at most 8 MiB;
+  - every record gets a fresh UUID (Decision 5), even from a format 7 file
+    of the same account. Its old IDs are retired on the server after a
+    replace.
+- A restore needs the backup's records in the shape the copy uses.
+  `BackupSnapshot` gains a `records` view: the parsed rows as
+  `BackupRecords`, including the liability rows the importer adds for
+  formats 1–3. Defaults the file does not hold, such as category
+  timestamps, are left to the server.
+- **If the download is late** (Decision S6.3-2): the screen says "Restored.
+  This device will show it after it syncs." The check is not kept for a
+  later visit, because the file is not kept. The account's counts show
+  whether the restore landed.
+- A restore does not set the "copied to" marker; that is only for this
+  device's signed-out data (Decision S6.3-3).
+
+**Shared code:** `CopyDeviceDataScreen` takes a source, either this device
+or a backup file, which supplies the title, the "From" label, the counts and
+the records. The copier gets the records from the source rather than
+reading the device itself. Its guards, send, wait and check do not change.
+
+**Files likely to change:**
+
+- `backup_importer.dart`: format 7 ID mapping, `BackupSnapshot.records`,
+  and removing `signedInFormat`.
+- `backup_source.dart`: `LocalBackupSource` becomes format 7 with string
+  IDs.
+- `backup_exporter.dart`: format constants and docs.
+- `device_data_copier.dart` and `copy_device_data_screen.dart`: the source.
+- `restore_backup.dart`: the signed-in path.
+- `signed_in_backup.dart` and `export_backup.dart`: remove the "later
+  update" notes.
+- Docs:
+  - ROADMAP backup format notes (format 7);
+  - this plan;
+  - IMPORT_API (restore as a client);
+  - a CLAUDE.md §11 row;
+  - AGENTS.md;
+  - README (backup section), if it names the format.
+
+**Tests:**
+
+- **Formats 1–7 in every direction:**
+  - every existing format 1–6 fixture still restores signed out;
+  - a signed-out export (now format 7) restores signed out to equal
+    records;
+  - a signed-in format 7 export (UUIDs) restores signed out;
+  - a format 1–7 file restores signed in through the screen, with the fake
+    server, and the check passes.
+- **Format 7 refusals:**
+  - duplicate IDs;
+  - a numeric ID;
+  - an empty or overlong ID;
+  - a reference to a missing record;
+  - a liability row linked to a missing account;
+  - every format 6 rule, reached through format 7 (one sample each).
+- **Screen:**
+  - backup wording and counts;
+  - Restore versus Replace;
+  - the late-download message;
+  - no "copied to" marker after a restore.
+- **Exporter:** signed out writes format 7 with string IDs, and
+  `synced_backup_source_test` still passes.
+- **Contract** (local Supabase): a request built from a parsed format 7
+  file is accepted, and so is one from a format 1 file (with the added
+  liability rows).
+
+**Limitations:**
+
+- A backup of an account restored into the same account still gets new
+  IDs. Restoring is a full replace, never a merge.
+- Restoring signed in needs the whole backup to pass the server's rules as
+  well as the local ones. They are the same rules, and the contract test
+  keeps them aligned. A refusal names its code and the record, and nothing
+  changes.
+
+**Decisions for the product owner:**
+
+1. **Format 7 IDs:** any non-empty text up to 64 characters, unique per
+   table (recommended). Alternative: UUIDs or decimal strings only.
+2. **Late download after a signed-in restore:** say it will show after it
+   syncs, and keep no check for later (recommended). Alternative: keep the
+   parsed backup for this session so reopening the screen can check it.
+3. **No "copied to" marker for restores** (recommended).
+4. **Signed-out Export switches to format 7 now** (Decision 6), so new
+   signed-out backups need this app version or later to restore
+   (recommended). Alternative: keep format 6 signed out a while longer.
+
 ## Decisions
 
 Approved 2026-11-22: 1–7, each as recommended.
