@@ -6,11 +6,26 @@
 # app) and are written to build/vercel_cloud.json; config/cloud.json is never
 # touched. If none are set, the build is local-only, like a build without it.
 #
+# Vercel has no Flutter, so when `flutter` is not on the PATH this installs
+# the project's Flutter version into ~/flutter first.
+#
 # Vercel build command: bash tool/vercel_build.sh
-# (keep any Flutter install steps before it, joined with &&).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+flutter_version=3.47.9
+if ! command -v flutter >/dev/null 2>&1; then
+  sdk="$HOME/flutter"
+  if [[ ! -x "$sdk/bin/flutter" ]]; then
+    echo "Installing Flutter $flutter_version..."
+    git clone --quiet --depth 1 --branch "$flutter_version" \
+      https://github.com/flutter/flutter.git "$sdk"
+  fi
+  export PATH="$sdk/bin:$PATH"
+  flutter config --no-analytics >/dev/null
+fi
+flutter --version
 
 keys=(
   FUNDLY_SUPABASE_URL
