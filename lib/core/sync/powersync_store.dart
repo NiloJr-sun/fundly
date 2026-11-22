@@ -74,10 +74,15 @@ class PowerSyncStore implements SyncedStore {
       path: kIsWeb
           ? '$name.db'
           : '${(await getApplicationDocumentsDirectory()).path}/$name.db',
-      sqliteOptions: const SqliteOptions(
+      // Absolute URLs: the worker fetches the wasm itself, and a relative
+      // path there resolves against the worker's folder (powersync/), not
+      // the page.
+      sqliteOptions: SqliteOptions(
         webSqliteOptions: WebSqliteOptions(
-          wasmUri: 'powersync/sqlite3.wasm',
-          workerUri: 'powersync/powersync_db.worker.js',
+          wasmUri: Uri.base.resolve('powersync/sqlite3.wasm').toString(),
+          workerUri: Uri.base
+              .resolve('powersync/powersync_db.worker.js')
+              .toString(),
         ),
       ),
     );
