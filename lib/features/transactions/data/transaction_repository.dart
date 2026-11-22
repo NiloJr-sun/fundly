@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
+import '../../../core/sync/synced_store.dart';
 import '../../../core/time/calendar_date.dart';
 import '../../accounts/data/account_row_mapping.dart';
 import '../../categories/data/category_row_mapping.dart';
 import '../domain/transaction.dart';
 import '../domain/transaction_rules.dart';
 import '../domain/transaction_validation_exception.dart';
+import 'synced_transaction_repository.dart';
 
 /// Reads and writes transactions. Every write runs [validateTransaction]
 /// first (rule 12), inside a database transaction so the accounts and
@@ -191,6 +193,9 @@ class TransactionRepository {
   );
 }
 
-final transactionRepositoryProvider = Provider<TransactionRepository>(
-  (ref) => TransactionRepository(ref.watch(appDatabaseProvider)),
-);
+final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
+  final synced = ref.watch(syncedStoreProvider);
+  return synced == null
+      ? TransactionRepository(ref.watch(appDatabaseProvider))
+      : SyncedTransactionRepository(synced.database);
+});

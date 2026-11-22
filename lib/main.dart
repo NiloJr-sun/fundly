@@ -5,13 +5,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'core/config/cloud_config.dart';
+import 'core/sync/powersync_store.dart';
+import 'core/sync/synced_store.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/local_use_choice.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final authRepository = await _startCloudAuth(CloudConfig.fromEnvironment);
+  const config = CloudConfig.fromEnvironment;
+  final supabase = await _startSupabase(config);
+  final authRepository = supabase == null
+      ? null
+      : SupabaseAuthRepository(supabase, config);
   final localUseChoice = authRepository == null
       ? null
       : await _loadLocalUseChoice();
@@ -22,23 +28,31 @@ Future<void> main() async {
           authRepositoryProvider.overrideWithValue(authRepository),
         if (localUseChoice != null)
           localUseChoiceStoreProvider.overrideWithValue(localUseChoice),
+        if (supabase != null)
+          syncedStoreOpenerProvider.overrideWithValue(
+            (identity) => PowerSyncStore.open(
+              identity,
+              client: supabase,
+              powerSyncUrl: config.powerSyncUrl,
+            ),
+          ),
       ],
       child: const FundlyApp(),
     ),
   );
 }
 
-/// Starts Supabase Auth when the build carries the cloud configuration, and
+/// Starts Supabase when the build carries the cloud configuration, and
 /// restores any saved session (offline too). Without the configuration, or if
 /// start-up fails, the app runs signed out with local data only.
-Future<AuthRepository?> _startCloudAuth(CloudConfig config) async {
+Future<SupabaseClient?> _startSupabase(CloudConfig config) async {
   if (!config.isConfigured) return null;
   try {
     final supabase = await Supabase.initialize(
       url: config.supabaseUrl,
       publishableKey: config.supabasePublishableKey,
     );
-    return SupabaseAuthRepository(supabase.client, config);
+    return supabase.client;
   } on Object catch (error) {
     debugPrint('Cloud sign-in unavailable: $error');
     return null;

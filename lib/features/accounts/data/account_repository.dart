@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
+import '../../../core/sync/synced_store.dart';
 import '../../categories/data/liability_plan_categories.dart';
 import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
 import 'account_row_mapping.dart';
+import 'synced_account_repository.dart';
 
 /// Reads and writes [Account]s, enforcing the account rules before anything
 /// reaches the database.
@@ -31,7 +33,7 @@ class AccountRepository {
     }
     return query.watch().map(
       (rows) =>
-          rows.map((row) => row.toDomain()).toList()..sort(_byTypeThenName),
+          rows.map((row) => row.toDomain()).toList()..sort(byTypeThenName),
     );
   }
 
@@ -310,13 +312,16 @@ class AccountRepository {
     }
   }
 
-  static int _byTypeThenName(Account a, Account b) {
+  static int byTypeThenName(Account a, Account b) {
     final byType = a.type.index.compareTo(b.type.index);
     if (byType != 0) return byType;
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 }
 
-final accountRepositoryProvider = Provider<AccountRepository>(
-  (ref) => AccountRepository(ref.watch(appDatabaseProvider)),
-);
+final accountRepositoryProvider = Provider<AccountRepository>((ref) {
+  final synced = ref.watch(syncedStoreProvider);
+  return synced == null
+      ? AccountRepository(ref.watch(appDatabaseProvider))
+      : SyncedAccountRepository(synced.database);
+});

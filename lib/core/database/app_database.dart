@@ -150,14 +150,18 @@ final databaseOpenerProvider = Provider<AppDatabase Function(String name)>(
   (ref) => AppDatabase.named,
 );
 
-/// The open [AppDatabase]: the signed-out one, or the signed-in user's own.
+/// The open signed-out [AppDatabase].
 ///
-/// When the identity changes, the old database is closed and every
-/// repository and stream built on this provider rebuilds against the new one.
-/// A token refresh for the same user keeps the same name, so nothing reopens.
+/// Signed in, records live in the synchronized store instead
+/// (`syncedStoreProvider`), so reading this throws rather than opening or
+/// recreating another database. Repositories pick the right store; anything
+/// else that needs this (backups) is unavailable while signed in.
 /// Override it in tests.
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final name = ref.watch(authIdentityProvider.select(databaseNameFor));
+  if (name != localDatabaseName) {
+    throw StateError('Signed-in records are in the synchronized store.');
+  }
   final database = ref.watch(databaseOpenerProvider)(name);
   ref.onDispose(database.close);
   return database;

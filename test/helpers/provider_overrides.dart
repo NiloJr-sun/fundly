@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:fundly/core/sync/synced_store.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
@@ -20,6 +21,7 @@ import 'fake_account_repository.dart';
 import 'fake_category_repository.dart';
 import 'fake_custom_account_type_repository.dart';
 import 'fake_plan_repository.dart';
+import 'fake_synced_store.dart';
 import 'fake_transaction_repository.dart';
 
 /// Overrides that keep widget tests off the real on-device database.
@@ -60,6 +62,9 @@ List<Override> fakeAccounts(
   }
 
   return [
+    // Signed-in widget tests get an empty in-memory synchronized store.
+    syncedStoreOpenerProvider.overrideWithValue(FakeSyncedStore.new),
+    unsafeSyncedRowCountProvider.overrideWith((ref) => Stream.value(0)),
     activeAccountsProvider.overrideWith((ref) => Stream.value(accounts)),
     archivedAccountsProvider.overrideWith((ref) => Stream.value(archived)),
     allAccountsProvider.overrideWith((ref) => Stream.value(everyAccount)),

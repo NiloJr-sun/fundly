@@ -11,6 +11,7 @@ class CloudConfig {
     required this.supabasePublishableKey,
     required this.googleWebClientId,
     required this.googleIosClientId,
+    this.powerSyncUrl = '',
   });
 
   /// The values given to `flutter run` or `flutter build`, or empty strings.
@@ -21,6 +22,7 @@ class CloudConfig {
     ),
     googleWebClientId: String.fromEnvironment('FUNDLY_GOOGLE_WEB_CLIENT_ID'),
     googleIosClientId: String.fromEnvironment('FUNDLY_GOOGLE_IOS_CLIENT_ID'),
+    powerSyncUrl: String.fromEnvironment('FUNDLY_POWERSYNC_URL'),
   );
 
   final String supabaseUrl;
@@ -33,7 +35,13 @@ class CloudConfig {
   /// The Google OAuth iOS client for bundle ID `com.nilojr.fundly`.
   final String googleIosClientId;
 
+  /// The PowerSync instance that streams each user's records to the device.
+  final String powerSyncUrl;
+
   /// Whether the app can talk to Supabase at all.
   bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+
+  /// Whether signed-in data can be downloaded from PowerSync.
+  bool get canSync => isConfigured && powerSyncUrl.isNotEmpty;
 }

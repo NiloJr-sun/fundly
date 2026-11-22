@@ -7,6 +7,8 @@ import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/presentation/restore_backup.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
+import 'package:fundly/features/sync/presentation/edit_guard.dart';
+
 import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 
@@ -69,10 +71,8 @@ void main() {
   testWidgets('signed in shows who and offers Sign out', (tester) async {
     await pumpProfile(tester, auth: FakeAuthRepository(initial: userA));
 
-    expect(
-      find.text('Signed in as a@test.com · Not syncing yet'),
-      findsOneWidget,
-    );
+    expect(find.text('Signed in as a@test.com'), findsOneWidget);
+    expect(find.text('Up to date · View only'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Continue with Google'), findsNothing);
   });
@@ -94,10 +94,7 @@ void main() {
 
     expect(find.text('Good evening, Nilo'), findsOneWidget);
     expect(find.text('N'), findsOneWidget);
-    expect(
-      find.text('Signed in as nilo@test.com · Not syncing yet'),
-      findsOneWidget,
-    );
+    expect(find.text('Signed in as nilo@test.com'), findsOneWidget);
   });
 
   testWidgets('without a profile name the greeting stands alone', (
@@ -198,5 +195,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(picked, 1);
+  });
+
+  testWidgets('export is unavailable while signed in and explains why', (
+    tester,
+  ) async {
+    await pumpProfile(tester, auth: FakeAuthRepository(initial: userA));
+    await tester.tap(find.text('Export backup'));
+    await tester.pump();
+
+    expect(find.text(signedInBackupMessage), findsOneWidget);
+    expect(find.byType(Dialog), findsNothing);
   });
 }

@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/record_id.dart';
+import '../../../core/sync/synced_store.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/custom_account_type.dart';
 import '../domain/custom_account_type_rules.dart';
 import '../domain/custom_account_type_validation_exception.dart';
 import 'account_row_mapping.dart';
+import 'synced_account_repository.dart';
 
 /// Reads and writes [CustomAccountType]s, enforcing their rules before
 /// anything reaches the database.
@@ -158,6 +160,9 @@ class CustomAccountTypeRepository {
 }
 
 final customAccountTypeRepositoryProvider =
-    Provider<CustomAccountTypeRepository>(
-      (ref) => CustomAccountTypeRepository(ref.watch(appDatabaseProvider)),
-    );
+    Provider<CustomAccountTypeRepository>((ref) {
+      final synced = ref.watch(syncedStoreProvider);
+      return synced == null
+          ? CustomAccountTypeRepository(ref.watch(appDatabaseProvider))
+          : SyncedCustomAccountTypeRepository(synced.database);
+    });

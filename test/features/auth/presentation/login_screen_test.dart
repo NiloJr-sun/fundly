@@ -205,7 +205,7 @@ void main() {
     expect(choice.chosen, isFalse);
     // Signing in rebuilds the app from the first tab.
     await tapAndSettle(tester, profileTab);
-    expect(find.text('Signed in as a@test.com · Not syncing yet'), findsOne);
+    expect(find.text('Signed in as a@test.com'), findsOne);
 
     await signOutFromProfileTab(tester);
     expect(login, findsOneWidget);

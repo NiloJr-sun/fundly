@@ -39,7 +39,7 @@ Future<void> _explainRestoreUnavailable(BuildContext context) =>
         content: const Text(
           'Restoring a backup replaces all data. To restore, sign out first: '
           'the backup then replaces the data on this device that is not '
-          'linked to an account. Export backup still works while signed in.',
+          'linked to an account.',
         ),
         actions: [
           TextButton(

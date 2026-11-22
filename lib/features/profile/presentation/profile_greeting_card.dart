@@ -8,10 +8,11 @@ import '../../auth/domain/auth_identity.dart';
 import '../../auth/domain/greeting.dart';
 import '../../auth/presentation/google_sign_in_button.dart';
 import '../../auth/presentation/sign_in_actions.dart';
+import '../../sync/presentation/sync_status_line.dart';
 
 /// The top of the Profile tab: a time-of-day greeting.
 ///
-/// Signed in: "Good evening, Nilo" and "Signed in as … · Not syncing yet".
+/// Signed in: "Good evening, Nilo", "Signed in as …" and the sync status.
 /// As a guest: "Good evening", "Using Fundly as a guest" and, in builds that
 /// can sign in, Continue with Google.
 class ProfileGreetingCard extends ConsumerStatefulWidget {
@@ -46,7 +47,7 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
       final firstName = identity.firstName;
       final who = identity.email.isEmpty ? 'your account' : identity.email;
       title = firstName.isEmpty ? greeting : '$greeting, $firstName';
-      subtitle = 'Signed in as $who · Not syncing yet';
+      subtitle = 'Signed in as $who';
       avatar = _Avatar(child: Text(_initial(firstName, identity.email)));
     } else {
       title = greeting;
@@ -84,6 +85,10 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (identity is SignedIn) ...[
+                      const SizedBox(height: Spacing.xs),
+                      const SyncStatusLine(),
+                    ],
                   ],
                 ),
               ),

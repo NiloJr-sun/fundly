@@ -541,6 +541,9 @@ abstract class _$ProbeDatabase extends GeneratedDatabase {
     probeParents,
     probeEntries,
   ];
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
 }
 
 typedef $$ProbeParentsTableCreateCompanionBuilder =

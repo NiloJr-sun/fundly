@@ -9,5 +9,6 @@ targets:
           # schema version and generate migration tests.
           databases:
             app_database: lib/core/database/app_database.dart
+            synced_database: lib/core/sync/synced_database.dart
           schema_dir: drift_schemas/
           test_dir: test/drift/

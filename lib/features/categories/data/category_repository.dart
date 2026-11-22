@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/record_id.dart';
+import '../../../core/sync/synced_store.dart';
 import '../domain/category.dart';
 import '../domain/category_rules.dart';
 import '../domain/category_validation_exception.dart';
 import 'category_row_mapping.dart';
+import 'synced_category_repository.dart';
 
 /// Reads and writes [Category]s, enforcing the category rules before anything
 /// reaches the database.
@@ -186,6 +188,9 @@ class CategoryRepository {
   }
 }
 
-final categoryRepositoryProvider = Provider<CategoryRepository>(
-  (ref) => CategoryRepository(ref.watch(appDatabaseProvider)),
-);
+final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
+  final synced = ref.watch(syncedStoreProvider);
+  return synced == null
+      ? CategoryRepository(ref.watch(appDatabaseProvider))
+      : SyncedCategoryRepository(synced.database);
+});

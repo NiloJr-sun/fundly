@@ -93,8 +93,16 @@ simulator build for anything that changes app code. macOS has no
   before the selected month), already included in the live balance. It refreshes
   at local midnight while open and catches up on open/resume; category
   allocations do not roll forward.
-- **Nothing further is approved.** The remaining Phase 5 proposal is CSV
-  export of transactions (5.3).
+- **Cloud sync (in progress, see `docs/CLOUD_SYNC_S5_PLAN.md`):** Google
+  sign-in (S4). Domain record IDs are `String` (S5.1); the signed-out database
+  keeps integer keys, converted only in `core/database/record_id.dart`.
+  Signed in, records come from a per-user synchronized store
+  (`core/sync/`, PowerSync downloads into Drift raw tables, schema v1) and are
+  **view-only** until uploads (S5.3): entry points call `canEditOrExplain`,
+  synced repositories refuse writes. Builds need `FUNDLY_POWERSYNC_URL` in
+  `config/cloud.json` to download.
+- **Nothing further is approved** beyond the S5 slices. The remaining Phase 5
+  proposal is CSV export of transactions (5.3).
 
 ## 4. Where things live
 
@@ -106,6 +114,7 @@ code in `lib/core` and `lib/app`. Tests mirror `lib/` under `test/`.
 | Money, parsing, formatting | `core/money/` (`Money` = integer minor units), `core/formatting/` (`MoneyFormatter`, `DateFormatter`) |
 | Dates | `core/time/` (`CalendarDate`, `CalendarMonth`, `DateRange`) |
 | Database, migrations | `core/database/app_database.dart` (`schemaVersion`, `stepByStep` migrations), snapshots in `drift_schemas/`, tests in `test/drift/` |
+| Synced store | `core/sync/` (`SyncedDatabase` raw tables, `PowerSyncStore`, `syncedStoreProvider`, `canEditProvider`); `Synced…Repository` beside each local repository; snapshots in `drift_schemas/synced_database/` |
 | Balances | `accounts/domain/account_balance.dart` (`balancesFor`, `totalsByType`, `totalBalance`) |
 | Account grouping | `accounts/domain/account_groups.dart` (`groupAccounts`) |
 | Transaction rules | `transactions/domain/transaction_rules.dart` (`validateTransaction`, allowed account types per transaction type) |

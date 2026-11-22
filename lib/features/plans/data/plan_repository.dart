@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
+import '../../../core/sync/synced_store.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
@@ -12,6 +13,7 @@ import '../domain/monthly_plan.dart';
 import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
 import '../domain/plan_validation_exception.dart';
+import 'synced_plan_repository.dart';
 
 /// Reads and writes [MonthlyPlan]s, enforcing the plan rules before anything
 /// reaches the database.
@@ -204,14 +206,14 @@ class PlanRepository {
   /// Eligibility watches all months and all activity, including backdated or
   /// future transactions. Read errors never enable the destructive action.
   Stream<PlanDeletionStatus> watchDeletionStatus(String categoryId) =>
-      _deletionQuery(categoryId).watchSingleOrNull().map(_deletionStatus);
+      _deletionQuery(categoryId).watchSingleOrNull().map(deletionStatusOf);
 
   /// Removes every monthly plan while preserving the category/account. The
   /// deletion flag prevents automatic liability sync or unarchive from reviving
   /// the row. Eligibility is rechecked atomically even if the UI was enabled.
   Future<void> deletePermanently(String categoryId) =>
       _database.transaction(() async {
-        final status = _deletionStatus(
+        final status = deletionStatusOf(
           await _deletionQuery(categoryId).getSingleOrNull(),
         );
         if (status != PlanDeletionStatus.allowed) {
@@ -235,7 +237,14 @@ class PlanRepository {
   /// their category, matching their Plans Activity definition.
   Selectable<QueryRow> _deletionQuery(String categoryId) =>
       _database.customSelect(
-        """
+        deletionStatusSql,
+        variables: [Variable.withInt(rowIdOf(categoryId))],
+        readsFrom: {_database.categories, _plans, _database.transactions},
+      );
+
+  /// The deletion-status query, shared with the synchronized store, whose
+  /// tables and columns have the same names.
+  static const deletionStatusSql = """
     SELECT c.kind, c.is_archived, c.is_plan_archived, c.is_plan_deleted,
       EXISTS(SELECT 1 FROM monthly_plans p
         WHERE p.category_id = c.id AND p.assigned_amount_minor != 0) AS has_assigned,
@@ -245,12 +254,9 @@ class PlanRepository {
           AND t.destination_account_id = c.linked_account_id
           AND t.type IN ('transfer', 'creditCardPayment'))) AS has_activity
     FROM categories c WHERE c.id = ?
-    """,
-        variables: [Variable.withInt(rowIdOf(categoryId))],
-        readsFrom: {_database.categories, _plans, _database.transactions},
-      );
+    """;
 
-  static PlanDeletionStatus _deletionStatus(QueryRow? row) {
+  static PlanDeletionStatus deletionStatusOf(QueryRow? row) {
     if (row == null) return PlanDeletionStatus.categoryNotFound;
     if (row.read<String>('kind') != 'spending') {
       return PlanDeletionStatus.categoryNotSpending;
@@ -320,6 +326,9 @@ class PlanRepository {
   );
 }
 
-final planRepositoryProvider = Provider<PlanRepository>(
-  (ref) => PlanRepository(ref.watch(appDatabaseProvider)),
-);
+final planRepositoryProvider = Provider<PlanRepository>((ref) {
+  final synced = ref.watch(syncedStoreProvider);
+  return synced == null
+      ? PlanRepository(ref.watch(appDatabaseProvider))
+      : SyncedPlanRepository(synced.database);
+});

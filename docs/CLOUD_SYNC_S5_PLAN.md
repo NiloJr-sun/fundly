@@ -3,7 +3,7 @@
 Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–4; Decision 5 is confirmed when
-S5.5 starts). S5.1 is implemented; S5.2–S5.5 are not started. S5 is split into five sub-slices; each is planned in more detail,
+S5.5 starts). S5.1 and S5.2 are implemented; S5.3–S5.5 are not started. S5 is split into five sub-slices; each is planned in more detail,
 implemented, verified and reviewed on its own, and the agent stops after each.
 
 ## Starting point
@@ -64,6 +64,63 @@ ID-agnostic before any sync code keeps later slices focused on sync.
 
 Proof: rows created through the API with a test user appear on iOS and in
 Chrome, and disappear when deleted; signed-out mode is untouched.
+
+#### S5.2 detailed plan (approved and implemented 2026-11-22)
+
+Owner choices: delete the S4 preview database; keep add/edit buttons and
+explain on tap. Implemented as planned. Additions: export is also unavailable
+while signed in (it read the local database; S6 designs signed-in backups),
+and `path_provider` became a direct dependency (same locked version).
+Verified: format, analyzer, 920 tests (including the real PowerSync SDK on
+the host inferring the raw-table mapping and notifying Drift), iOS simulator
+and web builds with the cloud config, signed-out web smoke test. The live
+download check on iOS and web is the owner's step below.
+
+**Dependencies** (all resolved together in S1; latest checked today):
+`powersync` 2.6.2, `drift_sqlite_async` 0.3.1, `sqlite_async` 0.14.8.
+`uuid` waits for S5.3. Web gets PowerSync's `powersync_db.worker.js` and its
+`sqlite3.wasm` under `web/powersync/`, so the signed-out database keeps
+drift's own `web/sqlite3.wasm` and `drift_worker.js` unchanged.
+
+**Configuration:** a fifth build key, `FUNDLY_POWERSYNC_URL` (the public JP
+instance URL already used by the probe), in `config/cloud.json`, the example
+file, `CloudConfig`, the Vercel build script and Vercel's variables. Without
+it the build stays exactly as today.
+
+**Synced store** (`lib/core/sync/`):
+- `SyncedDatabase`, a second Drift database with five raw tables matching the
+  downloaded columns in `powersync/sync-config.yaml`: UUID text `id`,
+  `revision`, text timestamps, the same CHECKs, deferred foreign keys. Its
+  own schema version 1 and migration snapshots, separate from v12.
+- Opened through PowerSync with raw-table download mappings only. No capture
+  triggers (nothing is written locally until S5.3).
+- One file per user, `fundly_sync_<user id>`. The S4 preview database
+  `fundly_user_<user id>` is deleted when the synced store first opens
+  (S4 Decision 1). The signed-out `fundly` database is never touched.
+- Connects with the Supabase session; disconnects and closes before another
+  identity's store opens.
+
+**Repositories:** `Synced…Repository` for each of the five, implementing the
+existing repository interfaces. Reads map rows to the same domain models, so
+every screen and calculation is reused. Writes throw `ReadOnlyStoreException`.
+Providers pick local or synced by identity.
+
+**Read-only while signed in:** each add/edit/delete/archive entry point checks
+one `canEditProvider`; when false it shows "Editing arrives with sync uploads"
+instead of opening the form. Profile's line becomes "Signed in as … · Receiving
+data only" with the PowerSync connection state (connected, offline, error).
+
+**Download safety:** money and revisions outside ±(2^53−1) are flagged and the
+row is skipped with a visible error on web; year 0000 dates map explicitly.
+
+**Tests:** synced repositories against an in-memory `SyncedDatabase` (mapping,
+filters, balances identical to local mode for the same data); store
+selection and cleanup per identity; read-only entry points; config parsing.
+Full suite, analyzer, iOS and web builds.
+
+**Live check (owner):** run a provided SQL snippet in the Supabase SQL editor
+that inserts a sample account, category and transaction for your own user
+ID; sign in on iOS and web and see them appear; delete them and see them go.
 
 ### S5.3 — Uploads
 

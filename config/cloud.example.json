@@ -2,5 +2,6 @@
   "FUNDLY_SUPABASE_URL": "https://<project-ref>.supabase.co",
   "FUNDLY_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_...",
   "FUNDLY_GOOGLE_WEB_CLIENT_ID": "<web client id>.apps.googleusercontent.com",
-  "FUNDLY_GOOGLE_IOS_CLIENT_ID": "<ios client id>.apps.googleusercontent.com"
+  "FUNDLY_GOOGLE_IOS_CLIENT_ID": "<ios client id>.apps.googleusercontent.com",
+  "FUNDLY_POWERSYNC_URL": "https://<instance-id>.powersync.journeyapps.com"
 }

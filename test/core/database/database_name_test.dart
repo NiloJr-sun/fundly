@@ -13,7 +13,7 @@ void main() {
   test('each signed-in user gets their own database', () {
     expect(
       databaseNameFor(const SignedIn(userId: userId, email: 'a@test.com')),
-      'fundly_user_$userId',
+      'fundly_sync_$userId',
     );
     expect(
       databaseNameFor(
@@ -36,7 +36,7 @@ void main() {
   test('upper-case UUIDs map to the same lower-case name', () {
     expect(
       databaseNameFor(SignedIn(userId: userId.toUpperCase(), email: '')),
-      'fundly_user_$userId',
+      'fundly_sync_$userId',
     );
   });
 
@@ -53,6 +53,19 @@ void main() {
         throwsArgumentError,
         reason: bad,
       );
+      expect(
+        () => previewDatabaseNameFor(bad),
+        throwsArgumentError,
+        reason: bad,
+      );
     }
+  });
+
+  test('the S4 preview database keeps its old name, apart from the store', () {
+    expect(previewDatabaseNameFor(userId), 'fundly_user_$userId');
+    expect(
+      previewDatabaseNameFor(userId),
+      isNot(databaseNameFor(const SignedIn(userId: userId, email: ''))),
+    );
   });
 }

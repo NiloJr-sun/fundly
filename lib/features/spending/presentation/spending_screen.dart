@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/spacing.dart';
+import '../../sync/presentation/edit_guard.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_form_screen.dart';
 import '../../transactions/presentation/transaction_type_picker.dart';
@@ -13,6 +14,7 @@ class SpendingScreen extends StatelessWidget {
   const SpendingScreen({super.key});
 
   Future<void> _addTransaction(BuildContext context) async {
+    if (!canEditOrExplain(context)) return;
     final type = await showTransactionTypePicker(context);
     if (type == null || !context.mounted) return;
     await Navigator.of(context).push(
