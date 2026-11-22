@@ -1064,4 +1064,22 @@ suggestions as approved decisions.
                           Existing data moves to
                           a Personal space.
 
+  2026-11-22              Reset all data          Confirmed
+                          (Profile tab, signed
+                          out only): shows the
+                          counts to be deleted,
+                          offers Export backup
+                          first and needs "delete
+                          my data" typed (case and
+                          outer spaces ignored).
+                          One transaction deletes
+                          every record and re-adds
+                          the default categories,
+                          like a fresh install.
+                          Signed in, it explains
+                          why it is unavailable;
+                          cloud reset waits for
+                          S6. No schema or backup
+                          change.
+
   -----------------------------------------------------------------------

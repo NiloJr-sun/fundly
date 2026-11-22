@@ -6,6 +6,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../../auth/presentation/sign_in_actions.dart';
 import '../../backup/presentation/export_backup.dart';
+import '../../backup/presentation/reset_data.dart';
 import '../../backup/presentation/restore_backup.dart';
 import 'profile_greeting_card.dart';
 
@@ -42,6 +43,13 @@ class ProfileScreen extends ConsumerWidget {
                 title: 'Restore from backup',
                 subtitle: 'Replace all records with a backup file',
                 onTap: (origin) => restoreBackup(context, ref, origin: origin),
+              ),
+              _ActionTile(
+                icon: Icons.delete_forever,
+                title: 'Reset all data',
+                subtitle: 'Delete every record on this phone',
+                destructive: true,
+                onTap: (origin) => resetData(context, ref, origin: origin),
               ),
             ],
           ),
@@ -113,11 +121,15 @@ class _ActionTile extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.subtitle,
+    this.destructive = false,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
+
+  /// Shows the icon and title in the error colour, for actions that delete.
+  final bool destructive;
 
   /// Receives where the tile is on screen, for the iPad share sheet.
   final void Function(Rect? origin) onTap;
@@ -125,10 +137,14 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;
+    final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       leading: Icon(icon),
-      iconColor: Theme.of(context).colorScheme.primary,
-      title: Text(title),
+      iconColor: destructive ? colorScheme.error : colorScheme.primary,
+      title: Text(
+        title,
+        style: destructive ? TextStyle(color: colorScheme.error) : null,
+      ),
       subtitle: subtitle == null ? null : Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => onTap(_originOf(context)),
