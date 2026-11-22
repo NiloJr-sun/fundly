@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/sync/synced_database.dart';
-import 'package:fundly/core/sync/synced_store.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
@@ -13,7 +12,6 @@ import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/data/synced_plan_repository.dart';
 import 'package:fundly/features/plans/domain/plan_deletion.dart';
 import 'package:fundly/features/transactions/data/synced_transaction_repository.dart';
-import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 import '../../helpers/fake_synced_store.dart';
@@ -297,25 +295,5 @@ void main() {
         DateTime.utc(2026, 11, 16, 9, 30),
       );
     });
-  });
-
-  test('every write is refused until uploads exist', () {
-    expect(
-      () => SyncedTransactionRepository(store.database).create(
-        TransactionDraft(
-          type: TransactionType.spending,
-          amount: php(100),
-          date: CalendarDate(2026, 11, 16),
-          payee: 'Store',
-          categoryId: food,
-          sourceAccountId: bdo,
-        ),
-      ),
-      throwsA(isA<ReadOnlyStoreException>()),
-    );
-    expect(
-      () => SyncedAccountRepository(store.database).delete(bdo),
-      throwsA(isA<ReadOnlyStoreException>()),
-    );
   });
 }

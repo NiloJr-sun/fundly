@@ -5,9 +5,8 @@ import 'package:fundly/core/time/clock_provider.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/presentation/restore_backup.dart';
+import 'package:fundly/features/backup/presentation/signed_in_backup.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
-
-import 'package:fundly/features/sync/presentation/edit_guard.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/provider_overrides.dart';
@@ -72,7 +71,7 @@ void main() {
     await pumpProfile(tester, auth: FakeAuthRepository(initial: userA));
 
     expect(find.text('Signed in as a@test.com'), findsOneWidget);
-    expect(find.text('Up to date · View only'), findsOneWidget);
+    expect(find.text('Up to date'), findsOneWidget);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Continue with Google'), findsNothing);
   });

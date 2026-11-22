@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../categories/domain/category.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_validation_exception.dart';
 
@@ -13,7 +12,6 @@ Future<void> archivePlan(
   WidgetRef ref,
   Category category,
 ) async {
-  if (!canEditOrExplain(context)) return;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(

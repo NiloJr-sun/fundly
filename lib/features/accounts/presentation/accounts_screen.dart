@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/centered_message.dart';
-import '../../sync/presentation/edit_guard.dart';
 import 'account_form_screen.dart';
 import 'account_list.dart';
 import 'account_types_screen.dart';
@@ -52,12 +51,9 @@ class AccountsScreen extends ConsumerWidget {
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (!canEditOrExplain(context)) return;
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AccountFormScreen()),
-          );
-        },
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AccountFormScreen()),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('Add account'),
       ),

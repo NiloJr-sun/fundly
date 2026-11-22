@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/spacing.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../data/backup_exporter.dart';
+import 'signed_in_backup.dart';
 
 /// Hands a backup file to the platform, e.g. the iOS share sheet.
 /// [origin] anchors the share sheet on iPad.
@@ -49,9 +49,7 @@ Future<void> exportBackup(
   WidgetRef ref, {
   Rect? origin,
 }) async {
-  // Signed in, records are in the synchronized store; backing those up needs
-  // the UUID backup format (cloud sync S6).
-  if (!canEditOrExplain(context, message: signedInBackupMessage)) return;
+  if (!canBackUpOrExplain(context)) return;
   final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context);
   // Closed below once the file is ready; not awaited.

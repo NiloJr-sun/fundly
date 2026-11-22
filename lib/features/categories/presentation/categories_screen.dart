@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../domain/category.dart';
 import 'categories_providers.dart';
 import 'category_display.dart';
@@ -34,12 +33,9 @@ class CategoriesScreen extends ConsumerWidget {
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (!canEditOrExplain(context)) return;
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const CategoryFormScreen()),
-          );
-        },
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const CategoryFormScreen()),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('Add category'),
       ),
@@ -122,14 +118,11 @@ class _CategoryTile extends StatelessWidget {
       title: Text(category.name),
       subtitle: details.isEmpty ? null : Text(details.join(' · ')),
       trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        if (!canEditOrExplain(context)) return;
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => CategoryFormScreen(category: category),
-          ),
-        );
-      },
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => CategoryFormScreen(category: category),
+        ),
+      ),
     );
   }
 }

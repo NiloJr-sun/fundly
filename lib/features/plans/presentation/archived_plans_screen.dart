@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../categories/presentation/category_display.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
@@ -75,7 +74,6 @@ class _ArchivedPlanDetailScreenState
   bool _deleting = false;
 
   Future<void> _unarchive() async {
-    if (!canEditOrExplain(context)) return;
     setState(() => _saving = true);
     try {
       await ref
@@ -93,7 +91,6 @@ class _ArchivedPlanDetailScreenState
   }
 
   Future<void> _delete(String name) async {
-    if (!canEditOrExplain(context)) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

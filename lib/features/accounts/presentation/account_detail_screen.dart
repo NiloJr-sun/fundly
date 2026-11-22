@@ -5,7 +5,6 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/widgets/centered_message.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../../transactions/presentation/transaction_tile.dart';
 import '../../transactions/presentation/transactions_providers.dart';
 import '../data/account_repository.dart';
@@ -35,14 +34,11 @@ class AccountDetailScreen extends ConsumerWidget {
             IconButton(
               tooltip: 'Edit',
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () {
-                if (!canEditOrExplain(context)) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => AccountFormScreen(account: loaded),
-                  ),
-                );
-              },
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AccountFormScreen(account: loaded),
+                ),
+              ),
             ),
         ],
       ),
@@ -183,7 +179,6 @@ class _ArchiveButton extends ConsumerWidget {
   }
 
   Future<void> _archive(BuildContext context, WidgetRef ref) async {
-    if (!canEditOrExplain(context)) return;
     if (needsArchiveConfirmation(balance)) {
       final confirmed = await showDialog<bool>(
         context: context,
@@ -200,7 +195,6 @@ class _ArchiveButton extends ConsumerWidget {
     WidgetRef ref, {
     required bool archived,
   }) async {
-    if (!canEditOrExplain(context)) return;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     try {
@@ -269,7 +263,6 @@ class _DeleteButton extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    if (!canEditOrExplain(context)) return;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(

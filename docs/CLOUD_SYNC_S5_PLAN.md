@@ -3,7 +3,7 @@
 Date: 2026-11-22
 
 Status: **approved 2026-11-22** (Decisions 1–4; Decision 5 is confirmed when
-S5.5 starts). S5.1 and S5.2 are implemented; S5.3–S5.5 are not started. S5 is split into five sub-slices; each is planned in more detail,
+S5.5 starts). S5.1–S5.3 are implemented; S5.4 and S5.5 are not started. S5 is split into five sub-slices; each is planned in more detail,
 implemented, verified and reviewed on its own, and the agent stops after each.
 
 ## Starting point
@@ -138,6 +138,109 @@ Proof: offline create/edit/delete on iOS and web, restart, reconnect, and
 both clients converge with identical balances, Spending totals and Plans.
 A retry after a lost response produces exactly one record.
 
+#### S5.3 detailed plan (approved and implemented 2026-11-22)
+
+Owner choices: a refused batch stays queued ("Sync stuck") until S5.4;
+`uuid` and `flutter_timezone` added; the owner deploys the migration with
+`supabase db push`; defaults are requested after a device's first complete
+download. Implemented as planned. The queue was first proved on the real SDK
+(a hand-inserted `powersync_crud` row comes back from
+`getNextCrudTransaction` with its JSON intact). Verified: server lint, pgTAP
+(679), every concurrency runner plus `dataset_initialize_test.py`, and the new
+`supabase/tests/client_contract_test.py`: an offline session of every write
+kind (40 batches) is accepted in order by the local server, a retry is
+idempotent, and the server's rows equal the device's, revisions included.
+App: format, analyzer, 955 tests, iOS simulator and web builds. The live
+two-device check is the owner's step below.
+
+**Queue mechanism.** No capture triggers. Each signed-in write is one local
+SQLite transaction that (1) changes the raw tables optimistically and
+(2) inserts **one** row into PowerSync's `powersync_crud` queue:
+`op = 'PUT'`, `type = 'fundly_batch'`, `id` = a new batch UUID, `data` = the
+protocol-1 `{"version": 1, "items": [...]}` envelope. The batch UUID and
+payload are fixed at that moment, so every retry sends identical bytes.
+PowerSync holds downloads back while the queue is non-empty and until the
+server's write checkpoint arrives, so optimistic rows are not overwritten
+half-way. First step of the slice: prove this with the real SDK on the host
+(a manual `powersync_crud` insert appears in `getNextCrudTransaction`, and a
+download does not overwrite a pending row).
+
+**Uploader.** `uploadData` takes the oldest queued transaction, calls
+`fundly_apply_operations(batch_id, operations)` and classifies the outcome
+using SYNC_PROTOCOL.md:
+- accepted → complete the queue item; the download confirms the rows;
+- transient (network, 5xx, `40001`/`40P01`/`55P03`/`57014`/`57P01`/`53xxx`/
+  `08xxx`, expired session) → throw, PowerSync retries the same item later;
+- rejected or blocked → **kept in the queue** (never discarded), status line
+  shows "Sync stuck: <code>". S5.4 adds the rejection log that lets the
+  queue move past a final rejection.
+
+**Revisions.** Every server update adds 1 to the row's revision (trigger
+`fundly_set_revision`). Optimistic updates do the same locally, and skip the
+row when the server would skip it (no-op archive, unchanged linked
+category). A queued edit therefore carries the revision the server will
+have after the earlier queued edits, so two offline edits of one record in a
+row are accepted. A mismatch is a `revision_conflict`, which is S5.4's case.
+
+**Writes per repository** (the synced repositories stop throwing):
+
+| Repository method | Operation(s) | Optimistic local effect |
+|---|---|---|
+| Transaction create/update/delete | `transaction.*` | the row |
+| Account create | `account.create` (+ `linked_category_id` for Credit/Loan) | account + its liability row |
+| Account update / archive / delete | `account.update` / `set_archived` / `delete` | account; liability row name/archive; budget flag cleared on archive; linked row detached on delete |
+| Budget set / clear | `account.set_budget` (`previous_budget` = the observed one) / `clear_budget` | flags on both accounts |
+| Custom type create/update/delete | `custom_type.*` | the row |
+| Category create/rename/group/archive/delete | `category.*` | the row; its plans on delete |
+| Plan save / clear | `plan.save` with `previous` = the observed plan | the plan row (removed when no Target and zero Assigned) |
+| Plan archive / unarchive / delete permanently | `plan.set_archived` (with `timezone`) / `plan.delete_permanently` | category flags; plans removed on delete |
+
+Each method first runs the same validation as local mode (names, account and
+category rules, plan rules), so the user sees the same messages offline; the
+server stays the final judge. The financial rules are not re-implemented:
+transaction validation reuses the existing domain checks. New IDs are UUID v4.
+Money and revisions are sent as decimal strings, dates as `YYYY-MM-DD`.
+
+**Default categories (Decision 4).** A new migration adds
+`dataset.initialize` to `fundly_apply_operations`: under the per-user lock,
+if the owner has no categories it inserts the nine defaults (Rent,
+Utilities, Internet, Subscriptions, Food & Groceries, Fuel, Miscellaneous,
+Salary, Other income) and lists them in `changes`; otherwise it is a no-op.
+pgTAP tests plus a concurrency case (two devices initialize at once → one
+set). The app queues it once per device, after that device's first complete
+download finds no categories; the categories arrive by download (no
+optimistic copy). Deploying the migration to the hosted project is an owner
+step (`supabase db push`), done before the app build that uses it.
+
+**Plan archive timezone.** `flutter_timezone` 5.1.1 provides the IANA zone
+(for example `Asia/Manila`) that `plan.set_archived` requires.
+
+**Other app changes.**
+- `canEditProvider` and the "view only" messages are removed; export and
+  restore stay unavailable while signed in (Decision 5, S6).
+- Status line: "N changes waiting to upload" while the queue is non-empty;
+  "View only" is dropped.
+- Signing out keeps the store file, so queued changes upload at the next
+  sign-in of the same user (the warning on sign-out is S5.5).
+
+**Dependencies.** `uuid` 4.6.0 (already in the lock file as a transitive
+dependency; becomes direct) and `flutter_timezone` 5.1.1. No schema change in
+local mode; the synced database schema stays v1 (the queue lives in
+PowerSync's own tables).
+
+**Tests.** Per method: the queued envelope (exact JSON) and the optimistic
+rows, against the in-memory synced database; the revision chain (two queued
+edits); uploader classification with a fake RPC (accepted, each transient
+class, rejected, blocked; retry sends the same batch UUID and payload);
+default-category trigger runs once; real-SDK host test for the queue and the
+held download. Server: pgTAP and the concurrency runner for
+`dataset.initialize`. Full suite, analyzer, iOS and web builds.
+
+**Live check (owner).** On iOS and Chrome signed in as the same user: create
+an account, a transaction and a plan offline (airplane mode / DevTools
+offline), restart, reconnect; both devices show the same balances, Spending
+totals and Plans; check in the SQL editor that each record exists once.
+
 ### S5.4 — Rejections and recovery
 
 - Final rejections (`revision_conflict`, `record_deleted`, rule violations)
@@ -167,8 +270,8 @@ rows of its verification matrix, on iOS and Chrome.
 
 ## Decisions
 
-Approved 2026-11-22: 1 (five slices), 2 (plain `String`), 3 (read-only),
-4 (server `dataset.initialize`). Open: 5.
+Approved 2026-11-22: 1 (five slices), 2 (plain `String`), 3 (read-only,
+ended by S5.3), 4 (server `dataset.initialize`, implemented in S5.3). Open: 5.
 
 1. **Slicing:** the five sub-slices above, in this order, one at a time.
 2. **ID type:** plain `String` IDs in the domain (recommended; simplest, and a

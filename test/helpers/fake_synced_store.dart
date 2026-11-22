@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -27,7 +28,15 @@ class FakeSyncedStore implements SyncedStore {
 
   SyncedDatabase _open() {
     _opened = true;
-    return SyncedDatabase(NativeDatabase.memory());
+    return SyncedDatabase(
+      NativeDatabase.memory(
+        // Stands in for PowerSync's upload queue, which repositories write to.
+        setup: (database) => database.execute(
+          'CREATE TABLE powersync_crud '
+          '(seq INTEGER PRIMARY KEY, op TEXT, id TEXT, type TEXT, data TEXT)',
+        ),
+      ),
+    );
   }
 
   final _states = StreamController<SyncState>.broadcast();
@@ -44,6 +53,34 @@ class FakeSyncedStore implements SyncedStore {
     yield _current;
     yield* _states.stream;
   }
+
+  /// What [watchPendingUploads] reports (the fake does not count its queue).
+  int pendingUploads = 0;
+
+  @override
+  Stream<int> watchPendingUploads() => Stream.value(pendingUploads);
+
+  /// The queued batches, oldest first, as uploaded to the server.
+  Future<List<QueuedBatch>> queuedBatches() async => [
+    for (final row
+        in await database
+            .customSelect(
+              'SELECT op, id, type, data FROM powersync_crud ORDER BY seq',
+            )
+            .get())
+      (
+        id: row.read<String>('id'),
+        type: row.read<String>('type'),
+        envelope: jsonDecode(row.read<String>('data')) as Map<String, Object?>,
+      ),
+  ];
+
+  /// The items of every queued batch, in order.
+  Future<List<Map<String, Object?>>> queuedItems() async => [
+    for (final batch in await queuedBatches())
+      for (final item in batch.envelope['items']! as List<Object?>)
+        item! as Map<String, Object?>,
+  ];
 
   @override
   Future<void> close() async {
@@ -81,6 +118,8 @@ Variable<Object> _variable(Object? value) => switch (value) {
   final String text => Variable.withString(text),
   _ => throw ArgumentError.value(value),
 };
+
+typedef QueuedBatch = ({String id, String type, Map<String, Object?> envelope});
 
 /// Delete rows the way a download does.
 extension FakeSyncedStoreDeletes on FakeSyncedStore {

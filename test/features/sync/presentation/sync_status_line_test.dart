@@ -7,45 +7,57 @@ void main() {
     SyncConnection connection, {
     bool synced = true,
     int hidden = 0,
+    int pending = 0,
   }) => syncStatusText(
     SyncState(connection: connection, hasSynced: synced, error: 'timeout'),
     hiddenRows: hidden,
+    pendingUploads: pending,
   );
 
-  test('every state also says the data is view-only', () {
-    expect(text(SyncConnection.connected), 'Up to date · View only');
+  test('every state has its own text', () {
+    expect(text(SyncConnection.connected), 'Up to date');
     expect(
       text(SyncConnection.connected, synced: false),
-      'Downloading your data… · View only',
+      'Downloading your data…',
     );
-    expect(
-      text(SyncConnection.connecting, synced: false),
-      'Connecting… · View only',
-    );
+    expect(text(SyncConnection.connecting, synced: false), 'Connecting…');
     expect(
       text(SyncConnection.connecting),
-      'Reconnecting · showing data saved on this device · View only',
+      'Reconnecting · showing data saved on this device',
     );
     expect(
       text(SyncConnection.offline),
-      'Offline · showing data saved on this device · View only',
+      'Offline · showing data saved on this device',
     );
-    expect(
-      text(SyncConnection.failed),
-      'Sync problem, retrying: timeout · View only',
-    );
+    expect(text(SyncConnection.failed), 'Sync problem, retrying: timeout');
     expect(
       text(SyncConnection.notConfigured),
-      'Sync is not set up in this build · View only',
+      'Sync is not set up in this build',
     );
-    expect(syncStatusText(null), 'Opening your data… · View only');
+    expect(
+      text(SyncConnection.stuck),
+      'Sync stuck: the server refused a change (timeout). It is kept on '
+      'this device',
+    );
+    expect(syncStatusText(null), 'Opening your data…');
+  });
+
+  test('changes waiting to upload are counted', () {
+    expect(
+      text(SyncConnection.connected, pending: 1),
+      'Uploading · 1 change waiting to upload',
+    );
+    expect(
+      text(SyncConnection.offline, pending: 2),
+      'Offline · showing data saved on this device · 2 changes waiting to '
+      'upload',
+    );
   });
 
   test('hidden rows are reported', () {
     expect(
       text(SyncConnection.connected, hidden: 1),
-      'Up to date · 1 record hidden: its amount is too large to show · '
-      'View only',
+      'Up to date · 1 record hidden: its amount is too large to show',
     );
     expect(
       text(SyncConnection.connected, hidden: 3),

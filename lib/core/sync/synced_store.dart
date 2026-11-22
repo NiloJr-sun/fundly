@@ -17,6 +17,10 @@ enum SyncConnection {
 
   /// Connecting or downloading failed; PowerSync keeps retrying.
   failed,
+
+  /// The server refused the oldest queued change, so later changes wait
+  /// (S5.4 adds the way past it). Nothing is discarded.
+  stuck,
 }
 
 /// A snapshot of the synchronized store for the status line.
@@ -34,7 +38,8 @@ class SyncState {
   final bool hasSynced;
   final DateTime? lastSyncedAt;
 
-  /// The last connection or download error, for the "failed" state.
+  /// The last connection or download error ("failed"), or the code the
+  /// server refused a change with ("stuck").
   final String? error;
 
   @override
@@ -55,6 +60,9 @@ abstract interface class SyncedStore {
 
   /// The connection state; emits the current state first.
   Stream<SyncState> watchState();
+
+  /// How many queued batches wait to upload (S5.3).
+  Stream<int> watchPendingUploads();
 
   /// Disconnects and closes the store.
   Future<void> close();
@@ -105,18 +113,9 @@ final unsafeSyncedRowCountProvider = StreamProvider<int>((ref) {
   return store.database.watchUnsafeNumberCount();
 });
 
-/// Whether records can be changed. Signed in, the app only receives data
-/// until sync uploads arrive (S5.3).
-final canEditProvider = Provider<bool>(
-  (ref) => ref.watch(authIdentityProvider) is! SignedIn,
-);
-
-/// Thrown by a synchronized repository's write methods until sync uploads
-/// arrive (S5.3). Screens check [canEditProvider] first, so this only guards
-/// against a missed entry point.
-class ReadOnlyStoreException implements Exception {
-  const ReadOnlyStoreException();
-
-  @override
-  String toString() => 'Editing arrives with sync uploads.';
-}
+/// How many local changes wait to upload; 0 while signed out.
+final pendingUploadCountProvider = StreamProvider<int>((ref) {
+  final store = ref.watch(syncedStoreProvider);
+  if (store == null) return Stream.value(0);
+  return store.watchPendingUploads();
+});

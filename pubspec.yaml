@@ -48,6 +48,8 @@ dependencies:
   drift_sqlite_async: ^0.3.1
   sqlite_async: ^0.14.8
   path_provider: ^2.1.6
+  uuid: ^4.6.0
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:

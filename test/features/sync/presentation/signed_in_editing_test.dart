@@ -5,7 +5,6 @@ import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
-import 'package:fundly/features/sync/presentation/edit_guard.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/provider_overrides.dart';
@@ -31,25 +30,17 @@ Future<void> pumpAccounts(WidgetTester tester, AuthIdentity identity) async {
 }
 
 void main() {
-  testWidgets('signed in, Add account explains instead of opening a form', (
-    tester,
-  ) async {
-    await pumpAccounts(tester, _user);
-    await tester.tap(find.text('Add account'));
-    await tester.pumpAndSettle();
+  // Signed in, the synchronized store accepts changes (cloud sync S5.3), so
+  // every entry point opens its form exactly as when signed out.
+  for (final identity in [_user, const SignedOut()]) {
+    testWidgets('${identity.runtimeType}: Add account opens the form', (
+      tester,
+    ) async {
+      await pumpAccounts(tester, identity);
+      await tester.tap(find.text('Add account'));
+      await tester.pumpAndSettle();
 
-    expect(find.text(readOnlyMessage), findsOneWidget);
-    expect(find.byType(AccountFormScreen), findsNothing);
-  });
-
-  testWidgets('signed out, Add account opens the form as before', (
-    tester,
-  ) async {
-    await pumpAccounts(tester, const SignedOut());
-    await tester.tap(find.text('Add account'));
-    await tester.pumpAndSettle();
-
-    expect(find.text(readOnlyMessage), findsNothing);
-    expect(find.byType(AccountFormScreen), findsOneWidget);
-  });
+      expect(find.byType(AccountFormScreen), findsOneWidget);
+    });
+  }
 }

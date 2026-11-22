@@ -71,10 +71,12 @@ client remembers their UUIDs. A later queued batch that references one is not
 uploaded. It is stored as `dependency_rejected`, linked to the original
 rejection. Unrelated batches upload normally.
 
-**Queue model (assumed for S5).** Each repository write stores its optimistic
-rows and one operation record in a single local transaction. The connector
-uploads one batch per local transaction, with a stable batch UUID stored with
-the queued operation.
+**Queue model (implemented in S5.3).** Each repository write stores its
+optimistic rows and one queued batch (PowerSync `powersync_crud`, type
+`fundly_batch`, id = batch UUID, data = the protocol-1 envelope) in a single
+local transaction. The connector uploads the oldest batch first and resends
+the same UUID and payload after a transient failure. Until S5.4, a rejected
+or blocked batch stays queued and the app shows "Sync stuck".
 
 **Open proof for S5.** After a rejection, the next complete download must return
 local rows to server state, including removing an optimistic insert the server

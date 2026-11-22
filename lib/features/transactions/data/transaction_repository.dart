@@ -68,7 +68,7 @@ class TransactionRepository {
   /// Throws [TransactionValidationException] listing every broken rule.
   Future<Transaction> create(TransactionDraft draft) {
     return _database.transaction(() async {
-      final normalized = _normalize(draft);
+      final normalized = normalize(draft);
       await _validate(normalized);
       final now = _now().toUtc();
       final row = await _database
@@ -103,7 +103,7 @@ class TransactionRepository {
   Future<Transaction> update(String id, TransactionDraft draft) {
     return _database.transaction(() async {
       final existing = await _find(id);
-      final normalized = _normalize(draft);
+      final normalized = normalize(draft);
       await _validate(normalized, existing: existing);
       final rows =
           await (_database.update(
@@ -166,17 +166,17 @@ class TransactionRepository {
   }
 
   /// Trims free text so stored values match what validation measured.
-  static TransactionDraft _normalize(TransactionDraft draft) =>
-      TransactionDraft(
-        type: draft.type,
-        amount: draft.amount,
-        date: draft.date,
-        payee: draft.payee.trim(),
-        categoryId: draft.categoryId,
-        sourceAccountId: draft.sourceAccountId,
-        destinationAccountId: draft.destinationAccountId,
-        note: draft.note.trim(),
-      );
+  /// Shared with the synchronized store.
+  static TransactionDraft normalize(TransactionDraft draft) => TransactionDraft(
+    type: draft.type,
+    amount: draft.amount,
+    date: draft.date,
+    payee: draft.payee.trim(),
+    categoryId: draft.categoryId,
+    sourceAccountId: draft.sourceAccountId,
+    destinationAccountId: draft.destinationAccountId,
+    note: draft.note.trim(),
+  );
 
   static Transaction _toDomain(TransactionRow row) => Transaction(
     id: recordIdOf(row.id),

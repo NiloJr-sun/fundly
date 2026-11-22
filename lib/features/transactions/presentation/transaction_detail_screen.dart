@@ -8,7 +8,6 @@ import '../../../core/widgets/centered_message.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction.dart';
 import 'transaction_display.dart';
@@ -34,15 +33,12 @@ class TransactionDetailScreen extends ConsumerWidget {
             IconButton(
               tooltip: 'Edit',
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () {
-                if (!canEditOrExplain(context)) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        TransactionFormScreen.edit(transaction: loaded),
-                  ),
-                );
-              },
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      TransactionFormScreen.edit(transaction: loaded),
+                ),
+              ),
             ),
             IconButton(
               tooltip: 'Delete',
@@ -75,7 +71,6 @@ Future<void> _delete(
   WidgetRef ref,
   Transaction transaction,
 ) async {
-  if (!canEditOrExplain(context)) return;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(

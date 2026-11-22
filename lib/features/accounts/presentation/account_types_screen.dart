@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
-import '../../sync/presentation/edit_guard.dart';
 import '../domain/account_type.dart';
 import '../domain/custom_account_type.dart';
 import 'account_display.dart';
@@ -34,9 +33,7 @@ class AccountTypesScreen extends ConsumerWidget {
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (canEditOrExplain(context)) showNewAccountTypeDialog(context);
-        },
+        onPressed: () => showNewAccountTypeDialog(context),
         icon: const Icon(Icons.add),
         label: const Text('Add type'),
       ),
@@ -117,14 +114,11 @@ class _TypeTile extends StatelessWidget {
       title: Text(type.name),
       subtitle: Text('$works · $usage'),
       trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        if (!canEditOrExplain(context)) return;
-        showEditAccountTypeDialog(
-          context,
-          type: type,
-          accountCount: accountCount,
-        );
-      },
+      onTap: () => showEditAccountTypeDialog(
+        context,
+        type: type,
+        accountCount: accountCount,
+      ),
     );
   }
 }

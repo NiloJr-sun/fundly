@@ -120,12 +120,17 @@ void main() {
     expect(opened, isNot(contains('fundly')));
   });
 
-  test('signed in, records are view-only', () async {
+  test('signed in, a change goes to the synced store and its queue', () async {
     await switchTo(userA);
-    expect(container.read(canEditProvider), isFalse);
-    expect(() => addAccount('New'), throwsA(isA<ReadOnlyStoreException>()));
+    await addAccount('New');
+    final store = container.read(syncedStoreProvider)! as FakeSyncedStore;
+    expect((await store.queuedItems()).single['operation'], 'account.create');
     await switchTo(const SignedOut());
-    expect(container.read(canEditProvider), isTrue);
+    final local = await container
+        .read(accountRepositoryProvider)
+        .watchAll()
+        .first;
+    expect(local.map((a) => a.name), isNot(contains('New')));
   });
 
   test('switching closes the previous store', () async {

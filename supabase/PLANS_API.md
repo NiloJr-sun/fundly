@@ -105,6 +105,26 @@ eligible activity in any month. Afterwards saves and unarchive return
 `plan_deleted`, account sync never revives the row, and spending in the category
 remains allowed.
 
+## Dataset initialization — S5.3
+
+Implemented by `20261122010000_dataset_initialize.sql`. No table or column
+changed.
+
+```json
+{"operation": "dataset.initialize", "id": "65300000-0000-4000-8000-000000000001"}
+```
+
+`id` is any client UUID (it only identifies the item); `data` is omitted or
+`{}`, and there is no `expected_revision`. Under the per-user lock, when the
+owner has no categories at all, the nine default categories are inserted in
+the app's order (Rent, Utilities, Internet, Subscriptions, Food & Groceries,
+Fuel, Miscellaneous, Salary, Other income), each with its own creation time.
+The result is `{"operation", "initialized", "changes"}`, with the created
+categories in `changes`. With any category present it is a no-op
+(`initialized: false`), so two devices initializing at once get one set. The
+app asks once per device, after its first complete download finds no
+categories; the categories reach it by download.
+
 ## Results and errors
 
 Results contain `operation`, `entity` (`categories` or `monthly_plans`), `id`,
@@ -136,6 +156,8 @@ npx --yes supabase@3.2.0 db reset --yes
 npx --yes supabase@3.2.0 test db
 npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
 python3 supabase/tests/concurrency/category_plan_write_api_test.py
+python3 supabase/tests/concurrency/dataset_initialize_test.py
+python3 supabase/tests/client_contract_test.py
 ```
 
 The runner observes real advisory-lock waits between separate sessions:
