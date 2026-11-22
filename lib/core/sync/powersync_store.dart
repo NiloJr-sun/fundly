@@ -39,8 +39,8 @@ final syncedRawSchema = ps.Schema(
 /// On web, PowerSync runs sync in a shared worker and hands [uploadError]
 /// back as plain text, so whether the server refused a change (stuck) is
 /// only known from that record. A temporary upload failure (offline, server
-/// busy) is retried with the same batch and not shown as an error: the
-/// pending count already says changes are waiting.
+/// busy) is retried with the same batch, so it is not an error: it becomes
+/// [SyncState.uploadRetry], which says why changes are still waiting.
 SyncState syncStateFor({
   required bool connected,
   required bool connecting,
@@ -57,6 +57,9 @@ SyncState syncStateFor({
       : lastUploadFailure;
   final stuck = upload != null && upload.isStuck ? upload : null;
   final error = downloadError ?? stuck;
+  final retry = uploadError == null || stuck != null
+      ? null
+      : (upload ?? uploadError).toString();
   return SyncState(
     connection: switch (error) {
       _ when stuck != null && downloadError == null => SyncConnection.stuck,
@@ -68,6 +71,7 @@ SyncState syncStateFor({
     hasSynced: hasSynced,
     lastSyncedAt: lastSyncedAt,
     error: error?.toString(),
+    uploadRetry: retry,
   );
 }
 

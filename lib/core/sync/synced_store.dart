@@ -30,6 +30,7 @@ class SyncState {
     this.hasSynced = false,
     this.lastSyncedAt,
     this.error,
+    this.uploadRetry,
   });
 
   final SyncConnection connection;
@@ -42,16 +43,22 @@ class SyncState {
   /// server refused a change with ("stuck").
   final String? error;
 
+  /// Why the last upload attempt failed when PowerSync just retries it (for
+  /// example a network error), so waiting changes can say why.
+  final String? uploadRetry;
+
   @override
   bool operator ==(Object other) =>
       other is SyncState &&
       other.connection == connection &&
       other.hasSynced == hasSynced &&
       other.lastSyncedAt == lastSyncedAt &&
-      other.error == error;
+      other.error == error &&
+      other.uploadRetry == uploadRetry;
 
   @override
-  int get hashCode => Object.hash(connection, hasSynced, lastSyncedAt, error);
+  int get hashCode =>
+      Object.hash(connection, hasSynced, lastSyncedAt, error, uploadRetry);
 }
 
 /// A signed-in user's synchronized records and their sync connection.

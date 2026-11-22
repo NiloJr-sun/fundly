@@ -33,6 +33,7 @@ void main() {
 
     expect(state.connection, SyncConnection.stuck);
     expect(state.error, 'unsupported_operation');
+    expect(state.uploadRetry, isNull);
   });
 
   test('a refused upload is stuck when the error arrives as text (web)', () {
@@ -43,17 +44,18 @@ void main() {
 
     expect(state.connection, SyncConnection.stuck);
     expect(state.error, 'unsupported_operation');
+    expect(state.uploadRetry, isNull);
   });
 
-  test('a temporary upload failure stays connected, on both platforms', () {
-    expect(map(uploadError: offline).connection, SyncConnection.connected);
-    expect(
-      map(
-        uploadError: 'SocketException',
-        lastUploadFailure: offline,
-      ).connection,
-      SyncConnection.connected,
-    );
+  test('a temporary upload failure stays connected and says why', () {
+    final native = map(uploadError: offline);
+    final web = map(uploadError: 'SocketException', lastUploadFailure: offline);
+
+    for (final state in [native, web]) {
+      expect(state.connection, SyncConnection.connected);
+      expect(state.error, isNull);
+      expect(state.uploadRetry, 'SocketException');
+    }
   });
 
   test('an untyped upload error without a record is not shown as stuck', () {
@@ -61,6 +63,7 @@ void main() {
 
     expect(state.connection, SyncConnection.connected);
     expect(state.error, isNull);
+    expect(state.uploadRetry, 'something else');
   });
 
   test('a recorded failure is ignored once the status has no upload error', () {
@@ -68,6 +71,7 @@ void main() {
 
     expect(state.connection, SyncConnection.connected);
     expect(state.error, isNull);
+    expect(state.uploadRetry, isNull);
   });
 
   test('a download error wins over a refused upload', () {

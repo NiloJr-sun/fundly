@@ -54,6 +54,30 @@ void main() {
     );
   });
 
+  test('waiting changes say why the last upload attempt failed', () {
+    String retrying(SyncConnection connection, {int pending = 3}) =>
+        syncStatusText(
+          SyncState(
+            connection: connection,
+            hasSynced: true,
+            error: 'timeout',
+            uploadRetry: 'PGRST301',
+          ),
+          pendingUploads: pending,
+        );
+
+    expect(
+      retrying(SyncConnection.connected),
+      'Uploading · 3 changes waiting to upload (retrying: PGRST301)',
+    );
+    expect(retrying(SyncConnection.connected, pending: 0), 'Up to date');
+    expect(
+      retrying(SyncConnection.failed),
+      'Sync problem, retrying: timeout · 3 changes waiting to upload',
+    );
+    expect(retrying(SyncConnection.stuck), isNot(contains('PGRST301')));
+  });
+
   test('hidden rows are reported', () {
     expect(
       text(SyncConnection.connected, hidden: 1),

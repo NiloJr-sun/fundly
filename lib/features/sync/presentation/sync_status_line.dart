@@ -39,7 +39,14 @@ String syncStatusText(
     1 => ' · 1 change waiting to upload',
     _ => ' · $pendingUploads changes waiting to upload',
   };
-  return '$status$pending$hidden';
+  // Failed and stuck already show their error.
+  final retry = switch (state) {
+    _ when pendingUploads == 0 => '',
+    SyncState(connection: SyncConnection.failed || SyncConnection.stuck) => '',
+    SyncState(:final uploadRetry?) => ' (retrying: $uploadRetry)',
+    _ => '',
+  };
+  return '$status$pending$retry$hidden';
 }
 
 /// The signed-in sync status under the Profile greeting.
