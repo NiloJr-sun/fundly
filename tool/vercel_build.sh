@@ -56,6 +56,13 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
+# The key ships inside the public web app, so it must be the publishable one.
+# A secret key would leak and Supabase rejects it from browsers anyway.
+if [[ "$FUNDLY_SUPABASE_PUBLISHABLE_KEY" != sb_publishable_* ]]; then
+  echo "error: FUNDLY_SUPABASE_PUBLISHABLE_KEY must start with sb_publishable_" >&2
+  exit 1
+fi
+
 config=build/vercel_cloud.json
 mkdir -p build
 {
