@@ -290,6 +290,172 @@ pgTAP and concurrency tests pass, `db lint` is clean, and the timing result is
 recorded in this document. Hosted deployment is not part of S6.1. It happens
 with the owner's go-ahead before S6.2 uses it.
 
+#### S6.2 detailed plan (proposal, not approved)
+
+App only. There is no server change, no local or synced schema change and
+no backup format change. It builds on work already delivered:
+
+- `fundly_import_dataset`, deployed;
+- `ImportDataset` and its provider;
+- the reset's guards (`signedInExportBlocker` plus "connected");
+- the reset's retry rule (same `import_id` and body, at most 3 attempts);
+- `LocalBackupSource`, which reads every signed-out record;
+- format 7 export, used for the checkpoint before a replace;
+- `watchSyncedCounts`.
+
+**Reading this device's data while signed in.** `appDatabaseProvider` throws
+while signed in, by design. The copy flow therefore opens the signed-out
+database (`fundly`) itself through `databaseOpenerProvider`, reads it in one
+transaction with `LocalBackupSource`, and closes it. Nothing else has that
+database open while signed in, and it is only ever read.
+
+**What counts as "data on this device".** Anything beyond the untouched
+default categories: any custom type, account, transaction or plan, or a
+category that is not one of the defaults as created. With nothing to copy,
+there is no prompt and no Profile row.
+
+**Request.** `BackupRecords` from the device becomes one `replace` or
+`into_empty` request:
+
+- every record gets a fresh UUID (Decision 5), and every reference is
+  rewritten through one ID map;
+- money is sent as decimal strings and timestamps as UTC (missing ones are
+  left to the server);
+- the client refuses a request over 8 MiB before sending it, with an
+  explanation.
+
+**Flow** (new `CopyDeviceDataScreen`, a full screen rather than a dialog,
+since it has several steps):
+
+1. **Guards,** checked on open and again just before sending: connected, a
+   full download finished, no uploads waiting, not stuck. On the web, no
+   rows the browser cannot read. Refused changes do not block, as for reset.
+2. **Preview:** counts for this device and the account, side by side
+   (accounts, categories, transactions, plans).
+3. **The choice:**
+   - **Copy to my account,** when the account holds only untouched
+     defaults. Sends `into_empty`.
+   - **Replace my account's data,** otherwise. The screen says the account's
+     records are deleted on every device signed in as the user's email.
+     Step 1 saves a format 7 checkpoint of the account (required, as for
+     reset; Decision S6.2-3). Step 2 is typing **replace my data**. Then it
+     sends `replace` with the counts the user saw.
+   - **Not now,** which changes nothing.
+4. **Send:** a network failure or lost response is resent up to 3 times
+   with the same ID and body. `dataset_changed` and `dataset_not_empty` say
+   the account changed and go back to the preview with fresh counts and a new
+   ID. Any other refusal shows its code and says nothing was changed.
+5. **Wait** up to 60 s for this device's synced store to show the counts the
+   server returned. If the wait runs out: "Copied. This phone will check it
+   after it syncs", and the check runs the next time the screen opens.
+6. **Check** (Decision S6.2-1): read the synced store with the format 7
+   source, map its UUIDs back through the ID map, and compare **every field
+   of every record** with the device snapshot. The screen then shows "Copied
+   and checked", with the account count, the transaction count and each
+   account's balance from `balancesFor()` on both sides. On a mismatch, it
+   names the first difference (table, record, field). Nothing is deleted
+   either way, and the device data stays as it was.
+
+**Remembering the copy** (Decision 4): the device stores, in its
+preferences, which account the data was copied to (user ID, email) and
+when, but only after a successful check.
+
+- In signed-out mode, Profile shows "Copied to `<email>` on `<date>`".
+- At sign-in, that account is not prompted again.
+- The ID map is kept with it until the check passes (the step 5 timeout
+  case), then dropped.
+
+**Where it is offered** (Decision 3, Decision S6.2-2):
+
+- **At sign-in.** When the first download finishes, if this device has data
+  and it was not copied to this account, a one-time prompt appears: "This
+  phone has data from before you signed in", with **Review** (opens the
+  screen) or **Not now**. Not now is remembered for that account.
+- **On Profile, while signed in.** "Copy this device's data to your
+  account", shown while the device has data.
+
+**Shared code.** `CloudDataResetter`'s send-and-retry loop moves into a
+small `CloudDatasetImport` that both reset and copy use. Reset behaviour and
+its tests stay the same.
+
+**Files likely to change:**
+
+- New:
+  - `features/backup/data/dataset_request.dart`: records to request, and
+    the ID map.
+  - `features/backup/data/device_data_copier.dart`: guards, send, wait,
+    check.
+  - `features/backup/data/copy_marker.dart`: preferences store.
+  - `features/backup/presentation/copy_device_data_screen.dart`.
+- Changed:
+  - `cloud_data_resetter.dart`: uses the shared send.
+  - `profile_screen.dart`: the row, and the signed-out note.
+  - `app/home_shell.dart` or the sign-in path: the one-time prompt.
+  - `main.dart`: the marker store's provider.
+  - Docs: this plan, `IMPORT_API.md` (copy as a client), CLAUDE.md §11 row
+    and AGENTS.md on completion.
+
+**Tests:**
+
+- **Request mapping:** every record kind and flag, linked rows, the budget
+  account, year 0000, archived history, references rewritten, no integer
+  IDs left, and the size refusal.
+- **Data on this device:** defaults alone are not data; a renamed default
+  is.
+- **Copier,** with a fake RPC and stores:
+  - both modes and the choice between them;
+  - guards before sending;
+  - the same ID on retry, and a new ID after `dataset_changed`;
+  - the wait timing out, then the deferred check;
+  - the check passing, and naming a planted difference;
+  - the marker saved only after a passing check.
+- **Widgets:**
+  - the preview counts;
+  - Copy versus Replace shown correctly;
+  - checkpoint and typed phrase required for Replace;
+  - the error messages;
+  - the prompt shown once per account, and Not now remembered;
+  - the Profile row hidden without data;
+  - the signed-out "Copied to" note.
+- **Server contract** (`client_contract_test.py`, local Supabase): a request
+  built by the Dart mapping for a full sample dataset is accepted in both
+  modes. This shared fixture keeps the client and server rules aligned.
+- **Manual:**
+  - iOS simulator against local Supabase: copy into a fresh account, then
+    replace a non-empty one;
+  - Chrome as a second device: it downloads the complete dataset, and the
+    balances match;
+  - then the owner's phone into the hosted account. After Reset all data
+    that account holds only the defaults, so Copy applies; otherwise
+    Replace.
+  - A large sample (about 10,000 transactions) against the hosted project,
+    to measure the gateway size limit and timing that S6.1 left open.
+
+**Limitations:**
+
+- `expected` compares counts only, as for reset. An edit made on another
+  device between the preview and the replace, without changing the counts,
+  is lost. It is in that device's history only if it exported.
+- A copy is a one-time move. Later signed-out changes on this device are not
+  copied unless the user copies again, which is a full replace.
+- On the web, the signed-out data is the browser's own, so the copy moves
+  that browser's data, not the phone's.
+
+**Decisions for the product owner:**
+
+1. **How to check the copy:** compare every field of every record after
+   mapping IDs back, and show the balances as the visible summary
+   (recommended). Equal records mean every derived value (balances,
+   Spending, Plans) is equal too, so this is stricter and simpler than
+   recomputing each figure. Alternative: the originally planned comparison
+   of counts, balances, this month's totals and Plans rows.
+2. **The sign-in prompt:** once per account, with Not now remembered and the
+   Profile row always available (recommended). Alternative: prompt at every
+   sign-in until copied.
+3. **Checkpoint before Replace:** required, as for Reset all data
+   (recommended). Alternative: offered but optional.
+4. **Typed phrase for Replace:** "replace my data" (recommended).
+
 ## Decisions
 
 Approved 2026-11-22: 1–7, each as recommended.
