@@ -1,0 +1,610 @@
+-- S6.1: `fundly_import_dataset` replaces one owner's whole dataset in a single
+-- transaction, after checking the final state with the same rules as a local
+-- backup restore. It takes the same per-user lock as `fundly_apply_operations`,
+-- so imports and uploads never interleave, and other devices download either
+-- the old dataset or the complete new one. Existing tables, constraints and
+-- operations are unchanged. See supabase/IMPORT_API.md.
+
+-- Backend-only, like fundly_write_receipts (which is pinned to protocol 1 and
+-- per-item batch results).
+create table public.fundly_import_receipts (
+  owner_id uuid not null references auth.users(id) on delete restrict,
+  import_id uuid not null,
+  request_fingerprint bytea not null check (octet_length(request_fingerprint) = 32),
+  mode text not null check (mode in ('into_empty', 'replace')),
+  result jsonb not null check (jsonb_typeof(result) = 'object'),
+  created_at timestamptz not null default now(),
+  primary key (owner_id, import_id)
+);
+alter table public.fundly_import_receipts enable row level security;
+revoke all on public.fundly_import_receipts from public, anon, authenticated, service_role;
+
+-- Rejects an imported record. `index` is the record's at_index in its array.
+create function fundly_private.import_fail(entity text, item_index integer, field text, rule text)
+returns void language plpgsql set search_path = '' as $$
+begin
+  raise exception 'invalid_import' using errcode = 'P0001',
+    detail = jsonb_build_object('table', entity, 'index', item_index, 'field', field, 'rule', rule)::text;
+end;
+$$;
+
+-- Fails when a set-based check found a record (1-based at_index) breaking a rule.
+create function fundly_private.import_check(found_at bigint, entity text, field text, rule text)
+returns void language plpgsql set search_path = '' as $$
+begin
+  if found_at is not null then
+    perform fundly_private.import_fail(entity, (found_at - 1)::integer, field, rule);
+  end if;
+end;
+$$;
+
+-- A record must be an object holding every required key and no unknown key.
+create function fundly_private.import_keys(entity text, item_index integer, item jsonb,
+  required text[], optional text[])
+returns void language plpgsql set search_path = '' as $$
+declare key text;
+begin
+  if jsonb_typeof(item) is distinct from 'object' then
+    perform fundly_private.import_fail(entity, item_index, null, 'not_an_object');
+  end if;
+  for key in select k from jsonb_object_keys(item) k order by k loop
+    if not (key = any(required) or key = any(optional)) then
+      perform fundly_private.import_fail(entity, item_index, key, 'unknown_field');
+    end if;
+  end loop;
+  foreach key in array required loop
+    if not item ? key then perform fundly_private.import_fail(entity, item_index, key, 'missing'); end if;
+  end loop;
+end;
+$$;
+
+create function fundly_private.json_boolean(value jsonb)
+returns boolean language plpgsql immutable set search_path = '' as $$
+begin
+  if jsonb_typeof(value) is distinct from 'boolean' then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  return value::text::boolean;
+end;
+$$;
+
+-- "0", "123" or "-123" (opening balances).
+create function fundly_private.signed_bigint(value jsonb)
+returns bigint language plpgsql stable set search_path = '' as $$
+declare parsed text;
+begin
+  parsed := fundly_private.json_text(value);
+  if left(parsed, 1) = '-' then
+    return -fundly_private.positive_bigint(to_jsonb(substr(parsed, 2)));
+  end if;
+  return fundly_private.nonnegative_bigint(value);
+end;
+$$;
+
+-- An optional UTC timestamp such as 2026-11-22T01:02:03.456789Z.
+create function fundly_private.utc_timestamp(value jsonb)
+returns timestamptz language plpgsql stable set search_path = '' as $$
+declare parsed text;
+begin
+  if value is null or value = 'null'::jsonb then return null; end if;
+  parsed := fundly_private.json_text(value);
+  if parsed !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$' then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  begin
+    return (replace(parsed, 'Z', '+00:00'))::timestamptz;
+  exception when datetime_field_overflow or invalid_datetime_format then
+    raise exception 'invalid_request' using errcode = '22023';
+  end;
+end;
+$$;
+
+-- Trimmed, 1-40 UTF-16 code units: the account/category name rule, which a
+-- backup restore also applies without trimming for the user.
+create function fundly_private.import_name_valid(value text)
+returns boolean language sql immutable strict set search_path = '' as $$
+  select value = fundly_private.trim_text(value) and value <> ''
+    and fundly_private.utf16_length(value) <= 40
+$$;
+
+create function fundly_private.import_name_key(value text)
+returns text language sql immutable strict set search_path = '' as $$
+  select translate(value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') collate "C"
+$$;
+
+create function fundly_private.dataset_counts(actor uuid)
+returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object(
+    'custom_account_types', (select count(*) from public.custom_account_types where owner_id = actor),
+    'accounts', (select count(*) from public.accounts where owner_id = actor),
+    'categories', (select count(*) from public.categories where owner_id = actor),
+    'transactions', (select count(*) from public.transactions where owner_id = actor),
+    'monthly_plans', (select count(*) from public.monthly_plans where owner_id = actor))
+$$;
+
+-- True when the owner holds nothing but untouched default categories (the
+-- list `dataset.initialize` creates), or nothing at all.
+create function fundly_private.dataset_is_empty(actor uuid)
+returns boolean language sql stable set search_path = '' as $$
+  select not exists(select 1 from public.custom_account_types where owner_id = actor)
+    and not exists(select 1 from public.accounts where owner_id = actor)
+    and not exists(select 1 from public.transactions where owner_id = actor)
+    and not exists(select 1 from public.monthly_plans where owner_id = actor)
+    and not exists(select 1 from public.categories c where c.owner_id = actor and (
+      c.revision <> 1 or c.is_archived or c.is_plan_archived or c.is_plan_deleted
+      or c.plan_group <> 'spending' or c.linked_account_id is not null
+      or (c.name, c.kind) not in (values ('Rent','spending'), ('Utilities','spending'),
+        ('Internet','spending'), ('Subscriptions','spending'), ('Food & Groceries','spending'),
+        ('Fuel','spending'), ('Miscellaneous','spending'), ('Salary','inflow'),
+        ('Other income','inflow'))))
+$$;
+
+create function public.fundly_import_dataset(import_id uuid, request jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  actor uuid := auth.uid();
+  fingerprint bytea;
+  receipt public.fundly_import_receipts%rowtype;
+  import_mode text;
+  expected jsonb;
+  dataset jsonb;
+  entity text;
+  field text;
+  item jsonb;
+  at_index integer;
+  current_counts jsonb;
+  response jsonb;
+  types public.custom_account_types[] := '{}'::public.custom_account_types[];
+  accounts public.accounts[] := '{}'::public.accounts[];
+  categories public.categories[] := '{}'::public.categories[];
+  transactions public.transactions[] := '{}'::public.transactions[];
+  plans public.monthly_plans[] := '{}'::public.monthly_plans[];
+  t public.custom_account_types;
+  a public.accounts;
+  c public.categories;
+  x public.transactions;
+  p public.monthly_plans;
+begin
+  if actor is null then raise exception 'authentication_required' using errcode = '28000'; end if;
+  -- 1. Size and envelope shape, before any work.
+  if import_id is null or octet_length(request::text) > 8388608 then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  perform fundly_private.assert_keys(request, array['version','mode','expected','dataset']);
+  if jsonb_typeof(request->'version') is distinct from 'number' or request->>'version' <> '1' then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  import_mode := fundly_private.json_text(request->'mode');
+  if import_mode not in ('into_empty', 'replace') then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  expected := request->'expected';
+  if expected is not null then
+    perform fundly_private.assert_keys(expected, array['custom_account_types','accounts',
+      'categories','transactions','monthly_plans']);
+    if (select count(*) from jsonb_each(expected) e
+        where jsonb_typeof(e.value) = 'number' and e.value::text ~ '^(0|[1-9][0-9]{0,9})$') <> 5 then
+      raise exception 'invalid_request' using errcode = '22023';
+    end if;
+  elsif import_mode = 'replace' then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+  dataset := request->'dataset';
+  perform fundly_private.assert_keys(dataset, array['custom_account_types','accounts',
+    'categories','transactions','monthly_plans']);
+  if (select count(*) from jsonb_each(dataset) e where jsonb_typeof(e.value) = 'array') <> 5 then
+    raise exception 'invalid_request' using errcode = '22023';
+  end if;
+
+  -- 2-3. Serialize with uploads, then answer a retry from its receipt.
+  fingerprint := sha256(convert_to(request::text, 'UTF8'));
+  perform pg_advisory_xact_lock(hashtextextended('fundly:' || actor::text, 0));
+  select * into receipt from public.fundly_import_receipts r
+    where r.owner_id = actor and r.import_id = fundly_import_dataset.import_id;
+  if found then
+    if receipt.request_fingerprint <> fingerprint then
+      raise exception 'import_key_reused' using errcode = 'P0001';
+    end if;
+    return receipt.result;
+  end if;
+
+  -- 4. The account must still be what the user confirmed.
+  current_counts := fundly_private.dataset_counts(actor);
+  if import_mode = 'into_empty' and not fundly_private.dataset_is_empty(actor) then
+    raise exception 'dataset_not_empty' using errcode = 'P0001',
+      detail = jsonb_build_object('current', current_counts)::text;
+  end if;
+  if import_mode = 'replace'
+    and (select bool_or(e.value::text::bigint <> (current_counts->>e.key)::bigint) from jsonb_each(expected) e) then
+    raise exception 'dataset_changed' using errcode = 'P0001',
+      detail = jsonb_build_object('current', current_counts)::text;
+  end if;
+
+  -- 5. Parse every record. `entity`, `at_index` and `field` say where a
+  -- malformed value is; local variables keep their values in the handler.
+  begin
+    entity := 'custom_account_types';
+    for item, at_index in select e.value, (e.ordinality - 1)::integer
+        from jsonb_array_elements(dataset->entity) with ordinality e loop
+      field := null;
+      perform fundly_private.import_keys(entity, at_index, item,
+        array['id','name','base_type'], array['created_at','updated_at']);
+      t := null;
+      t.owner_id := actor;
+      t.revision := 1;
+      field := 'id'; t.id := fundly_private.json_uuid(item->'id');
+      field := 'name'; t.name := fundly_private.json_text(item->'name');
+      field := 'base_type'; t.base_type := fundly_private.json_text(item->'base_type');
+      field := 'created_at'; t.created_at := coalesce(fundly_private.utc_timestamp(item->'created_at'), now());
+      field := 'updated_at'; t.updated_at := coalesce(fundly_private.utc_timestamp(item->'updated_at'), t.created_at);
+      if not fundly_private.import_name_valid(t.name) then
+        perform fundly_private.import_fail(entity, at_index, 'name', 'invalid_name');
+      end if;
+      if lower(t.name) in ('savings / cash','credit','loan') then
+        perform fundly_private.import_fail(entity, at_index, 'name', 'name_taken');
+      end if;
+      if t.base_type not in ('savingsCash','credit','loan') then
+        perform fundly_private.import_fail(entity, at_index, 'base_type', 'invalid_value');
+      end if;
+      types[at_index + 1] := t;
+    end loop;
+
+    entity := 'accounts';
+    for item, at_index in select e.value, (e.ordinality - 1)::integer
+        from jsonb_array_elements(dataset->entity) with ordinality e loop
+      field := null;
+      perform fundly_private.import_keys(entity, at_index, item,
+        array['id','name','type','opening_balance_minor','currency_code','is_archived',
+          'custom_type_id','is_budget_account'], array['created_at','updated_at']);
+      a := null;
+      a.owner_id := actor;
+      a.revision := 1;
+      field := 'id'; a.id := fundly_private.json_uuid(item->'id');
+      field := 'name'; a.name := fundly_private.json_text(item->'name');
+      field := 'type'; a.type := fundly_private.json_text(item->'type');
+      field := 'opening_balance_minor';
+      a.opening_balance_minor := fundly_private.signed_bigint(item->'opening_balance_minor');
+      field := 'currency_code'; a.currency_code := fundly_private.json_text(item->'currency_code');
+      field := 'is_archived'; a.is_archived := fundly_private.json_boolean(item->'is_archived');
+      field := 'custom_type_id'; a.custom_type_id := fundly_private.json_uuid(item->'custom_type_id', true);
+      field := 'is_budget_account'; a.is_budget_account := fundly_private.json_boolean(item->'is_budget_account');
+      field := 'created_at'; a.created_at := coalesce(fundly_private.utc_timestamp(item->'created_at'), now());
+      field := 'updated_at'; a.updated_at := coalesce(fundly_private.utc_timestamp(item->'updated_at'), a.created_at);
+      if not fundly_private.import_name_valid(a.name) then
+        perform fundly_private.import_fail(entity, at_index, 'name', 'invalid_name');
+      end if;
+      if a.type not in ('savingsCash','credit','loan') then
+        perform fundly_private.import_fail(entity, at_index, 'type', 'invalid_value');
+      end if;
+      if a.currency_code <> 'PHP' then
+        perform fundly_private.import_fail(entity, at_index, 'currency_code', 'invalid_value');
+      end if;
+      if (a.type = 'savingsCash' and a.opening_balance_minor < 0)
+        or (a.type <> 'savingsCash' and a.opening_balance_minor > 0) then
+        perform fundly_private.import_fail(entity, at_index, 'opening_balance_minor', 'wrong_sign');
+      end if;
+      if a.is_budget_account and (a.type <> 'savingsCash' or a.is_archived) then
+        perform fundly_private.import_fail(entity, at_index, 'is_budget_account', 'not_eligible');
+      end if;
+      accounts[at_index + 1] := a;
+    end loop;
+
+    entity := 'categories';
+    for item, at_index in select e.value, (e.ordinality - 1)::integer
+        from jsonb_array_elements(dataset->entity) with ordinality e loop
+      field := null;
+      perform fundly_private.import_keys(entity, at_index, item,
+        array['id','name','kind','is_archived','is_plan_archived','is_plan_deleted','plan_group',
+          'linked_account_id'], array['created_at','updated_at']);
+      c := null;
+      c.owner_id := actor;
+      c.revision := 1;
+      field := 'id'; c.id := fundly_private.json_uuid(item->'id');
+      field := 'name'; c.name := fundly_private.json_text(item->'name');
+      field := 'kind'; c.kind := fundly_private.json_text(item->'kind');
+      field := 'is_archived'; c.is_archived := fundly_private.json_boolean(item->'is_archived');
+      field := 'is_plan_archived'; c.is_plan_archived := fundly_private.json_boolean(item->'is_plan_archived');
+      field := 'is_plan_deleted'; c.is_plan_deleted := fundly_private.json_boolean(item->'is_plan_deleted');
+      field := 'plan_group'; c.plan_group := fundly_private.json_text(item->'plan_group');
+      field := 'linked_account_id'; c.linked_account_id := fundly_private.json_uuid(item->'linked_account_id', true);
+      field := 'created_at'; c.created_at := coalesce(fundly_private.utc_timestamp(item->'created_at'), now());
+      field := 'updated_at'; c.updated_at := coalesce(fundly_private.utc_timestamp(item->'updated_at'), c.created_at);
+      if not fundly_private.import_name_valid(c.name) then
+        perform fundly_private.import_fail(entity, at_index, 'name', 'invalid_name');
+      end if;
+      if c.kind not in ('spending','inflow') then
+        perform fundly_private.import_fail(entity, at_index, 'kind', 'invalid_value');
+      end if;
+      if c.plan_group not in ('spending','savings','liability')
+        or (c.kind = 'inflow' and c.plan_group <> 'spending') then
+        perform fundly_private.import_fail(entity, at_index, 'plan_group', 'invalid_value');
+      end if;
+      if c.is_plan_archived and c.kind <> 'spending' then
+        perform fundly_private.import_fail(entity, at_index, 'is_plan_archived', 'invalid_value');
+      end if;
+      if c.is_plan_deleted and not c.is_plan_archived then
+        perform fundly_private.import_fail(entity, at_index, 'is_plan_deleted', 'invalid_value');
+      end if;
+      categories[at_index + 1] := c;
+    end loop;
+
+    entity := 'transactions';
+    for item, at_index in select e.value, (e.ordinality - 1)::integer
+        from jsonb_array_elements(dataset->entity) with ordinality e loop
+      field := null;
+      perform fundly_private.import_keys(entity, at_index, item,
+        array['id','type','amount_minor','currency_code','date','payee','category_id',
+          'source_account_id','destination_account_id','note'], array['created_at','updated_at']);
+      x := null;
+      x.owner_id := actor;
+      x.revision := 1;
+      field := 'id'; x.id := fundly_private.json_uuid(item->'id');
+      field := 'type'; x.type := fundly_private.json_text(item->'type');
+      field := 'amount_minor'; x.amount_minor := fundly_private.positive_bigint(item->'amount_minor');
+      field := 'currency_code'; x.currency_code := fundly_private.json_text(item->'currency_code');
+      field := 'date'; x.date := fundly_private.iso_date(item->'date');
+      field := 'payee'; x.payee := fundly_private.json_text(item->'payee');
+      field := 'category_id'; x.category_id := fundly_private.json_uuid(item->'category_id', true);
+      field := 'source_account_id'; x.source_account_id := fundly_private.json_uuid(item->'source_account_id', true);
+      field := 'destination_account_id';
+      x.destination_account_id := fundly_private.json_uuid(item->'destination_account_id', true);
+      field := 'note'; x.note := fundly_private.json_text(item->'note');
+      field := 'created_at'; x.created_at := coalesce(fundly_private.utc_timestamp(item->'created_at'), now());
+      field := 'updated_at'; x.updated_at := coalesce(fundly_private.utc_timestamp(item->'updated_at'), x.created_at);
+      if x.type not in ('spending','inflow','transfer','creditCardPayment') then
+        perform fundly_private.import_fail(entity, at_index, 'type', 'invalid_value');
+      end if;
+      if x.currency_code <> 'PHP' then
+        perform fundly_private.import_fail(entity, at_index, 'currency_code', 'invalid_value');
+      end if;
+      if fundly_private.utf16_length(x.payee) > 60
+        or (x.type in ('spending','inflow') and fundly_private.trim_text(x.payee) = '') then
+        perform fundly_private.import_fail(entity, at_index, 'payee', 'invalid_value');
+      end if;
+      if fundly_private.utf16_length(x.note) > 500 then
+        perform fundly_private.import_fail(entity, at_index, 'note', 'invalid_value');
+      end if;
+      if not (
+        (x.type = 'spending' and x.source_account_id is not null
+          and x.destination_account_id is null and x.category_id is not null)
+        or (x.type = 'inflow' and x.source_account_id is null and x.destination_account_id is not null)
+        or (x.type in ('transfer','creditCardPayment') and x.source_account_id is not null
+          and x.destination_account_id is not null and x.category_id is null)
+      ) then
+        perform fundly_private.import_fail(entity, at_index, null, 'invalid_shape');
+      end if;
+      if x.source_account_id = x.destination_account_id then
+        perform fundly_private.import_fail(entity, at_index, 'destination_account_id', 'same_account');
+      end if;
+      transactions[at_index + 1] := x;
+    end loop;
+
+    entity := 'monthly_plans';
+    for item, at_index in select e.value, (e.ordinality - 1)::integer
+        from jsonb_array_elements(dataset->entity) with ordinality e loop
+      field := null;
+      perform fundly_private.import_keys(entity, at_index, item,
+        array['id','month','category_id','target_amount_minor','assigned_amount_minor','currency_code'],
+        array['created_at','updated_at']);
+      p := null;
+      p.owner_id := actor;
+      p.revision := 1;
+      field := 'id'; p.id := fundly_private.json_uuid(item->'id');
+      field := 'month'; p.month := fundly_private.calendar_month(item->'month');
+      field := 'category_id'; p.category_id := fundly_private.json_uuid(item->'category_id');
+      field := 'target_amount_minor';
+      p.target_amount_minor := case when item->'target_amount_minor' = 'null'::jsonb then null
+        else fundly_private.nonnegative_bigint(item->'target_amount_minor') end;
+      field := 'assigned_amount_minor';
+      p.assigned_amount_minor := fundly_private.nonnegative_bigint(item->'assigned_amount_minor');
+      field := 'currency_code'; p.currency_code := fundly_private.json_text(item->'currency_code');
+      field := 'created_at'; p.created_at := coalesce(fundly_private.utc_timestamp(item->'created_at'), now());
+      field := 'updated_at'; p.updated_at := coalesce(fundly_private.utc_timestamp(item->'updated_at'), p.created_at);
+      if p.currency_code <> 'PHP' then
+        perform fundly_private.import_fail(entity, at_index, 'currency_code', 'invalid_value');
+      end if;
+      plans[at_index + 1] := p;
+    end loop;
+  exception when sqlstate '22023' then
+    perform fundly_private.import_fail(entity, at_index, field, 'invalid_value');
+  end;
+
+  -- 6. The final state, across records. Positions are 1-based here.
+  perform fundly_private.import_check((select min(r.n) from (
+      select n, row_number() over (partition by id order by n) k from unnest(types) with ordinality u(id, owner_id, name, base_type, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'custom_account_types', 'id', 'duplicate_id');
+  perform fundly_private.import_check((select min(r.n) from (
+      select n, row_number() over (partition by fundly_private.import_name_key(u.name) order by n) k
+      from unnest(types) with ordinality u(id, owner_id, name, base_type, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'custom_account_types', 'name', 'name_taken');
+
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by u.id order by u.n) k
+      from unnest(accounts) with ordinality u(id, owner_id, name, type, opening_balance_minor, currency_code,
+        is_archived, custom_type_id, is_budget_account, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'accounts', 'id', 'duplicate_id');
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by fundly_private.import_name_key(u.name) order by u.n) k
+      from unnest(accounts) with ordinality u(id, owner_id, name, type, opening_balance_minor, currency_code,
+        is_archived, custom_type_id, is_budget_account, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'accounts', 'name', 'name_taken');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(accounts) with ordinality u(id, owner_id, name, type, opening_balance_minor, currency_code,
+        is_archived, custom_type_id, is_budget_account, created_at, updated_at, revision, n)
+      where u.custom_type_id is not null and not exists(select 1 from unnest(types) ct
+        where ct.id = u.custom_type_id and ct.base_type = u.type)),
+    'accounts', 'custom_type_id', 'invalid_reference');
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (order by u.n) k
+      from unnest(accounts) with ordinality u(id, owner_id, name, type, opening_balance_minor, currency_code,
+        is_archived, custom_type_id, is_budget_account, created_at, updated_at, revision, n)
+      where u.is_budget_account) r where r.k > 1), 'accounts', 'is_budget_account', 'only_one_budget_account');
+
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by u.id order by u.n) k
+      from unnest(categories) with ordinality u(id, owner_id, name, kind, is_archived, is_plan_archived,
+        is_plan_deleted, plan_group, linked_account_id, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'categories', 'id', 'duplicate_id');
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by fundly_private.import_name_key(u.name) order by u.n) k
+      from unnest(categories) with ordinality u(id, owner_id, name, kind, is_archived, is_plan_archived,
+        is_plan_deleted, plan_group, linked_account_id, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'categories', 'name', 'name_taken');
+  -- A linked Plans row belongs to one liability account and follows its archive status.
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, u.kind, u.plan_group, u.is_archived, ac.type, ac.is_archived as account_archived,
+        row_number() over (partition by u.linked_account_id order by u.n) k
+      from unnest(categories) with ordinality u(id, owner_id, name, kind, is_archived, is_plan_archived,
+        is_plan_deleted, plan_group, linked_account_id, created_at, updated_at, revision, n)
+      left join unnest(accounts) ac on ac.id = u.linked_account_id
+      where u.linked_account_id is not null
+    ) r where r.k > 1 or r.type is null or r.type = 'savingsCash' or r.kind <> 'spending'
+      or r.plan_group <> 'liability' or r.is_archived <> r.account_archived),
+    'categories', 'linked_account_id', 'invalid_link');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(accounts) with ordinality u(id, owner_id, name, type, opening_balance_minor, currency_code,
+        is_archived, custom_type_id, is_budget_account, created_at, updated_at, revision, n)
+      where u.type <> 'savingsCash' and not u.is_archived
+        and not exists(select 1 from unnest(categories) ca where ca.linked_account_id = u.id)),
+    'accounts', 'id', 'missing_linked_category');
+
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by u.id order by u.n) k
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'transactions', 'id', 'duplicate_id');
+  -- Archived accounts and categories may hold history, as in a local restore.
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      left join unnest(accounts) ac on ac.id = u.source_account_id
+      where u.source_account_id is not null and ac.id is null),
+    'transactions', 'source_account_id', 'invalid_reference');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      left join unnest(accounts) ac on ac.id = u.destination_account_id
+      where u.destination_account_id is not null and ac.id is null),
+    'transactions', 'destination_account_id', 'invalid_reference');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      left join unnest(categories) ca on ca.id = u.category_id
+      where u.category_id is not null and ca.id is null),
+    'transactions', 'category_id', 'invalid_reference');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      join unnest(accounts) ac on ac.id = u.source_account_id
+      where (u.type = 'spending' and ac.type not in ('savingsCash','credit'))
+        or (u.type in ('transfer','creditCardPayment') and ac.type <> 'savingsCash')),
+    'transactions', 'source_account_id', 'account_not_allowed');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      join unnest(accounts) ac on ac.id = u.destination_account_id
+      where (u.type = 'inflow' and ac.type not in ('savingsCash','credit'))
+        or (u.type = 'transfer' and ac.type not in ('savingsCash','loan'))
+        or (u.type = 'creditCardPayment' and ac.type <> 'credit')),
+    'transactions', 'destination_account_id', 'account_not_allowed');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(transactions) with ordinality u(id, owner_id, type, amount_minor, currency_code, date, payee,
+        category_id, source_account_id, destination_account_id, note, created_at, updated_at, revision, n)
+      join unnest(categories) ca on ca.id = u.category_id
+      where ca.linked_account_id is not null
+        or ca.kind <> case when u.type = 'spending' then 'spending' else 'inflow' end),
+    'transactions', 'category_id', 'category_not_allowed');
+
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by u.id order by u.n) k
+      from unnest(plans) with ordinality u(id, owner_id, month, category_id, target_amount_minor,
+        assigned_amount_minor, currency_code, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'monthly_plans', 'id', 'duplicate_id');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(plans) with ordinality u(id, owner_id, month, category_id, target_amount_minor,
+        assigned_amount_minor, currency_code, created_at, updated_at, revision, n)
+      left join unnest(categories) ca on ca.id = u.category_id
+      where ca.id is null), 'monthly_plans', 'category_id', 'invalid_reference');
+  perform fundly_private.import_check((select min(u.n)
+      from unnest(plans) with ordinality u(id, owner_id, month, category_id, target_amount_minor,
+        assigned_amount_minor, currency_code, created_at, updated_at, revision, n)
+      join unnest(categories) ca on ca.id = u.category_id
+      where ca.kind <> 'spending' or ca.is_plan_deleted), 'monthly_plans', 'category_id', 'category_not_allowed');
+  perform fundly_private.import_check((select min(r.n) from (
+      select u.n, row_number() over (partition by u.category_id, u.month order by u.n) k
+      from unnest(plans) with ordinality u(id, owner_id, month, category_id, target_amount_minor,
+        assigned_amount_minor, currency_code, created_at, updated_at, revision, n)
+    ) r where r.k > 1), 'monthly_plans', 'month', 'duplicate_plan');
+
+  -- IDs must be new to every owner and never retired. Which owner holds a
+  -- clashing ID is never revealed.
+  for entity, at_index in
+    select v.entity, v.n from (
+      select 'custom_account_types' entity, u.n from unnest(types) with ordinality u(id, owner_id, name, base_type,
+        created_at, updated_at, revision, n)
+        where exists(select 1 from public.custom_account_types r where r.id = u.id)
+      union all select 'accounts', u.n from unnest(accounts) with ordinality u(id, owner_id, name, type,
+        opening_balance_minor, currency_code, is_archived, custom_type_id, is_budget_account, created_at,
+        updated_at, revision, n) where exists(select 1 from public.accounts r where r.id = u.id)
+      union all select 'categories', u.n from unnest(categories) with ordinality u(id, owner_id, name, kind,
+        is_archived, is_plan_archived, is_plan_deleted, plan_group, linked_account_id, created_at, updated_at,
+        revision, n) where exists(select 1 from public.categories r where r.id = u.id)
+      union all select 'transactions', u.n from unnest(transactions) with ordinality u(id, owner_id, type,
+        amount_minor, currency_code, date, payee, category_id, source_account_id, destination_account_id, note,
+        created_at, updated_at, revision, n) where exists(select 1 from public.transactions r where r.id = u.id)
+      union all select 'monthly_plans', u.n from unnest(plans) with ordinality u(id, owner_id, month,
+        category_id, target_amount_minor, assigned_amount_minor, currency_code, created_at, updated_at,
+        revision, n) where exists(select 1 from public.monthly_plans r where r.id = u.id)
+      union all select d.entity, u.n from (
+          select 'custom_account_types' entity, t2.id, t2.n from unnest(types) with ordinality t2(id, o, nm, b,
+            ca, ua, rv, n)
+          union all select 'accounts', a2.id, a2.n from unnest(accounts) with ordinality a2(id, o, nm, ty, ob,
+            cc, ar, ct, bu, ca, ua, rv, n)
+          union all select 'categories', c2.id, c2.n from unnest(categories) with ordinality c2(id, o, nm, k, ar,
+            pa, pd, pg, la, ca, ua, rv, n)
+          union all select 'transactions', x2.id, x2.n from unnest(transactions) with ordinality x2(id, o, ty,
+            am, cc, dt, py, ci, si, di, nt, ca, ua, rv, n)
+          union all select 'monthly_plans', p2.id, p2.n from unnest(plans) with ordinality p2(id, o, mo, ci,
+            ta, aa, cc, ca, ua, rv, n)
+        ) u join public.fundly_deleted_records d on d.entity = u.entity and d.id = u.id
+    ) v order by v.entity, v.n limit 1
+  loop
+    raise exception 'record_id_unavailable' using errcode = 'P0001',
+      detail = jsonb_build_object('table', entity, 'index', at_index - 1, 'field', 'id')::text;
+  end loop;
+
+  -- 7. Remove the current dataset; the delete triggers write tombstones.
+  delete from public.monthly_plans where owner_id = actor;
+  delete from public.transactions where owner_id = actor;
+  delete from public.categories where owner_id = actor;
+  delete from public.accounts where owner_id = actor;
+  delete from public.custom_account_types where owner_id = actor;
+
+  -- 8. Insert in reference order; the revision trigger sets revision 1.
+  begin
+    insert into public.custom_account_types select * from unnest(types);
+    insert into public.accounts select * from unnest(accounts);
+    insert into public.categories select * from unnest(categories);
+    insert into public.transactions select * from unnest(transactions);
+    insert into public.monthly_plans select * from unnest(plans);
+  exception when integrity_constraint_violation then
+    -- Step 6 should have caught it: report it rather than leak a constraint name.
+    raise exception 'invalid_import' using errcode = 'P0001',
+      detail = jsonb_build_object('rule', 'constraint')::text;
+  end;
+
+  -- 9. Receipt and result.
+  response := jsonb_build_object('version', 1, 'import_id', import_id, 'mode', import_mode,
+    'counts', jsonb_build_object(
+      'custom_account_types', cardinality(types), 'accounts', cardinality(accounts),
+      'categories', cardinality(categories), 'transactions', cardinality(transactions),
+      'monthly_plans', cardinality(plans)));
+  insert into public.fundly_import_receipts(owner_id, import_id, request_fingerprint, mode, result)
+    values(actor, import_id, fingerprint, import_mode, response);
+  return response;
+end;
+$$;
+
+revoke all on all functions in schema fundly_private from public, anon, authenticated, service_role;
+revoke all on function public.fundly_import_dataset(uuid,jsonb) from public, anon, authenticated, service_role;
+grant execute on function public.fundly_import_dataset(uuid,jsonb) to authenticated;

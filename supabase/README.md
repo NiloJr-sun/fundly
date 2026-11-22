@@ -24,7 +24,12 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   plan archive (timezone-aware) and permanent-deletion operations. No table changes.
 - `migrations/20261118050000_sync_protocol.sql`: backend-only `fundly_deleted_records`
   with delete triggers, retired-UUID checks and structured rejection details.
-- `tests/database/`: **666 pgTAP assertions**, run in
+- `migrations/20261122010000_dataset_initialize.sql`: the `dataset.initialize`
+  operation (default categories once per dataset, S5.3).
+- `migrations/20261122020000_dataset_import.sql`: `fundly_import_dataset`, an atomic
+  whole-dataset import with backend-only import receipts (S6.1,
+  [IMPORT_API.md](IMPORT_API.md)).
+- `tests/database/`: **789 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -34,6 +39,10 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `tests/concurrency/category_plan_write_api_test.py`: nine overlapping-session
   plan-save, plan-archive, plan-deletion and category-deletion checks.
 - `tests/concurrency/sync_protocol_test.py`: three delete/edit/re-create races.
+- `tests/concurrency/dataset_import_test.py`: four import races (import versus upload in
+  both orders, two replaces, the same import sent twice).
+- `tests/performance/dataset_import_timing.py`: times a 10,000-transaction import under
+  an 8 s statement timeout (pass a different count as the argument).
 
 ## Run locally
 
@@ -49,6 +58,8 @@ python3 supabase/tests/concurrency/write_api_test.py
 python3 supabase/tests/concurrency/account_write_api_test.py
 python3 supabase/tests/concurrency/category_plan_write_api_test.py
 python3 supabase/tests/concurrency/sync_protocol_test.py
+python3 supabase/tests/concurrency/dataset_import_test.py
+python3 supabase/tests/performance/dataset_import_timing.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -159,3 +170,25 @@ their fixtures' tombstones before deleting test users.
 No hosted deployment, client integration, PowerSync production stream, or
 real-data migration is claimed. The client recovery contract is defined for S5,
 not implemented. S2 is complete; S3 needs its own approval.
+
+S6.1 (2026-11-22) brings the total to **789 passing SQL assertions** across seven
+files, including 100 for the dataset import. They cover:
+
+- envelope and record-shape refusals;
+- every final-state rule;
+- both modes, including untouched versus renamed default categories;
+- stale counts, retries and import-ID reuse;
+- tombstones for replaced records;
+- retired IDs and other owners' IDs;
+- preserved values, flags, timestamps and year 0000.
+
+Lint of `public` and `fundly_private` is clean. Four more real-session races
+cover:
+
+- an import and an upload, in both orders;
+- two replaces confirmed against the same counts;
+- the same import sent twice at once.
+
+The timing check imported 10,000 transactions (4.2 MB) in 0.60 s and
+19,000 (7.9 MB) in 1.33 s under an 8 s statement timeout. The migration is
+not deployed to the hosted project.

@@ -2,9 +2,9 @@
 
 Date: 2026-11-22
 
-Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). The
-S6.1 detailed plan below is a proposal awaiting approval; nothing is
-implemented. S6 is split into three sub-slices; each is planned in more
+Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S6.1
+is implemented and verified locally, but not deployed to the hosted project.
+S6.2 and S6.3 are not started. S6 is split into three sub-slices; each is planned in more
 detail, implemented, verified and reviewed on its own, and the agent stops
 after each.
 
@@ -156,7 +156,18 @@ A new RPC, separate from `fundly_apply_operations`:
 | S6.2 | App: snapshot and UUID mapping, preview, the three choices, pending-upload guard, verification after download, "copied to" marker; unit and widget tests; iOS simulator and Chrome checks against a test account. | Owner's phone data copied and verified |
 | S6.3 | Format 7 export (both modes), signed-in restore via import, format 7 restore signed out; tests for formats 1–7 in every direction. | Every format restores under the approved rules |
 
-#### S6.1 detailed plan (proposal, not approved)
+#### S6.1 detailed plan (approved and implemented 2026-11-22)
+
+**Result:**
+
+- All 789 SQL assertions pass, 100 of them new.
+- The 4 import races pass, and `db lint` is clean.
+- The timing check imported 10,000 transactions (4.2 MB) in 0.60 s and
+  19,000 transactions (7.9 MB) in 1.33 s, locally under an 8 s statement
+  timeout. The fallback below is not needed locally.
+- The hosted gateway size limit and hosted speed are still unmeasured.
+- Contract: [supabase/IMPORT_API.md](../supabase/IMPORT_API.md).
+- Not deployed.
 
 Server only. No app, local schema (v12) or backup format changes. It adds one
 migration, so it changes the **server schema**: a new backend-only receipts
