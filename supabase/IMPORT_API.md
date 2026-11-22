@@ -4,8 +4,10 @@ Implemented by `20261122020000_dataset_import.sql` and verified locally only.
 The function replaces one owner's whole dataset in a single transaction: other
 devices download either the old dataset or the complete new one. It is the
 server half of moving signed-out data or a backup into an account
-([CLOUD_SYNC_S6_PLAN.md](../docs/CLOUD_SYNC_S6_PLAN.md)). The app does not
-call it yet; that comes in S6.2.
+([CLOUD_SYNC_S6_PLAN.md](../docs/CLOUD_SYNC_S6_PLAN.md)). The app calls it
+for Reset all data while signed in (`replace` with only the default
+categories, `lib/features/backup/data/cloud_data_resetter.dart`); copying
+data into an account comes in S6.2.
 
 The batch API ([WRITE_API.md](WRITE_API.md)) and its receipts, the tables and
 their constraints are unchanged.

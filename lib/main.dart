@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'core/config/cloud_config.dart';
+import 'core/sync/dataset_import.dart';
 import 'core/sync/powersync_store.dart';
 import 'core/sync/synced_store.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -28,6 +29,10 @@ Future<void> main() async {
           authRepositoryProvider.overrideWithValue(authRepository),
         if (localUseChoice != null)
           localUseChoiceStoreProvider.overrideWithValue(localUseChoice),
+        if (supabase != null)
+          importDatasetProvider.overrideWithValue(
+            supabaseImportDataset(supabase),
+          ),
         if (supabase != null)
           syncedStoreOpenerProvider.overrideWithValue(
             (identity) => PowerSyncStore.open(

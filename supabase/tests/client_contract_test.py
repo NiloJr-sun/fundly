@@ -8,7 +8,11 @@ database as a new user, the first batch is retried (idempotent), and the
 server's rows must equal the device's, revisions included. Then a stale edit
 and an edit of a deleted record are replayed as new batches: the refusals must
 carry the SQLSTATE, message and JSON detail the app's uploader classifies and
-logs (S5.4). Never reads .env or hosted credentials.
+logs (S5.4). Finally the app's Reset all data request (reset plan B2) is sent
+to fundly_import_dataset: it must leave only untouched default categories,
+tombstone every earlier record, return the stored result when resent, refuse
+stale counts, and leave an account that a later into_empty import accepts.
+Never reads .env or hosted credentials.
 """
 
 import json
@@ -83,6 +87,84 @@ def check_refusals(actor, batches):
     print('PASS: an edit of a deleted record is refused as record_deleted', flush=True)
 
 
+def import_dataset(actor, import_id, request):
+    """Calls fundly_import_dataset as [actor]; returns the JSON result."""
+    body = json.dumps(request)
+    output = execute(authenticated(actor, 'fundly_client_contract') +
+                     f'SELECT public.fundly_import_dataset({literal(import_id)}::uuid,'
+                     f'{literal(body)}::jsonb); COMMIT;')
+    return next(json.loads(line) for line in output.splitlines() if line.startswith('{'))
+
+
+def import_refusal(actor, import_id, request):
+    """Sends an import that must be refused; returns (SQLSTATE, message)."""
+    try:
+        import_dataset(actor, import_id, request)
+    except AssertionError as error:
+        return re.search(r'ERROR:\s+(\w+): (\w+)', str(error)).groups()
+    raise AssertionError('the import was accepted')
+
+
+def server_rows(actor, table):
+    return json.loads(execute(
+        f"SELECT coalesce(json_agg(t),'[]') FROM (SELECT * FROM public.{table} "
+        f'WHERE owner_id={literal(actor)}) t;'))
+
+
+def check_reset(actor, data):
+    reset = data['reset']
+    fresh = {'custom_account_types': 0, 'accounts': 0, 'categories': 9,
+             'transactions': 0, 'monthly_plans': 0}
+    before = {table: {row['id'] for row in data['state'][table]} for table in COLUMNS}
+    expected = reset['request']['expected']
+    assert expected == {table: len(ids) for table, ids in before.items()}, expected
+
+    result = import_dataset(actor, reset['importId'], reset['request'])
+    assert result['mode'] == 'replace' and result['counts'] == fresh, result
+    categories = server_rows(actor, 'categories')
+    assert sorted((c['name'], c['kind']) for c in categories) == sorted(
+        (c['name'], c['kind']) for c in reset['request']['dataset']['categories'])
+    assert all(c['revision'] == 1 and not c['is_archived'] and not c['is_plan_archived']
+               and not c['is_plan_deleted'] and c['plan_group'] == 'spending'
+               and c['linked_account_id'] is None for c in categories), categories
+    for table in COLUMNS:
+        if table != 'categories':
+            assert server_rows(actor, table) == [], table
+    print('PASS: the reset request leaves only the 9 untouched default categories', flush=True)
+
+    tombstones = json.loads(execute(
+        "SELECT coalesce(json_agg(t),'[]') FROM (SELECT entity, id FROM "
+        f'public.fundly_deleted_records WHERE owner_id={literal(actor)}) t;'))
+    deleted = {(t['entity'], t['id']) for t in tombstones}
+    missing = [(table, record) for table, ids in before.items() for record in ids
+               if (table, record) not in deleted]
+    assert not missing, missing
+    print('PASS: every record from before the reset has a tombstone', flush=True)
+
+    again = import_dataset(actor, reset['importId'], reset['request'])
+    assert again == result, (again, result)
+    assert len(server_rows(actor, 'categories')) == 9
+    print('PASS: resending the same reset returns the stored result and changes nothing',
+          flush=True)
+
+    stale = import_refusal(actor, str(uuid.uuid4()), reset['request'])
+    assert stale == ('P0001', 'dataset_changed'), stale
+    print('PASS: a reset with stale counts is refused as dataset_changed', flush=True)
+
+    account = str(uuid.uuid4())
+    copied = import_dataset(actor, str(uuid.uuid4()), {
+        'version': 1, 'mode': 'into_empty',
+        'dataset': {'custom_account_types': [], 'categories': [], 'transactions': [],
+                    'monthly_plans': [],
+                    'accounts': [{'id': account, 'name': 'After reset', 'type': 'savingsCash',
+                                  'opening_balance_minor': '0', 'currency_code': 'PHP',
+                                  'is_archived': False, 'custom_type_id': None,
+                                  'is_budget_account': False}]}})
+    assert copied['counts']['accounts'] == 1, copied
+    print('PASS: after a reset the account counts as empty for an into_empty import',
+          flush=True)
+
+
 def normalized(rows, columns):
     return sorted(({key: int(row[key]) if isinstance(row[key], bool) else row[key]
                     for key in columns} for row in rows), key=lambda row: row['id'])
@@ -109,8 +191,10 @@ def main():
             assert normalized(server, keys) == normalized(data['state'][table], keys), table
         print('PASS: the server rows equal the rows the device showed, revisions included', flush=True)
         check_refusals(actor, data['batches'])
+        check_reset(actor, data)
     finally:
         execute(f'BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id={literal(actor)}; '
+                f'DELETE FROM public.fundly_import_receipts WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.transactions WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.monthly_plans WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
@@ -118,7 +202,7 @@ def main():
                 f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
                 f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
-    print('All 5 client-contract checks passed; disposable fixtures removed.', flush=True)
+    print('All 10 client-contract checks passed; disposable fixtures removed.', flush=True)
 
 
 if __name__ == '__main__':

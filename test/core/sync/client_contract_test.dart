@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/core/sync/sync_queue.dart' show newRecordId;
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
+import 'package:fundly/features/backup/data/cloud_data_resetter.dart';
 import 'package:fundly/features/categories/data/synced_category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/data/synced_plan_repository.dart';
@@ -192,10 +194,19 @@ void main() {
           r.data,
       ];
     }
+    // The exact request Reset all data sends for this account (reset B2).
+    final reset = {
+      'importId': newRecordId(),
+      'request': resetRequest(
+        expected: await watchSyncedCounts(db).first,
+        newId: newRecordId,
+      ),
+    };
     final out = Platform.environment['FUNDLY_CONTRACT_OUT'];
     if (out != null) {
-      File(out)
-          .writeAsStringSync(jsonEncode({'batches': batches, 'state': state}));
+      File(out).writeAsStringSync(
+        jsonEncode({'batches': batches, 'state': state, 'reset': reset}),
+      );
     }
     expect(batches, hasLength(40));
     await store.close();

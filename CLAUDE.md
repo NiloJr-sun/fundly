@@ -1065,9 +1065,9 @@ suggestions as approved decisions.
                           a Personal space.
 
   2026-11-22              Reset all data          Confirmed
-                          (Profile tab, signed
-                          out only): shows the
-                          counts to be deleted,
+                          (Profile tab): shows
+                          the counts to be
+                          deleted,
                           requires a saved export
                           first (YYYY-MM-DD_HHmm_
                           reset_checkpoint.json;
@@ -1081,10 +1081,15 @@ suggestions as approved decisions.
                           every record and re-adds
                           the default categories,
                           like a fresh install.
-                          Signed in, it explains
-                          why it is unavailable;
-                          cloud reset waits for
-                          S6. No schema or backup
+                          Signed in (B2), the
+                          server does it with
+                          fundly_import_dataset
+                          replace, on every
+                          device; needs online,
+                          a full download and no
+                          waiting uploads. Counts
+                          changed elsewhere
+                          refuse it. No schema
                           change.
 
   2026-11-22              Signed-in export (reset Confirmed

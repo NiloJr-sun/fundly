@@ -47,7 +47,9 @@ class ProfileScreen extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.delete_forever,
                 title: 'Reset all data',
-                subtitle: 'Delete every record on this phone',
+                subtitle: signedIn
+                    ? 'Delete every record in your account'
+                    : 'Delete every record on this phone',
                 destructive: true,
                 onTap: (origin) => resetData(context, ref, origin: origin),
               ),

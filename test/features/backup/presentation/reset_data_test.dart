@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
-import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
 import 'package:fundly/features/backup/data/data_resetter.dart';
@@ -10,7 +9,6 @@ import 'package:fundly/features/backup/presentation/export_backup.dart';
 import 'package:fundly/features/backup/presentation/reset_data.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
-import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 
 /// Reports fixed counts; nothing else is used by the reset flow.
@@ -269,25 +267,5 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Deleting your data…'), findsNothing);
-  });
-
-  testWidgets('reset is blocked while signed in and deletes nothing', (
-    tester,
-  ) async {
-    await pumpProfile(
-      tester,
-      auth: FakeAuthRepository(
-        initial: const SignedIn(
-          userId: '3f2b8c1e-9a4d-4e7b-8c21-5d6f7a8b9c0d',
-          email: 'a@test.com',
-        ),
-      ),
-    );
-
-    await tapReset(tester);
-
-    expect(find.text('Reset is not available while signed in'), findsOneWidget);
-    expect(find.text('Delete all your data?'), findsNothing);
-    expect(resetter.resets, 0);
   });
 }

@@ -77,10 +77,14 @@ simulator build for anything that changes app code. macOS has no
   **format 7** (format 6 with UUID string IDs, `SyncedBackupSource`), only
   when the synced store matches the server (`signedInExportBlocker`); format 7
   restore is not built yet (S6.3) and is refused with its own message.
-- **Reset all data** (Profile, signed out): a saved
+- **Reset all data** (Profile): a saved
   `YYYY-MM-DD_HHmm_reset_checkpoint.json` export, then "delete my data"
-  typed; `DataResetter` re-adds the defaults in one transaction. Signed-in
-  reset is planned in `docs/RESET_SIGNED_IN_PLAN.md` (B2).
+  typed. Signed out, `DataResetter` re-adds the defaults in one local
+  transaction. Signed in, `CloudDataResetter` sends `fundly_import_dataset`
+  `replace` with only the defaults (same `import_id` on retry); it needs a
+  connection, a full download and no waiting uploads
+  (`docs/RESET_SIGNED_IN_PLAN.md`). The S6.1 migration must be deployed to
+  the hosted project for it to work there.
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one
