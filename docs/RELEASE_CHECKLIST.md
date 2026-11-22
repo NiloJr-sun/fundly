@@ -28,7 +28,7 @@ passed.**
 | Local suite: analyze, 1,104 Flutter tests, 789 pgTAP assertions, 14 contract checks | Done 2026-11-23, all pass |
 | Release build 1.1.0 (2) on the iPhone, installed over the old app with its data kept | Done 2026-11-23 (`devicectl` reports 1.1.0, build 2) |
 | Simulator build with the cloud config | Done 2026-11-23 |
-| Web app on Vercel shows 1.1.0 (2) | **Open:** the live `version.json` still says 1.0.0 (1). Push the S7.1 commit, then the agent checks again |
+| Web app on Vercel shows 1.1.0 (2) | Done 2026-11-23: the live `version.json` says 1.1.0 (2). The `vercel.json` headers are live: `no-cache` on `/`, `main.dart.js` and the PowerSync worker; `application/wasm` on `sqlite3.wasm`; other files keep Vercel's `max-age=0, must-revalidate` |
 | Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Open:** export the test users' credentials (powersync/README.md step 5), then ask the agent |
 | PowerSync Sync Streams match `powersync/sync-config.yaml` | **Open:** you, in the PowerSync dashboard |
 | Supabase redirect URLs list `https://fundly-budget.vercel.app/**` and `http://localhost:7358/**` | **Open:** you, in Supabase → Authentication → URL Configuration |
