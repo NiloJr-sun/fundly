@@ -176,7 +176,19 @@ format 7 export of this phone's signed-out data.
 Done when every row has a result. A failure becomes its own fix task, with
 a plan and approval, and the row is run again afterwards.
 
-#### S7.2 detailed plan (proposal, not approved)
+#### S7.2 detailed plan (approved 2026-11-23)
+
+Approved with Decisions S7.2-1 to S7.2-4, each as recommended.
+
+**Prepared (2026-11-23):**
+
+- [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) is written.
+- The iPhone runs release 1.1.0 (2), installed with its data kept.
+- The simulator build with the cloud config is ready.
+- The local suite passes.
+
+Still open before the session: the web deploy of 1.1.0, the hosted isolation
+checks, and the owner's dashboard confirmations (see the checklist).
 
 The agent writes `docs/RELEASE_CHECKLIST.md`, prepares the devices, and runs
 everything it can from the Mac. The owner does the two-device steps. Results
