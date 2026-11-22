@@ -176,6 +176,84 @@ format 7 export of this phone's signed-out data.
 Done when every row has a result. A failure becomes its own fix task, with
 a plan and approval, and the row is run again afterwards.
 
+#### S7.2 detailed plan (proposal, not approved)
+
+The agent writes `docs/RELEASE_CHECKLIST.md`, prepares the devices, and runs
+everything it can from the Mac. The owner does the two-device steps. Results
+go into the checklist as they happen. The agent writes no app code; a failure
+stops that row and becomes its own fix task.
+
+**Before the session (agent):**
+
+- Run the full local suite again, and the hosted isolation checks once the
+  owner has exported the test credentials (S7.1 owner step 1).
+- Install the 1.1.0 (2) release build on the owner's iPhone with `devicectl`.
+  It installs over the existing app and keeps its data. Confirm Profile
+  shows "Version 1.1.0 (2)".
+- Check that the web app on Vercel shows the same version after the owner's
+  push.
+
+**Accounts and devices** (Decision S7.2-1):
+
+- **Account A:** the owner's main Google account. It holds test records now;
+  at the end it is reset and receives the real data.
+- **Account B:** a second Google account the owner controls. It is used only
+  for isolation and account-switch rows.
+- **Devices:**
+  - the iPhone (release build);
+  - desktop Chrome (a normal window for A, a second Chrome profile for B);
+  - iPhone Safari;
+  - the iOS simulator, where the agent can drive a second iOS client for A.
+
+**Safety first** (Decision S7.2-2): step 0 exports the iPhone's signed-out
+data as a format 7 backup and saves it off the phone (Files, then the Mac).
+Every later step leaves signed-out data alone, but this is the way back if
+anything goes wrong.
+
+**The checklist, in order:**
+
+| # | Row | Who and how | Expected |
+|---|---|---|---|
+| 0 | Safety export | Owner: signed-out export on the iPhone, saved off the phone | File saved; counts noted |
+| 1 | Same account, iOS and web | Owner: sign in as A on the iPhone and Chrome. Create an account and a few transactions of each type on one device, then edit and delete on the other | Same records, balances, Spending/Inflow totals and Plans on both; "Up to date" |
+| 2 | New client, default categories | Agent: sign in as A on the simulator (a fresh client) | Downloads everything; no duplicated categories, plans or debt rows |
+| 3 | Two users | Owner: B in the second Chrome profile. Agent: hosted isolation checks | B sees none of A's records and A none of B's; API and stream checks pass |
+| 4 | Offline, restart, reconnect | Owner: iPhone in airplane mode; create, edit and delete; force-quit and reopen; turn the network back on | Changes kept as waiting while offline; they upload once each; Chrome matches |
+| 5 | Same record on two clients | Owner: edit the same transaction on the iPhone (offline) and in Chrome; reconnect the iPhone. Then delete in one and edit in the other | One change wins; the other appears in Refused changes with Review, and its records go back to the server's state; nothing comes back after a delete |
+| 6 | Archive or delete against spending | Owner: archive an account in Chrome while the offline iPhone adds spending to it; reconnect | The server applies its rule; the refused change is listed and recoverable |
+| 7 | Retry after the server committed | Automated evidence (Decision S7.2-3): receipts in pgTAP, concurrency and contract tests | Exactly one accepted change; recorded by reference, not by hand |
+| 8 | Budget switch and liability rows | Owner: switch the budget account, add a credit account and a loan, rename and archive one, on one device | Exactly one budget account and matching debt rows on both devices |
+| 9 | Sign-out or switch with waiting changes | Owner: iPhone offline, make a change, sign out (the warning appears), cancel; then sign in as B in Chrome after A signed out | Nothing lost without confirming; no change uploads under the other user |
+| 10 | Copy and restore (S6.2 and S6.3) | Owner, on account B: restore a format 7 backup; restore an old format 6 backup with Replace; turn on airplane mode during a copy, then open the screen again; restore format 7 signed out on the simulator | "Restored and checked" each time; an interrupted copy shows the account's counts when reopened, with nothing duplicated |
+| 11 | Browser refresh, tabs, cleared storage | Owner: refresh Chrome; open two tabs; make a change offline, then clear site data | Reconnects safely; downloads again after clearing; the browser-only warning was shown before clearing |
+| 12 | Expired session or service down | Owner: leave Chrome signed in past the token lifetime (or sign in again after Supabase sign-out on all devices); agent: block the PowerSync URL in Chrome DevTools | Data stays usable; status shows offline or reconnecting; sync resumes afterwards |
+| 13 | Real data (last) | Owner: Reset all data on account A (checkpoint saved); then on the iPhone, Profile → Copy this device's data → Copy | "Copied and checked" with matching balances; Chrome shows the same data |
+
+Rows 1 and 13 are the release-blocking pair: everything else must pass
+before row 13 starts.
+
+**After the session (agent):**
+
+- read-only hosted counts for account A, compared with the iPhone's counts;
+- the checklist filled in, with every row's result, and any failure written
+  up as a proposed fix task.
+
+**Expected time:** about two hours for the owner, splittable after any row.
+
+**Decisions for the product owner:**
+
+1. **Accounts:** A is the owner's main account, reset before the real copy;
+   B is a second Google account the owner controls (recommended).
+   Alternative: two separate test Google accounts, keeping the main one
+   untouched until row 13.
+2. **Safety export first** (row 0), even though signed-out data is never
+   changed by these steps (recommended).
+3. **Automated evidence for row 7**, which cannot be reproduced reliably by
+   hand (recommended). Rows 3 and 12 also lean on the automated isolation
+   check and on blocking the network.
+4. **Failures stop the row, not the session.** Unrelated rows can continue,
+   and row 13 waits until everything passes (recommended).
+
 ### S7.3: Operations runbook and docs (agent)
 
 A new `docs/OPERATIONS.md`, written for the owner as the only operator:
