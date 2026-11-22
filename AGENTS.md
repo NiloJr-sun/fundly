@@ -107,6 +107,9 @@ simulator build for anything that changes app code. macOS has no
   the next download restores server state, and the queue moves on (S5.4,
   `core/sync/sync_rejections.dart`, "Refused changes" screen from the
   Profile status line). Only a blocked batch stays queued ("Sync stuck").
+  Sign-out with changes waiting shows a live warning (`SignOutDialog`,
+  S5.5); nothing is discarded. Web behaviour (tabs, refresh, cleared
+  storage) is in `powersync/README.md`.
   Export and restore stay
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run

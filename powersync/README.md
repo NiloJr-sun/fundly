@@ -142,6 +142,23 @@ offline tests still run.
 Not automated: an *expired* (but validly signed) token. The default JWT lifetime
 is one hour, and session refresh belongs to S4.
 
+## Web behaviour (S5.5)
+
+From PowerSync 2.6.2 and `sqlite_async` on web; the owner's Chrome check
+confirms it (see `docs/CLOUD_SYNC_S5_PLAN.md`, S5.5).
+
+- **Several tabs:** the tabs share one store and one upload queue. PowerSync
+  runs a single sync connection per database in a shared worker, uploads run
+  from one tab at a time, and table changes reach every tab through a
+  BroadcastChannel, so a change made in one tab appears in the others.
+- **Refresh:** the store and its queue are in the browser's storage. Waiting
+  changes survive a refresh and upload once the page reconnects.
+- **Cleared site data:** this deletes the store, its waiting changes and the
+  Supabase session. The user is signed out, and the next sign-in downloads
+  everything the server accepted. Changes that had not uploaded are lost.
+  While changes wait, the status line says they are saved only in this
+  browser, and the sign-out warning says so too.
+
 ## Verification record
 
 | Date | Check | Result |

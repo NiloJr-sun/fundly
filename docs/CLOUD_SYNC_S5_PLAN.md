@@ -2,8 +2,8 @@
 
 Date: 2026-11-22
 
-Status: **approved 2026-11-22** (Decisions 1–4; Decision 5 is confirmed when
-S5.5 starts). S5.1–S5.4 are implemented; S5.5 is not started. S5 is split into five sub-slices; each is planned in more detail,
+Status: **approved 2026-11-22** (Decisions 1–5). S5.1–S5.5 are implemented;
+the owner's live checks on iOS and Chrome remain. S5 is split into five sub-slices; each is planned in more detail,
 implemented, verified and reviewed on its own, and the agent stops after each.
 
 ## Starting point
@@ -404,13 +404,101 @@ No server change, no new dependency, no change to local (signed-out) mode.
   backup format).
 - Multi-tab and cleared-storage behavior on web checked and described.
 
+#### S5.5 detailed plan (approved and implemented 2026-11-22)
+
+Approved as proposed (live sign-out warning, the web line on the status
+line, Export and Restore kept visible with an explanation). Implemented as
+planned: `SignOutDialog`, the status line texts, and the web behaviour
+section in `powersync/README.md`. Verified: widget tests, full suite,
+analyzer, iOS simulator and web builds. The live checks below are the
+owner's.
+
+**Already in place.** These are checked again, with no new work:
+- **Status line:** connecting, downloading, up to date, uploading, offline,
+  reconnecting, sync problem and sync stuck, plus waiting and refused counts
+  (S5.2–S5.4).
+- **Backups:** restore is blocked while signed in, with an explanation.
+- **Switching user:** the old store is closed when the identity changes
+  (tested in `app_database_provider_test.dart`).
+- **Uploads and downloads use only the signed-in user's own token.** The
+  connector refuses to fetch credentials or upload when the current session
+  belongs to someone else.
+- **Session:** an expired session while offline keeps the user signed in.
+  Only Supabase rejecting the refresh token signs them out, and queued changes
+  then stay in that user's store.
+
+**1. Sign-out with changes waiting (Decision S5.5-1).** When changes are
+waiting to upload, Sign out opens a different dialog:
+- **Title:** "N changes haven't uploaded yet".
+- **Body:** "If you sign out now, they stay on this device and upload the next
+  time you sign in here with this account. Your other devices won't see them
+  until then." If the queue is stuck, it also says that the change can't
+  upload until the app or server is updated. On web, it says that clearing
+  this browser's data deletes them.
+- **Live count:** the dialog follows the queue. When it reaches zero, the
+  dialog becomes the usual "Sign out?" confirmation. Signing out never
+  happens automatically.
+- **Buttons:** "Cancel" (keep waiting) and "Sign out anyway" (error colour).
+- **No discard option.** Changes are never thrown away by signing out.
+- **Without waiting changes:** the dialog is unchanged.
+
+**2. Web: changes only in this browser (Decision S5.5-2).** On web, while
+changes wait, the status line adds "· saved only in this browser until
+uploaded". Clearing site data deletes the store and the session. The user
+is signed out, and the next sign-in downloads everything the server
+accepted. Unuploaded changes are gone, as the line warned.
+
+**3. Status line, small fix.** Offline before the first download currently
+says "showing data saved on this device", but nothing has been saved yet. It
+becomes "Offline · your data downloads when you're back online".
+
+**4. Export while signed in (Decision 5, open since S5).** Today Export
+backup stays visible and explains, when tapped, that signed-in backups come
+later (S6). Restore works the same way. The recommendation is to keep this,
+since it matches restore and shows the feature exists. The alternative from
+the original plan is hiding both rows while signed in.
+
+**5. Web: multiple tabs and cleared storage, checked and described.**
+- From the SDK code: PowerSync on web runs one sync connection per database
+  in a shared worker, so two tabs share a connection and a queue. Table
+  changes reach every tab (`sqlite_async` BroadcastChannel), and uploads run
+  from one tab at a time.
+- **Live check (owner, Chrome):**
+  - Open two tabs signed in. A change in tab 1 should appear in tab 2, it
+    should upload once, and the refused-changes list should match in both.
+  - Refresh a tab while changes wait: they should still be there and upload.
+  - Clear the site data: you should be signed out, and after signing in your
+    accepted data should download again.
+- The results go into a short "Web behaviour" section in
+  `powersync/README.md` (or this plan) and into `AGENTS.md`.
+
+**Files likely to change.**
+- `features/auth/presentation/sign_in_actions.dart`, plus a small dialog
+  widget.
+- `features/sync/presentation/sync_status_line.dart`.
+- Tests: the sign-out dialog (no waiting changes, waiting, the count
+  reaching zero, stuck, web wording), and the status line texts.
+- Docs.
+
+No schema, server or dependency change.
+
+**Live check (owner).**
+1. On iOS, offline, make a change and tap Sign out. The warning shows the
+   count. Choose Sign out anyway, then sign back in online: the change
+   uploads.
+2. On iOS, online, with a change waiting, tap Sign out: the dialog turns into
+   the plain confirmation once the change uploads.
+3. The Chrome multi-tab, refresh and cleared-storage steps above.
+
 Acceptance for S5 as a whole: the master plan's S5 criteria and the relevant
 rows of its verification matrix, on iOS and Chrome.
 
 ## Decisions
 
 Approved 2026-11-22: 1 (five slices), 2 (plain `String`), 3 (read-only,
-ended by S5.3), 4 (server `dataset.initialize`, implemented in S5.3). Open: 5.
+ended by S5.3), 4 (server `dataset.initialize`, implemented in S5.3), and 5
+(confirmed at S5.5: Export and Restore stay visible while signed in and
+explain on tap that signed-in backups come in S6).
 
 1. **Slicing:** the five sub-slices above, in this order, one at a time.
 2. **ID type:** plain `String` IDs in the domain (recommended; simplest, and a

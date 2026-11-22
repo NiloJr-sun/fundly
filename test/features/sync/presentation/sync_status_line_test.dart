@@ -92,6 +92,32 @@ void main() {
     );
   });
 
+  test('offline before the first download says data comes later', () {
+    expect(
+      text(SyncConnection.offline, synced: false),
+      "Offline · your data downloads when you're back online",
+    );
+  });
+
+  test('on web, waiting changes are only in this browser', () {
+    String web(int pending) => syncStatusText(
+      const SyncState(connection: SyncConnection.offline, hasSynced: true),
+      pendingUploads: pending,
+      isWeb: true,
+    );
+
+    expect(
+      web(2),
+      'Offline · showing data saved on this device · 2 changes waiting to '
+      'upload · saved only in this browser until uploaded',
+    );
+    expect(web(0), 'Offline · showing data saved on this device');
+    expect(
+      text(SyncConnection.offline, pending: 2),
+      isNot(contains('browser')),
+    );
+  });
+
   test('hidden rows are reported', () {
     expect(
       text(SyncConnection.connected, hidden: 1),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/auth_repository.dart';
 import '../domain/auth_identity.dart';
+import 'sign_out_dialog.dart';
 
 /// Signs in with Google. On success the app switches to the user's own
 /// database (and rebuilds from the home tabs); on failure a message is shown
@@ -20,29 +21,14 @@ Future<void> signInWithGoogle(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// Asks for confirmation, then signs out on this device and returns to the
-/// login page. The signed-in user's data stays on the device and reopens on
-/// the next sign-in.
+/// Asks for confirmation ([SignOutDialog], which warns about changes still
+/// waiting to upload), then signs out on this device and returns to the login
+/// page. The signed-in user's data, including waiting changes, stays on the
+/// device and reopens on the next sign-in.
 Future<void> signOut(BuildContext context, WidgetRef ref) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Sign out?'),
-      content: const Text(
-        'You will return to the login page. Your signed-in data stays on '
-        'this device and returns when you sign in again.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Sign out'),
-        ),
-      ],
-    ),
+    builder: (context) => const SignOutDialog(),
   );
   if (confirmed != true) return;
   await ref.read(authRepositoryProvider).signOut();

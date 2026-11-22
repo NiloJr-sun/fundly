@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ String syncStatusText(
   int hiddenRows = 0,
   int pendingUploads = 0,
   int refusedChanges = 0,
+  bool isWeb = false,
 }) {
   final status = switch (state) {
     null => 'Opening your data…',
@@ -20,6 +22,8 @@ String syncStatusText(
     SyncState(connection: SyncConnection.stuck, :final error) =>
       "Sync stuck: the server can't process a change yet"
           '${error == null ? '' : ' ($error)'}. It is kept on this device',
+    SyncState(connection: SyncConnection.offline, hasSynced: false) =>
+      "Offline · your data downloads when you're back online",
     SyncState(connection: SyncConnection.offline) =>
       'Offline · showing data saved on this device',
     SyncState(connection: SyncConnection.connecting, hasSynced: false) =>
@@ -41,6 +45,10 @@ String syncStatusText(
     1 => ' · 1 change waiting to upload',
     _ => ' · $pendingUploads changes waiting to upload',
   };
+  // A browser keeps them only in its own storage (S5.5).
+  final browserOnly = isWeb && pendingUploads > 0
+      ? ' · saved only in this browser until uploaded'
+      : '';
   final refused = switch (refusedChanges) {
     0 => '',
     1 => ' · 1 change refused · Review',
@@ -53,7 +61,7 @@ String syncStatusText(
     SyncState(:final uploadRetry?) => ' (retrying: $uploadRetry)',
     _ => '',
   };
-  return '$status$pending$retry$refused$hidden';
+  return '$status$pending$retry$browserOnly$refused$hidden';
 }
 
 /// The signed-in sync status under the Profile greeting. While the server has
@@ -79,6 +87,7 @@ class SyncStatusLine extends ConsumerWidget {
         hiddenRows: hidden,
         pendingUploads: pending,
         refusedChanges: refused,
+        isWeb: kIsWeb,
       ),
       style: theme.textTheme.bodySmall?.copyWith(
         color: failed
