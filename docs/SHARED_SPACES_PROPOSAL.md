@@ -92,6 +92,12 @@ membership.
   does today, so repositories and screens stay unaware of spaces.
 - Profile tab gets a **Spaces** section: the list, the active one marked,
   role shown, tap to switch; Create space; for owners, Manage members.
+  Preferred layout (product owner, 2026-11-24; confirm in the C2 plan): a
+  row at the bottom of the signed-in card shows the active space and the
+  user's role, with a chevron. Tapping it opens a bottom sheet listing the
+  user's spaces (own and shared, active one ticked, role shown, tap to
+  switch) and Create space, later Manage members for owners. Not a
+  collapsible card, and not a separate section below the card.
 - The active space's name appears where it is useful (Profile, and the top of
   Spending and Plans), so the user always knows which finances they see.
 - The device remembers the last active space per user.
