@@ -250,7 +250,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 
 | ID | Task | Status |
 |---|---|---|
-| F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | ✅ Built 2026-11-23 as 1.2.1 (4); deploy per `docs/OPERATIONS.md` (web, then iPhone) |
+| F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | ✅ Done 2026-11-23: 1.2.1 (4) live on the web (Vercel) and installed on the iPhone with `devicectl` (data copied off first; build kept in `~/fundly-releases/1.2.1-4/`) |
 
 F.1 plan, approved 2026-11-23 with all three decisions as recommended:
 
