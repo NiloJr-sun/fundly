@@ -334,8 +334,8 @@ and 13 block the release. RELEASE_CHECKLIST.md has the steps.
 
 ### S7.3: Operations runbook and docs (agent)
 
-**Status (2026-11-23):** [OPERATIONS.md](OPERATIONS.md) written, waiting for
-the owner's review. The minimum supported app version is **1.2.0 (3)**, not
+**Status (2026-11-23):** [OPERATIONS.md](OPERATIONS.md) written and
+reviewed by the owner. The minimum supported app version is **1.2.0 (3)**, not
 1.1.0 (approved 2026-11-23, amending Decision 3), because 1.1.0 predates
 several budget accounts and cash advances. The "released" doc updates below
 wait for S7.2 Part 2 and the owner's sign-off.

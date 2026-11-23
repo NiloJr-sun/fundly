@@ -246,6 +246,36 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
+### After the 1.2.0 release (approved, not started)
+
+| ID | Task | Status |
+|---|---|---|
+| F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | Approved 2026-11-23; build after the 1.2.0 sign-off as 1.2.1 (4) |
+
+F.1 plan, approved 2026-11-23 with all three decisions as recommended:
+
+- **Problem:** a refused delete card reads only "Delete transaction" (also
+  account, category and account type deletes). Labels are read from the
+  device's tables when the refusal is recorded, and a delete has already
+  removed the row.
+- **Fix:** in `_labels` (`lib/core/sync/sync_rejections.dart`), when an ID is
+  not in the device's tables, read its name or payee from PowerSync's
+  download log (`ps_oplog`), which keeps the server's copy until the server
+  confirms the delete. Row 5's card becomes "Delete transaction · Edit".
+- **Transactions without a payee** (Decision F.1-2): label by type, amount
+  and date, for example "Transfer ₱2,600.00 · Nov 10", for every refused
+  transaction card, edits included.
+- **Delete cards keep no detail lines** (Decision F.1-3): the record comes
+  back, so there is nothing to redo.
+- **Timing** (Decision F.1-1): after the 1.2.0 sign-off, released as
+  1.2.1 (4), so Part 2 tests the same app as Part 1.
+- No schema, backup format, server or protocol change. Cards already
+  recorded keep their labels.
+- Tests: `batch_uploader_test.dart` (transaction and account delete labels
+  from the download log; an ID found nowhere gets none) and
+  `refused_change_description_test.dart` (delete title with the label;
+  payee-less label). Then format, analyze and the full Flutter suite.
+
 Backup format 6: a header (`app`, `formatVersion`, `schemaVersion`,
 `exportedAt`) and arrays `customAccountTypes`, `accounts`, `categories`,
 `transactions` and `monthlyPlans`. Format 2 added `planGroup` to
