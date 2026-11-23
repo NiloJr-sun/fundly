@@ -192,3 +192,6 @@ confirms it (see `docs/CLOUD_SYNC_S5_PLAN.md`, S5.5).
 | 2026-11-22 | S7.1: read-only publication check | `powersync` lists exactly `accounts, categories, custom_account_types, monthly_plans, transactions`; not FOR ALL TABLES |
 | 2026-11-22 | S7.1: read-only size check | Database 12 MB of the 500 MB free limit; 4 Auth users; 0 transactions; 54 tombstones |
 | 2026-11-22 | S7.1: hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Not run yet:** the test users' credentials were not in the agent's shell. Owner to export them (step 5) and ask the agent to run both |
+| 2026-11-23 | S7.2 rebuild: `db push --remote --dry-run` and `migration list --remote` | "Remote database is up to date"; history ends `…20261122020000, 20261123010000, 20261123020000`, so cash advance and several budget accounts were already pushed |
+| 2026-11-23 | S7.2 rebuild: read-only object check (`db query --remote --read-only`) | `accounts_one_budget_account` index gone; `apply_transaction`, `apply_account` and `fundly_import_dataset` have the same definition hash as the local stack built from the migrations |
+| 2026-11-23 | S7.2 rebuild: `db lint --remote --schema public,fundly_private --fail-on warning` and `db advisors --remote` | No schema errors. The 3 known advisor warnings only (S7 Decision 7) |

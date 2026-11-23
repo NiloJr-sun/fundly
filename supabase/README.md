@@ -204,11 +204,11 @@ Cash advances (2026-11-23) bring the total to **794 passing SQL assertions**: a
 Transfer from a Credit account to Savings/Cash is accepted by both the write API
 and the import, Credit to Loan is refused by both, and a Loan still cannot be a
 Transfer source. Lint is clean; the write-API and import races and the 14
-client-contract checks pass. Not yet deployed to the hosted project.
+client-contract checks pass. Deployed to the hosted project (confirmed 2026-11-23, see powersync/README.md).
 
 Several budget accounts (2026-11-23) keep the total at **794**: the one-budget
 refusals became checks that a second budget account is accepted (schema,
 write API, sync protocol and import), plus per-account set/clear no-ops. The
 account races now check that two concurrent selections both apply and that an
 archive committed first blocks a selection. All races and the 14
-client-contract checks pass. Not yet deployed to the hosted project.
+client-contract checks pass. Deployed to the hosted project (confirmed 2026-11-23, see powersync/README.md).

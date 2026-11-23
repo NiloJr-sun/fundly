@@ -44,6 +44,13 @@ Financial rules, the local schema (v12), the synced schema, backup format 7,
 the server tables and the write protocol (version 1). S7 adds no features.
 The only app change, in S7.1, is showing the version (Decision 5).
 
+Since 2026-11-23, approved feature work landed during S7.2: cash advance,
+Ready to assign based on money in, the Overspent status and several budget
+accounts. The local schema is now **v13**, and two server migrations
+(`20261123010000_cash_advance.sql`, `20261123020000_multiple_budget_accounts.sql`)
+replace write functions without changing the tables. The release becomes
+**1.2.0 (3)**; see "S7.2 rebuild" below.
+
 ## Sub-slices
 
 ### S7.1: Release readiness (agent, with owner dashboard steps)
@@ -265,6 +272,65 @@ before row 13 starts.
    check and on blocking the network.
 4. **Failures stop the row, not the session.** Unrelated rows can continue,
    and row 13 waits until everything passes (recommended).
+
+#### S7.2 rebuild from current main (approved 2026-11-23)
+
+The 1.1.0 (2) builds predate six commits on `main`, including schema v13 and
+two server migrations that were not on the hosted project. `main` was already
+pushed, so the web app may have run new code against the old server. Approved
+with Decisions R-1 to R-3, each as recommended:
+
+1. **Version `1.2.0+3`** (R-1). 1.1.0 refuses backups with several budget
+   accounts, so the release is not called 1.1.0.
+2. **Checklist row 8 updated** (R-2): several budget accounts, a transfer
+   between them and a cash advance, instead of "exactly one budget account".
+3. **This section records the plan** (R-3).
+
+Steps:
+
+1. **Owner:** export the iPhone's signed-out data from the current app and
+   save it on the Mac before installing anything. The new build upgrades
+   that data from v12 to v13, so this export replaces checklist row 0.
+2. **Server first.** Agent: `db push --remote --dry-run` must list exactly
+   the two migrations. Owner: `db push --remote`. Agent: a second dry run
+   (up to date), `db lint --remote` and `db advisors --remote`; results in
+   powersync/README.md, and supabase/README.md no longer says "not yet
+   deployed". No PowerSync config change.
+3. **Version** `1.2.0+3` in pubspec.yaml and `lib/app/app_version.dart`.
+4. **Local suite:** format, analyze, Flutter tests, pgTAP, concurrency,
+   the 14 contract checks and the timing check.
+5. **Builds:** iOS release with the cloud config, installed with
+   `devicectl` (data kept; Profile shows "Version 1.2.0 (3)" and the
+   upgraded data opens); a simulator build with the cloud config; web after
+   the owner's push, with `version.json` showing 1.2.0 (3) and the
+   `vercel.json` headers still served.
+6. **Docs:** RELEASE_CHECKLIST.md (version, dates, row 0 note, row 8).
+
+No app logic, schema, backup format or sync protocol change. A failure
+becomes its own fix task. The agent stops after the rebuild.
+
+**Result (2026-11-23), agent part done:**
+
+- Server: the two migrations were already on the hosted project. The dry
+  run is up to date, the hosted history lists both, and the replaced
+  functions match the local stack. Lint clean; the 3 known advisor warnings.
+  Step 2 needed no push.
+- Version 1.2.0 (3). Local suite passes: format, analyze, 1,149 Flutter
+  tests, 794 pgTAP assertions, 28 concurrency races, 14 contract checks,
+  10,000 transactions imported in 0.92 s.
+- iOS release build 1.2.0 (3) built (25.9 MB), not installed yet. Simulator
+  build installed; its existing data opens.
+
+Open: the owner's safety export (step 1), then the iPhone install; the
+owner's push, then the web version check.
+
+**Device change (approved 2026-11-23):** the iPhone is not available, so the
+session runs in two parts, amending Decision S7.2-1. Part 1 uses the
+simulator as the iOS client and Chrome's DevTools Offline switch as the
+offline side: rows 1–3 and 5–12. Part 2, on the iPhone's release build:
+row 0 (safety export, then the install), a new row 1b (the release build
+matches Chrome), row 4 (airplane mode and force-quit) and row 13. Rows 1, 1b
+and 13 block the release. RELEASE_CHECKLIST.md has the steps.
 
 ### S7.3: Operations runbook and docs (agent)
 
