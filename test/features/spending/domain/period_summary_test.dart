@@ -52,6 +52,15 @@ void main() {
         expect(totals.spending, php(0));
         expect(totals.inflow, php(0));
       });
+
+      test('a cash advance (transfer from credit) is neither', () {
+        final totals = periodTotals([
+          transfer(from: rcbcCardId, to: bdoId, amount: 260000),
+        ], november);
+
+        expect(totals.spending, php(0));
+        expect(totals.inflow, php(0));
+      });
     });
 
     test('Rule 6: a card purchase counts once, its payment not again', () {
@@ -128,6 +137,18 @@ void main() {
       expect(summary.creditOwed, php(0));
       expect(summary.loansOwed, php(4000000));
       expect(summary.availableMoney, php(1750000 - 350000 - 1000000));
+    });
+
+    test('a cash advance raises available money and credit owed equally', () {
+      final balances = balancesFor(all, [
+        transfer(from: rcbcCardId, to: bdoId, amount: 260000),
+      ]);
+
+      expect(balances[rcbcCardId], php(-560000));
+      expect(balances[bdoId], php(1760000));
+      final summary = summarizeBalances(all, balances);
+      expect(summary.availableMoney, php(1750000 + 260000));
+      expect(summary.creditOwed, php(300000 + 260000));
     });
 
     test('an overdrawn account lowers available money', () {

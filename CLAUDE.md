@@ -677,6 +677,8 @@ suggestions as approved decisions.
                           Savings/Cash or Loan;   
                           CC Payment from         
                           Savings/Cash to Credit  
+                          (cash advance added
+                          2026-11-23)
 
   2026-11-16              Payee required for      Confirmed
                           Spending and Inflow,    
@@ -1204,5 +1206,25 @@ suggestions as approved decisions.
                           Assigned colour still
                           shows Target funding.
                           No other statuses.
+
+
+  2026-11-23              Cash advance: a         Confirmed
+                          Transfer may come from
+                          a Credit account
+                          (custom types incl.),
+                          only to a Savings/Cash
+                          account. Owed amount
+                          rises; not spending or
+                          inflow; money in for
+                          Ready to assign when it
+                          reaches a budget
+                          account; not debt-row
+                          Activity. Credit to
+                          Loan/Credit refused; G5
+                          unchanged. Enforced in
+                          the app, the server
+                          write API and import.
+                          No schema or backup
+                          format change.
 
   -----------------------------------------------------------------------

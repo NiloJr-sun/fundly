@@ -325,12 +325,65 @@ void main() {
       expect(await optionsOf(tester, 'From'), [
         'BDO Savings · Savings / Cash',
         'Cash Wallet · Savings / Cash',
+        'RCBC Credit · Credit',
       ]);
       expect(await optionsOf(tester, 'To'), [
         'BDO Savings · Savings / Cash',
         'Cash Wallet · Savings / Cash',
         'Car Loan · Loan',
       ]);
+    });
+
+    testWidgets('a cash advance goes from a credit account to Savings/Cash', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '2,600');
+      await choose(tester, 'From', 'RCBC Credit · Credit');
+      // The list also holds the chosen From account, so check what is left out.
+      final destinations = await optionsOf(tester, 'To');
+      expect(destinations, contains('BDO Savings · Savings / Cash'));
+      expect(destinations, contains('Cash Wallet · Savings / Cash'));
+      expect(destinations, isNot(contains('Car Loan · Loan')));
+      await choose(tester, 'To', 'BDO Savings · Savings / Cash');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.type, TransactionType.transfer);
+      expect(draft.amount, php(260000));
+      expect(draft.sourceAccountId, rcbcCardId);
+      expect(draft.destinationAccountId, bdoId);
+    });
+
+    testWidgets('choosing a credit source clears a loan destination', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '100');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'Car Loan · Loan');
+      await choose(tester, 'From', 'RCBC Credit · Credit');
+      expect(find.text('Car Loan · Loan'), findsNothing);
+      await save(tester);
+
+      expect(find.text('Choose an account.'), findsOneWidget);
+      expect(repository.created, isEmpty);
+    });
+
+    testWidgets('choosing a credit source keeps a Savings/Cash destination', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionType.transfer);
+
+      await tester.enterText(field('Amount'), '100');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'Cash Wallet · Savings / Cash');
+      await choose(tester, 'From', 'RCBC Credit · Credit');
+      await save(tester);
+
+      expect(repository.created.single.destinationAccountId, walletId);
     });
 
     testWidgets('Rule 7: rejects the same account on both sides', (

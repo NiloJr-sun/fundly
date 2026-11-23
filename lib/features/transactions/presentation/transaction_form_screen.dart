@@ -242,10 +242,12 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   Widget _buildForm(List<Account> accounts, List<Category> categories) {
     final selectable = _selectable(accounts);
     final sources = _usable(selectable, allowedSourceAccountTypes(_type));
-    final destinations = _usable(
-      selectable,
-      allowedDestinationAccountTypes(_type),
+    final sourceType = _typeOf(selectable, _sourceAccountId);
+    final destinationTypes = allowedDestinationAccountTypes(
+      _type,
+      source: sourceType,
     );
+    final destinations = _usable(selectable, destinationTypes);
     final missing = _missingAccountsMessage(sources, destinations);
     if (missing != null) return CenteredMessage(missing);
 
@@ -272,13 +274,30 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               label: sourceAccountLabel(_type),
               accounts: sources,
               value: _sourceAccountId,
-              onChanged: (id) => setState(() => _sourceAccountId = id),
+              onChanged: (id) => setState(() {
+                _sourceAccountId = id;
+                // A cash advance narrows the destinations; drop a choice that
+                // no longer fits.
+                final allowed = allowedDestinationAccountTypes(
+                  _type,
+                  source: _typeOf(selectable, id),
+                );
+                if (!allowed.contains(
+                  _typeOf(selectable, _destinationAccountId),
+                )) {
+                  _destinationAccountId = null;
+                }
+              }),
               validator: (_) => _errorFor(TransactionField.sourceAccount),
             ),
           ],
           if (_type.hasDestinationAccount) ...[
             const SizedBox(height: Spacing.md),
             _AccountField(
+              // Rebuilds the dropdown when the allowed destinations change.
+              key: ValueKey(
+                destinationTypes.map((type) => type.name).join(','),
+              ),
               label: destinationAccountLabel(_type),
               accounts: destinations,
               value: _destinationAccountId,
@@ -344,6 +363,13 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         category,
   ];
 
+  static AccountType? _typeOf(List<Account> accounts, String? id) {
+    for (final account in accounts) {
+      if (account.id == id) return account.type;
+    }
+    return null;
+  }
+
   static List<Account> _usable(
     List<Account> accounts,
     Set<AccountType> types,
@@ -391,6 +417,7 @@ class _DateField extends StatelessWidget {
 
 class _AccountField extends ConsumerWidget {
   const _AccountField({
+    super.key,
     required this.label,
     required this.accounts,
     required this.value,

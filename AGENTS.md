@@ -116,7 +116,8 @@ simulator build for anything that changes app code. macOS has no
 - **Features delivered:** accounts with custom types (Asset, or Liability
   that works like a credit card or a loan), Assets/Liabilities grouping,
   archive/unarchive/permanent delete of unused archived accounts, one
-  **budget account**; four transaction types; Spending tab with period
+  **budget account**; four transaction types (a Transfer from Credit to
+  Savings/Cash is a cash advance); Spending tab with period
   totals and filters; categories with Plans groups (Spending, Savings,
   Liability); Plans with Target, Assigned, Activity, Available, Status and
   **Ready to assign** (the month’s carry over plus money in, minus money

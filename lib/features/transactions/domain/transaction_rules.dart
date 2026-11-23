@@ -61,25 +61,33 @@ enum TransactionValidationError {
 }
 
 /// Account types that can be the source of a [type] transaction
-/// (CLAUDE.md §11). Empty when the type has no source account.
+/// (CLAUDE.md §11). Empty when the type has no source account. A Transfer
+/// from a Credit account is a cash advance.
 Set<AccountType> allowedSourceAccountTypes(TransactionType type) =>
     switch (type) {
-      TransactionType.spending => {AccountType.savingsCash, AccountType.credit},
+      TransactionType.spending ||
+      TransactionType.transfer => {AccountType.savingsCash, AccountType.credit},
       TransactionType.inflow => const {},
-      TransactionType.transfer ||
       TransactionType.creditCardPayment => {AccountType.savingsCash},
     };
 
-/// Account types that can be the destination of a [type] transaction.
+/// Account types that can be the destination of a [type] transaction whose
+/// source account is of type [source] (`null` when not chosen yet).
 /// Transfers cannot target Credit accounts (G5); loans are paid by Transfer
-/// (G4). Empty when the type has no destination account.
-Set<AccountType> allowedDestinationAccountTypes(TransactionType type) =>
-    switch (type) {
-      TransactionType.spending => const {},
-      TransactionType.inflow => {AccountType.savingsCash, AccountType.credit},
-      TransactionType.transfer => {AccountType.savingsCash, AccountType.loan},
-      TransactionType.creditCardPayment => {AccountType.credit},
-    };
+/// (G4). A cash advance (Transfer from Credit) goes only to Savings/Cash.
+/// Empty when the type has no destination account.
+Set<AccountType> allowedDestinationAccountTypes(
+  TransactionType type, {
+  AccountType? source,
+}) => switch (type) {
+  TransactionType.spending => const {},
+  TransactionType.inflow => {AccountType.savingsCash, AccountType.credit},
+  TransactionType.transfer when source == AccountType.credit => {
+    AccountType.savingsCash,
+  },
+  TransactionType.transfer => {AccountType.savingsCash, AccountType.loan},
+  TransactionType.creditCardPayment => {AccountType.credit},
+};
 
 /// Validates [draft] against the accounting rules (CLAUDE.md §4) and the
 /// confirmed decisions in CLAUDE.md §11. Returns every problem found; an
@@ -119,7 +127,7 @@ Set<TransactionValidationError> validateTransaction(
     role: _Role.destination,
     accountId: draft.destinationAccountId,
     used: type.hasDestinationAccount,
-    allowedTypes: allowedDestinationAccountTypes(type),
+    allowedTypes: allowedDestinationAccountTypes(type, source: source?.type),
     previousAccountId: existing?.destinationAccountId,
     accounts: accounts,
     errors: errors,

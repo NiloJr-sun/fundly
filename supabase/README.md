@@ -29,7 +29,10 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `migrations/20261122020000_dataset_import.sql`: `fundly_import_dataset`, an atomic
   whole-dataset import with backend-only import receipts (S6.1,
   [IMPORT_API.md](IMPORT_API.md)).
-- `tests/database/`: **789 pgTAP assertions**, run in
+- `migrations/20261123010000_cash_advance.sql`: Transfers may come from a Credit
+  account, to Savings/Cash only (cash advance). Replaces `apply_transaction` and
+  `fundly_import_dataset` with only those account checks changed.
+- `tests/database/`: **794 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -192,3 +195,9 @@ cover:
 The timing check imported 10,000 transactions (4.2 MB) in 0.60 s and
 19,000 (7.9 MB) in 1.33 s under an 8 s statement timeout. Deployed to the hosted
 project on 2026-11-22 (see `powersync/README.md`, verification record).
+
+Cash advances (2026-11-23) bring the total to **794 passing SQL assertions**: a
+Transfer from a Credit account to Savings/Cash is accepted by both the write API
+and the import, Credit to Loan is refused by both, and a Loan still cannot be a
+Transfer source. Lint is clean; the write-API and import races and the 14
+client-contract checks pass. Not yet deployed to the hosted project.

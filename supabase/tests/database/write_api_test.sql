@@ -111,6 +111,7 @@ from (values
   ('{"type":"inflow","source_account_id":null,"destination_account_id":"21000000-0000-4000-8000-000000000002","category_id":"31000000-0000-4000-8000-000000000002"}','credit refund with inflow category'),
   ('{"type":"transfer","destination_account_id":"21000000-0000-4000-8000-000000000005","category_id":null,"payee":""}','asset transfer without payee'),
   ('{"type":"transfer","destination_account_id":"21000000-0000-4000-8000-000000000003","category_id":null}','loan payment is Transfer'),
+  ('{"type":"transfer","source_account_id":"21000000-0000-4000-8000-000000000002","destination_account_id":"21000000-0000-4000-8000-000000000005","category_id":null}','cash advance is a Transfer from credit to an asset'),
   ('{"type":"creditCardPayment","destination_account_id":"21000000-0000-4000-8000-000000000002","category_id":null}','credit payment is movement')
 ) cases(patch,description);
 select throws_ok(format('select pg_temp.call(pg_temp.spend(%L::jsonb))',patch),'P0001',message,description)
@@ -121,7 +122,8 @@ from (values
   ('{"type":"inflow","source_account_id":null,"destination_account_id":"21000000-0000-4000-8000-000000000002"}','invalid_transaction','inflow forbids spending category'),
   ('{"type":"transfer","destination_account_id":"21000000-0000-4000-8000-000000000001","category_id":null}','invalid_transaction','self transfer forbidden'),
   ('{"type":"transfer","destination_account_id":"21000000-0000-4000-8000-000000000002","category_id":null}','invalid_transaction','Transfer cannot target credit'),
-  ('{"type":"transfer","source_account_id":"21000000-0000-4000-8000-000000000002","destination_account_id":"21000000-0000-4000-8000-000000000005","category_id":null}','invalid_transaction','credit cannot source Transfer'),
+  ('{"type":"transfer","source_account_id":"21000000-0000-4000-8000-000000000002","destination_account_id":"21000000-0000-4000-8000-000000000003","category_id":null}','invalid_transaction','cash advance cannot go to a loan'),
+  ('{"type":"transfer","source_account_id":"21000000-0000-4000-8000-000000000003","destination_account_id":"21000000-0000-4000-8000-000000000005","category_id":null}','invalid_transaction','loan cannot source Transfer'),
   ('{"type":"transfer","destination_account_id":"21000000-0000-4000-8000-000000000005"}','invalid_transaction','movements forbid category'),
   ('{"type":"transfer","category_id":null}','invalid_transaction','transfer needs destination'),
   ('{"type":"creditCardPayment","source_account_id":"21000000-0000-4000-8000-000000000003","destination_account_id":"21000000-0000-4000-8000-000000000002","category_id":null}','invalid_transaction','loan cannot source card payment'),

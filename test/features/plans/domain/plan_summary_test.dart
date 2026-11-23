@@ -468,6 +468,15 @@ void main() {
       expect(result.amount, php(1100000));
     });
 
+    test('a cash advance into the budget account is money in', () {
+      final result = ready(
+        plans: [plan(cardRow.id, null, assigned: 50000)],
+        transactions: [transfer(amount: 260000, from: rcbcCardId, to: bdoId)],
+      );
+      expect(result.moneyIn, php(260000));
+      expect(result.amount, php(1210000));
+    });
+
     test('a transfer out to a Savings/Cash account is moved out', () {
       final result = ready(transactions: [transfer(amount: 100000)]);
       expect(result.movedOut, php(100000));

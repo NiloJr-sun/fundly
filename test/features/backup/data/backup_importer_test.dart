@@ -462,6 +462,28 @@ void main() {
     );
   });
 
+  test('a cash advance (transfer from a credit account) restores', () async {
+    final backup = await exportedBackup();
+    final accounts = (backup['accounts']! as List).cast<Map<String, Object?>>();
+    final card = accounts.singleWhere((a) => a['name'] == 'RCBC Credit');
+    final transfer = (backup['transactions']! as List)
+        .cast<Map<String, Object?>>()
+        .singleWhere((t) => t['type'] == 'transfer');
+    transfer['sourceAccountId'] = card['id'];
+    final importer = BackupImporter(target);
+
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+    final restored = await target.select(target.transactions).get();
+    final advance = restored.singleWhere(
+      (t) => t.type == TransactionType.transfer,
+    );
+    final cardRow = (await target.select(target.accounts).get()).singleWhere(
+      (a) => a.name == 'RCBC Credit',
+    );
+    expect(advance.sourceAccountId, cardRow.id);
+  });
+
   test('the budget account survives a round trip', () async {
     final importer = BackupImporter(target);
 

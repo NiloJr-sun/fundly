@@ -115,7 +115,7 @@ Archived accounts and categories may hold history.
     |---|---|---|
     | Spending | Savings/Cash or Credit | — |
     | Inflow | — | Savings/Cash or Credit |
-    | Transfer | Savings/Cash | Savings/Cash or Loan |
+    | Transfer | Savings/Cash or Credit | Savings/Cash or Loan; only Savings/Cash from Credit (cash advance) |
     | Credit Card Payment | Savings/Cash | Credit |
 
   - Spending uses a spending category, and Inflow uses an inflow category or

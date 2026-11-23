@@ -124,10 +124,22 @@ void main() {
       });
     });
 
-    test('transfers and card payments must come from Savings/Cash', () {
-      expect(validate(transfer(from: rcbcCardId, to: bdoId)), {
-        E.sourceAccountWrongType,
+    test('a cash advance is a transfer from Credit to Savings/Cash', () {
+      expect(validate(transfer(from: rcbcCardId, to: bdoId)), isEmpty);
+      expect(validate(transfer(from: rcbcCardId, to: walletId)), isEmpty);
+    });
+
+    test('a cash advance cannot go to a loan or a credit account', () {
+      expect(validate(transfer(from: rcbcCardId, to: carLoanId)), {
+        E.destinationAccountWrongType,
       });
+      expect(validate(transfer(from: rcbcCardId, to: rcbcCardId)), {
+        E.destinationAccountWrongType,
+        E.sameSourceAndDestination,
+      });
+    });
+
+    test('transfers come from Savings/Cash or Credit, never a loan', () {
       expect(validate(transfer(from: carLoanId, to: bdoId)), {
         E.sourceAccountWrongType,
       });
@@ -152,10 +164,31 @@ void main() {
         AccountType.credit,
       });
       expect(allowedSourceAccountTypes(TransactionType.inflow), isEmpty);
+      expect(allowedSourceAccountTypes(TransactionType.transfer), {
+        AccountType.savingsCash,
+        AccountType.credit,
+      });
+      expect(allowedSourceAccountTypes(TransactionType.creditCardPayment), {
+        AccountType.savingsCash,
+      });
       expect(allowedDestinationAccountTypes(TransactionType.transfer), {
         AccountType.savingsCash,
         AccountType.loan,
       });
+      expect(
+        allowedDestinationAccountTypes(
+          TransactionType.transfer,
+          source: AccountType.savingsCash,
+        ),
+        {AccountType.savingsCash, AccountType.loan},
+      );
+      expect(
+        allowedDestinationAccountTypes(
+          TransactionType.transfer,
+          source: AccountType.credit,
+        ),
+        {AccountType.savingsCash},
+      );
       expect(
         allowedDestinationAccountTypes(TransactionType.creditCardPayment),
         {AccountType.credit},

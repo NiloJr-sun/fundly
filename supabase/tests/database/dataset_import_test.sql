@@ -107,6 +107,22 @@ create function pg_temp.try(dataset jsonb) returns text language sql as $$
   select pg_temp.attempt(pg_temp.request('into_empty', dataset))
 $$;
 
+-- 'ok' when D's import would succeed; the import is rolled back either way,
+-- so D's dataset stays empty.
+create function pg_temp.try_rolled_back(dataset jsonb) returns text
+language plpgsql as $$
+declare outcome text;
+begin
+  begin
+    outcome := pg_temp.try(dataset);
+    raise exception 'rolled_back';
+  exception when others then
+    if sqlerrm <> 'rolled_back' then raise; end if;
+  end;
+  return outcome;
+end;
+$$;
+
 create function pg_temp.act(owner text) returns void language sql as $$
   select set_config('request.jwt.claim.sub', owner, true)
 $$;
@@ -240,6 +256,16 @@ select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,source_acc
   'invalid_import transactions[0].source_account_id account_not_allowed','no Spending from a loan');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,2,destination_account_id}',to_jsonb(pg_temp.id('x','A2')))),
   'invalid_import transactions[2].destination_account_id account_not_allowed','no Transfer to a card');
+select is(pg_temp.try_rolled_back(jsonb_set(jsonb_set(pg_temp.dataset('x'),
+    '{transactions,2,source_account_id}',to_jsonb(pg_temp.id('x','A2'))),
+    '{transactions,2,destination_account_id}',to_jsonb(pg_temp.id('x','A1')))),
+  'ok','a cash advance is a Transfer from a card to Savings/Cash');
+select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,2,source_account_id}',to_jsonb(pg_temp.id('x','A2')))),
+  'invalid_import transactions[2].destination_account_id account_not_allowed','a cash advance cannot go to a loan');
+select is(pg_temp.try(jsonb_set(jsonb_set(pg_temp.dataset('x'),
+    '{transactions,2,source_account_id}',to_jsonb(pg_temp.id('x','A3'))),
+    '{transactions,2,destination_account_id}',to_jsonb(pg_temp.id('x','A1')))),
+  'invalid_import transactions[2].source_account_id account_not_allowed','no Transfer from a loan');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,3,destination_account_id}',to_jsonb(pg_temp.id('x','A3')))),
   'invalid_import transactions[3].destination_account_id account_not_allowed','card payments go to a card');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,3,source_account_id}',to_jsonb(pg_temp.id('x','A4')))),

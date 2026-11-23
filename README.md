@@ -25,7 +25,9 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   section and total per type. Balances show signed: money owed as -₱X,
   positive amounts in green.
 - **Transactions:** record Spending, Inflow, Transfer and Credit Card
-  Payment; edit and delete them. Balances are always derived from the opening
+  Payment; edit and delete them. A Transfer from a Credit account to a
+  Savings/Cash account is a cash advance: you owe more on the card, and it is
+  not counted as inflow. Balances are always derived from the opening
   balance plus transactions.
 - **Spending:** Available money, Credit owed and Loans owed; inflow and
   spending totals for this month, last month or a custom range (transfers and

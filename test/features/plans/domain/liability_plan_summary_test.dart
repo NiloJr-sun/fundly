@@ -62,6 +62,8 @@ void main() {
         spending(amount: 50000, from: rcbcCardId),
         inflow(amount: 10000, to: rcbcCardId),
         transfer(amount: 10000),
+        // A cash advance adds debt but is not a payment.
+        transfer(amount: 40000, from: rcbcCardId, to: bdoId),
         spending(amount: 10000, date: CalendarDate(2026, 10, 31)),
       ]);
       expect(rows[0].activity, php(50000));
