@@ -88,6 +88,16 @@ void main() {
     expect(result.amount, php(30000));
   });
 
+  test('paying more than assigned makes a debt row overspent', () {
+    final rows = summarize(
+      [cardPayment(amount: 20000), transfer(amount: 30000, to: carLoanId)],
+      plans: [plan(card.id, 10000), plan(loan.id, 30000)],
+    );
+    expect(rows[1].status, PlanStatus.overspent);
+    expect(rows[2].available, php(0));
+    expect(rows[2].status, isNull);
+  });
+
   test('payments from other accounts do not change Ready to assign', () {
     final transactions = [cardPayment(amount: 20000, from: walletId)];
     final row = summarize(transactions, plans: [plan(card.id, 40000)])[1];

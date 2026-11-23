@@ -1192,4 +1192,17 @@ suggestions as approved decisions.
                           guard unchanged. No
                           schema or backup change.
 
+
+  2026-11-23              Overspent plan status:  Confirmed
+                          shown whenever
+                          Available is negative,
+                          with or without a
+                          Target, replacing
+                          Funded/Underfunded.
+                          Same label on debt
+                          rows. Error colours.
+                          Assigned colour still
+                          shows Target funding.
+                          No other statuses.
+
   -----------------------------------------------------------------------

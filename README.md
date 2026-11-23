@@ -33,7 +33,8 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   list filtered by date, account and category.
 - **Plans:** per spending category per month, a Target and an Assigned
   amount, the month's Activity (spending; tap to see the transactions),
-  Available (Assigned − Activity) and a Funded / Underfunded status. Tap
+  Available (Assigned − Activity) and a status: Overspent when Available is
+  negative, otherwise Funded / Underfunded against the Target. Tap
   Target or Assigned to edit just that amount. Categories are listed in
   Spending, Savings and Liability sections (set the group in the category
   form). At the top, Ready to assign shows the selected month’s carry over

@@ -317,6 +317,39 @@ void main() {
       final available = tester.widget<Text>(inRow('Food', '-₱80.00'));
       final context = tester.element(row('Food'));
       expect(available.style?.color, Theme.of(context).colorScheme.error);
+      expect(inRow('Food', 'Overspent'), findsOneWidget);
+    });
+
+    testWidgets('overspent replaces funded, in the error colours', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000)],
+        transactions: [saved(spending(amount: 600000))],
+      );
+
+      expect(inRow('Food', 'Overspent'), findsOneWidget);
+      expect(inRow('Food', 'Funded'), findsNothing);
+      final colors = Theme.of(tester.element(row('Food'))).colorScheme;
+      final chip = tester.widget<DecoratedBox>(
+        find
+            .ancestor(
+              of: inRow('Food', 'Overspent'),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect((chip.decoration as BoxDecoration).color, colors.errorContainer);
+      expect(
+        tester.widget<Text>(inRow('Food', 'Overspent')).style?.color,
+        colors.onErrorContainer,
+      );
+      final assigned = tester.widget<Text>(inRow('Food', '₱5,000.00').at(1));
+      expect(
+        assigned.style?.color,
+        AppColors.of(tester.element(row('Food'))).positive,
+      );
     });
 
     testWidgets('transfers and card payments are not activity', (tester) async {
@@ -367,7 +400,7 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      expect(inRow('Food', 'Underfunded'), findsOneWidget);
+      expect(inRow('Food', 'Overspent'), findsOneWidget);
     });
 
     testWidgets('shows an empty state without spending categories', (

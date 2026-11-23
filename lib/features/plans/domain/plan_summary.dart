@@ -9,13 +9,17 @@ import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
 import 'monthly_plan.dart';
 
-/// Whether a category's assigned money covers its target.
+/// A plan row's status: overspending first, otherwise whether assigned money
+/// covers the target.
 enum PlanStatus {
   /// Assigned is at least the target.
   funded,
 
   /// Assigned is below the target.
   underfunded,
+
+  /// Activity exceeds assigned, so Available is negative.
+  overspent,
 }
 
 /// One category's target, assigned, activity and available amounts in one
@@ -50,16 +54,24 @@ final class CategoryPlanSummary {
 
   bool get isOverspent => available.isNegative;
 
-  /// [PlanStatus.funded] when assigned covers the target,
-  /// [PlanStatus.underfunded] when it does not, and `null` without a target.
-  /// Spending does not change the status; overspending shows in [available].
-  PlanStatus? get status {
+  /// Whether assigned covers the target; `null` without a target. Spending
+  /// does not change it.
+  bool? get isFunded {
     final target = this.target;
     if (target == null) return null;
-    return assigned.minorUnits >= target.minorUnits
-        ? PlanStatus.funded
-        : PlanStatus.underfunded;
+    return assigned.minorUnits >= target.minorUnits;
   }
+
+  /// [PlanStatus.overspent] whenever [available] is negative, with or without
+  /// a target. Otherwise [PlanStatus.funded] or [PlanStatus.underfunded] from
+  /// [isFunded], and `null` without a target.
+  PlanStatus? get status => isOverspent
+      ? PlanStatus.overspent
+      : switch (isFunded) {
+          true => PlanStatus.funded,
+          false => PlanStatus.underfunded,
+          null => null,
+        };
 
   @override
   bool operator ==(Object other) =>

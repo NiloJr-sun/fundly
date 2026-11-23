@@ -160,7 +160,20 @@ void main() {
       expect(food.available, php(100000));
     });
 
-    test('spending does not change it; overspending shows in available', () {
+    test('spending within assigned does not change it', () {
+      final food = rowFor(
+        summarize(
+          plans: [plan(foodId, 100000)],
+          transactions: [spending(amount: 100000)],
+        ),
+        foodId,
+      );
+
+      expect(food.available, php(0));
+      expect(food.status, PlanStatus.funded);
+    });
+
+    test('overspent replaces funded, which isFunded still reports', () {
       final food = rowFor(
         summarize(
           plans: [plan(foodId, 100000)],
@@ -169,8 +182,59 @@ void main() {
         foodId,
       );
 
-      expect(food.status, PlanStatus.funded);
-      expect(food.isOverspent, isTrue);
+      expect(food.status, PlanStatus.overspent);
+      expect(food.isFunded, isTrue);
+    });
+
+    test('overspent replaces underfunded', () {
+      final food = rowFor(
+        summarize(
+          plans: [plan(foodId, 500000, assigned: 100000)],
+          transactions: [spending(amount: 100001)],
+        ),
+        foodId,
+      );
+
+      expect(food.status, PlanStatus.overspent);
+      expect(food.isFunded, isFalse);
+    });
+
+    test('overspent without a target', () {
+      final assignedOnly = rowFor(
+        summarize(
+          plans: [plan(foodId, null, assigned: 100000)],
+          transactions: [spending(amount: 150000)],
+        ),
+        foodId,
+      );
+      expect(assignedOnly.isFunded, isNull);
+      expect(assignedOnly.status, PlanStatus.overspent);
+
+      final noPlan = rowFor(
+        summarize(transactions: [spending(amount: 80000)]),
+        foodId,
+      );
+      expect(noPlan.hasPlan, isFalse);
+      expect(noPlan.status, PlanStatus.overspent);
+    });
+
+    test('editing or deleting spending recalculates it', () {
+      final plans = [plan(foodId, 100000)];
+      expect(
+        rowFor(
+          summarize(plans: plans, transactions: [spending(amount: 150000)]),
+          foodId,
+        ).status,
+        PlanStatus.overspent,
+      );
+      expect(
+        rowFor(
+          summarize(plans: plans, transactions: [spending(amount: 50000)]),
+          foodId,
+        ).status,
+        PlanStatus.funded,
+      );
+      expect(rowFor(summarize(plans: plans), foodId).status, PlanStatus.funded);
     });
   });
 

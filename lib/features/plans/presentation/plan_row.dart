@@ -88,11 +88,9 @@ class PlanRow extends StatelessWidget {
                   value: MoneyFormatter.format(summary.assigned),
                   color: summary.assigned.isZero
                       ? theme.colorScheme.error
-                      : switch (status) {
-                          PlanStatus.underfunded => AppColors.of(
-                            context,
-                          ).warning,
-                          PlanStatus.funded => AppColors.of(context).positive,
+                      : switch (summary.isFunded) {
+                          false => AppColors.of(context).warning,
+                          true => AppColors.of(context).positive,
                           null => theme.colorScheme.onSurface,
                         },
                   onTap: onEdit == null
@@ -124,7 +122,7 @@ class PlanRow extends StatelessWidget {
       available.isNegative ? colors.error : null;
 }
 
-/// "Funded" or "Underfunded".
+/// "Funded", "Underfunded" or "Overspent".
 class PlanStatusChip extends StatelessWidget {
   const PlanStatusChip({super.key, required this.status});
 
@@ -144,6 +142,11 @@ class PlanStatusChip extends StatelessWidget {
         'Underfunded',
         colors.tertiaryContainer,
         colors.onTertiaryContainer,
+      ),
+      PlanStatus.overspent => (
+        'Overspent',
+        colors.errorContainer,
+        colors.onErrorContainer,
       ),
     };
     return DecoratedBox(
