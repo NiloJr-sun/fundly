@@ -50,3 +50,6 @@ app.*.map.json
 
 # Cloud sign-in settings for local builds (S4); see config/cloud.example.json
 /config/cloud.json
+
+# Test users for the hosted isolation checks (S7.2 row 3); never commit
+/tool/cloud_checks/.env.local
