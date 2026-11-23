@@ -334,6 +334,12 @@ and 13 block the release. RELEASE_CHECKLIST.md has the steps.
 
 ### S7.3: Operations runbook and docs (agent)
 
+**Status (2026-11-23):** [OPERATIONS.md](OPERATIONS.md) written, waiting for
+the owner's review. The minimum supported app version is **1.2.0 (3)**, not
+1.1.0 (approved 2026-11-23, amending Decision 3), because 1.1.0 predates
+several budget accounts and cash advances. The "released" doc updates below
+wait for S7.2 Part 2 and the owner's sign-off.
+
 A new `docs/OPERATIONS.md`, written for the owner as the only operator:
 
 - **Deploying, step by step:**
@@ -346,7 +352,7 @@ A new `docs/OPERATIONS.md`, written for the owner as the only operator:
 - **Compatibility** (Decision 3): server changes stay additive under
   protocol 1, and an older installed app keeps working. A breaking change
   needs a new protocol version and its own approved plan. The minimum
-  supported app version is 1.1.0.
+  supported app version is 1.2.0 (was 1.1.0; changed 2026-11-23).
 - **Rollback:**
   - **web:** Vercel's instant rollback to the previous deployment;
   - **iOS:** reinstall the previous build;
