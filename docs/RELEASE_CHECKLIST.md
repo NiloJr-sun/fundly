@@ -262,7 +262,7 @@ signed-out data to schema v13 when it first opens. Then the agent installs
 Expected: the file is saved off the phone, and the upgraded app shows the
 same data. Nothing later changes signed-out data, but this is the way back.
 
-Result: Done 2026-11-23, with a different safety copy. The owner exported on the phone, but the file did not reach the Mac. Instead the agent copied the app's whole data folder off the phone with `devicectl` (to `~/Downloads/fundly-iphone-backup-1.1.0-2026-11-23/`; integrity check ok) before installing. Findings: the phone's signed-out store was already at schema v13 (the 1.1.0 (2) label also covered later builds) and held **no records**, only the 9 default categories; its signed-in store for A held 7 accounts, 13 categories, 17 transactions and 7 plans as of 3:41 pm, the same data as A before row 1. Profile version and counts after the install: owner to check.
+Result: Done 2026-11-23, with a different safety copy. The owner exported on the phone, but the file did not reach the Mac. Instead the agent copied the app's whole data folder off the phone with `devicectl` (to `~/Downloads/fundly-iphone-backup-1.1.0-2026-11-23/`; integrity check ok) before installing. Findings: the phone's signed-out store was already at schema v13 (the 1.1.0 (2) label also covered later builds) and held **no records**, only the 9 default categories; its signed-in store for A held 7 accounts, 13 categories, 17 transactions and 7 plans as of 3:41 pm, the same data as A before row 1. After the install the owner confirmed Profile shows "Version 1.2.0 (3)" with the data unchanged. Pass.
 
 ### 1b. The release build on the iPhone
 
@@ -275,7 +275,7 @@ Result: Done 2026-11-23, with a different safety copy. The owner exported on the
 Expected: the same records and figures on both, "Up to date", nothing
 waiting.
 
-Result:
+Result: Pass (2026-11-23, owner): the iPhone on 1.2.0 (3) signed in as A matched Chrome (balances, Spending tab, Plans), and a change made on each side arrived on the other.
 
 ### 4. Offline, restart, reconnect
 
@@ -289,7 +289,7 @@ Result:
 
 Expected: nothing is lost or duplicated, and both devices end up the same.
 
-Result:
+Result: Pass (2026-11-23, owner on the iPhone 1.2.0 (3)): three offline changes stayed waiting through a force-quit, uploaded once each after reconnecting, and Chrome matched. The test records were deleted afterwards.
 
 ### 13. Your real data (last)
 
@@ -315,12 +315,12 @@ Start only when every other row has passed.
 Expected: A holds exactly the real data from before testing, the same on the
 iPhone, in Chrome and on the server, with nothing waiting or refused.
 
-Result:
+Result: Pass (2026-11-23). After rows 1b and 4 and the clean-up, the iPhone (signed in as A, copied off the phone with `devicectl`) is identical, field by field and IDs aside, to the before-tests copy: 7 accounts, 13 categories, 17 transactions, 7 monthly plans, 0 custom account types; nothing waiting or refused. The server holds the same counts for A, and the same transaction amount total (₱44,253.06). The owner compared the iPhone with Chrome in row 1b.
 
 ## Sign-off
 
 | | |
 |---|---|
-| Rows passed | Part 1 complete: 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12. Part 2 (0, 1b, 4, 13): waiting for the iPhone |
+| Rows passed | All: 0, 1, 1b, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 (Part 1 on the simulator and Chrome, Part 2 on the iPhone) |
 | Failures and fix tasks | None so far. Follow-up (row 5): refused delete cards do not say which record |
 | Owner sign-off (release 1.2.0) | |
