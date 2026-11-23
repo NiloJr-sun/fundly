@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/theme/app_colors.dart';
+import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
@@ -9,6 +10,7 @@ import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
+import 'package:fundly/features/plans/presentation/ready_to_assign_card.dart';
 import 'package:fundly/features/spending/presentation/spending_providers.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
@@ -498,12 +500,26 @@ void main() {
   group('Ready to assign', () {
     Finder card() => find.ancestor(
       of: find.text('Ready to assign'),
-      matching: find.byType(ListTile),
+      matching: find.byType(Card),
     );
 
     Text amountText(WidgetTester tester) => tester.widget<Text>(
-      find.descendant(of: card(), matching: find.textContaining('₱')).last,
+      find.byKey(const ValueKey('ready-to-assign-amount')),
     );
+
+    /// The amount shown beside a breakdown label such as `− Assigned`.
+    String? breakdown(WidgetTester tester, String label) {
+      final row = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(Row),
+      );
+      return tester
+          .widgetList<Text>(
+            find.descendant(of: row.first, matching: find.byType(Text)),
+          )
+          .last
+          .data;
+    }
 
     TransactionDraft transferToWallet(int amount) => TransactionDraft(
       type: TransactionType.transfer,
@@ -532,8 +548,10 @@ void main() {
         find.descendant(of: card(), matching: find.textContaining('₱')),
         findsNothing,
       );
-      final tile = tester.widget<ListTile>(card());
-      expect(tile.onTap, isNull);
+      final inkWell = tester.widget<InkWell>(
+        find.descendant(of: card(), matching: find.byType(InkWell)).first,
+      );
+      expect(inkWell.onTap, isNull);
     });
 
     testWidgets('shows money in minus moved out and assigned, in green', (
@@ -550,19 +568,16 @@ void main() {
         ],
       );
 
-      expect(
-        find.descendant(
-          of: card(),
-          matching: find.text(
-            'Budget account: BDO Savings'
-            '\nCarry over from last month: ₱0.00'
-            '\nMoney in this month: ₱40,000.00'
-            '\nMoved out this month: ₱5,000.00'
-            '\nAssigned: ₱5,000.00',
-          ),
-        ),
-        findsOneWidget,
-      );
+      expect(breakdown(tester, 'Carry over'), '₱0.00');
+      expect(breakdown(tester, '+ Money in this month'), '₱40,000.00');
+      expect(breakdown(tester, '− Moved out this month'), '₱5,000.00');
+      expect(breakdown(tester, '− Assigned'), '₱5,000.00');
+      expect(find.text('From BDO Savings'), findsOneWidget);
+      expect(find.text('Left to assign'), findsOneWidget);
+      expect(find.text('Assign ₱30,000.00'), findsOneWidget);
+      // ₱5,000 of the ₱35,000 available.
+      expect(find.text('14.3% assigned'), findsOneWidget);
+      expect(find.text('₱35,000.00 available'), findsOneWidget);
       final amount = amountText(tester);
       expect(amount.data, '₱30,000.00');
       final context = tester.element(card());
@@ -583,10 +598,7 @@ void main() {
         plans: [plan(foodId, 400000)],
       );
       expect(amountText(tester).data, '₱6,000.00');
-      expect(
-        find.textContaining('Carry over from last month: ₱10,000.00'),
-        findsOneWidget,
-      );
+      expect(breakdown(tester, 'Carry over'), '₱10,000.00');
     });
 
     testWidgets('spending does not change it', (tester) async {
@@ -601,10 +613,7 @@ void main() {
         ],
       );
       expect(amountText(tester).data, '₱6,000.00');
-      expect(
-        find.textContaining('Money in this month: ₱10,000.00'),
-        findsOneWidget,
-      );
+      expect(breakdown(tester, '+ Money in this month'), '₱10,000.00');
       expect(find.textContaining('Moved out'), findsNothing);
     });
 
@@ -617,23 +626,80 @@ void main() {
 
       final amount = amountText(tester);
       expect(amount.data, '-₱5,000.00');
-      expect(
-        find.textContaining('Overallocated by: ₱5,000.00'),
-        findsOneWidget,
-      );
+      expect(find.text('Over by ₱5,000.00'), findsOneWidget);
+      expect(find.text('Fix over-assignment'), findsOneWidget);
+      // Nothing is available, so there is no percentage.
+      expect(find.textContaining('% assigned'), findsNothing);
       final context = tester.element(card());
       expect(amount.style?.color, Theme.of(context).colorScheme.error);
     });
 
-    testWidgets('zero uses the default colour', (tester) async {
+    testWidgets('shows the share assigned when over by a little', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        plans: [plan(foodId, 1725000)],
+        transactions: [saved(inflow(amount: 1708303), id: '1')],
+      );
+
+      expect(find.text('101% assigned'), findsOneWidget);
+      expect(find.text('Over by ₱166.97'), findsOneWidget);
+    });
+
+    testWidgets('zero is balanced, in the default colour', (tester) async {
       await pumpScreen(tester, bdoIsBudgetAccount: true);
 
       final amount = amountText(tester);
       expect(amount.data, '₱0.00');
+      expect(find.text('Balanced'), findsOneWidget);
+      expect(find.text('Every peso has a job'), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
       final context = tester.element(card());
+      expect(amount.style?.color, Theme.of(context).colorScheme.onSurface);
+    });
+
+    Color? badgeColour(WidgetTester tester, String label) {
+      final box = tester.widget<DecoratedBox>(
+        find
+            .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
+            .first,
+      );
+      return (box.decoration as BoxDecoration).color;
+    }
+
+    ColorScheme colors(WidgetTester tester) =>
+        Theme.of(tester.element(card())).colorScheme;
+
+    testWidgets('Over badge uses the Overspent chip colour', (tester) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        plans: [plan(foodId, 500000)],
+      );
       expect(
-        amount.style?.color,
-        Theme.of(context).textTheme.titleLarge?.color,
+        badgeColour(tester, 'Over by ₱5,000.00'),
+        colors(tester).errorContainer,
+      );
+    });
+
+    testWidgets('Balanced badge uses the Funded chip colour', (tester) async {
+      await pumpScreen(tester, bdoIsBudgetAccount: true);
+      expect(badgeColour(tester, 'Balanced'), colors(tester).primaryContainer);
+    });
+
+    testWidgets('Left to assign badge uses the Underfunded chip colour', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        transactions: [saved(inflow(amount: 100000), id: '1')],
+      );
+      expect(
+        badgeColour(tester, 'Left to assign'),
+        colors(tester).tertiaryContainer,
       );
     });
 
@@ -669,6 +735,30 @@ void main() {
       expect(find.text('All accounts'), findsOneWidget);
     });
 
+    testWidgets('the Assign button scrolls to the plans, not to transactions', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(400, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        transactions: [saved(inflow(amount: 4000000), id: '1')],
+      );
+      final list = find.byType(Scrollable).first;
+      final before = tester.state<ScrollableState>(list).position.pixels;
+
+      await tester.tap(find.text('Assign ₱40,000.00'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AllTransactionsScreen), findsNothing);
+      expect(
+        tester.state<ScrollableState>(list).position.pixels,
+        greaterThan(before),
+      );
+    });
+
     testWidgets('lists several budget accounts; transfers between them '
         'do not count', (tester) async {
       await pumpScreen(
@@ -683,11 +773,53 @@ void main() {
       );
 
       expect(
-        find.textContaining('Budget accounts: BDO Savings, Cash Wallet'),
+        find.text('From 2 accounts · BDO Savings, Cash Wallet'),
         findsOneWidget,
       );
       expect(find.textContaining('Moved out'), findsNothing);
       expect(amountText(tester).data, '₱35,000.00');
+    });
+  });
+
+  group('assignedPercentLabel', () {
+    Money peso(int minorUnits) =>
+        Money(minorUnits: minorUnits, currencyCode: 'PHP');
+
+    test('rounds to one decimal and drops a trailing zero', () {
+      expect(
+        assignedPercentLabel(assigned: peso(1704800), available: peso(1708303)),
+        '99.8%',
+      );
+      expect(
+        assignedPercentLabel(assigned: peso(1725000), available: peso(1708303)),
+        '101%',
+      );
+      expect(
+        assignedPercentLabel(assigned: peso(1708303), available: peso(1708303)),
+        '100%',
+      );
+    });
+
+    test('shows 100% only when exactly balanced', () {
+      expect(
+        assignedPercentLabel(assigned: peso(999999), available: peso(1000000)),
+        '99.9%',
+      );
+      expect(
+        assignedPercentLabel(assigned: peso(1000001), available: peso(1000000)),
+        '100.1%',
+      );
+    });
+
+    test('is null when nothing is available', () {
+      expect(
+        assignedPercentLabel(assigned: peso(100), available: peso(0)),
+        isNull,
+      );
+      expect(
+        assignedPercentLabel(assigned: peso(0), available: peso(-100)),
+        isNull,
+      );
     });
   });
 

@@ -70,14 +70,29 @@ void main() {
     await settle(tester);
   }
 
+  /// The Ready to assign card's breakdown, one `label: amount` per line.
   String details(WidgetTester tester) {
-    final tile = tester.widget<ListTile>(
-      find.ancestor(
-        of: find.text('Ready to assign'),
-        matching: find.byType(ListTile),
-      ),
+    final card = find.ancestor(
+      of: find.text('Ready to assign'),
+      matching: find.byType(Card),
     );
-    return (tile.subtitle! as Text).data!;
+    final rows = find.descendant(of: card, matching: find.byType(Row));
+    return [
+      for (final row in tester.widgetList<Row>(rows))
+        if (row.children.length == 2 &&
+            row.children.every((child) => child is Expanded || child is Text))
+          [
+            for (final text
+                in find
+                    .descendant(
+                      of: find.byWidget(row),
+                      matching: find.byType(Text),
+                    )
+                    .evaluate()
+                    .map((element) => element.widget as Text))
+              text.data,
+          ].join(': '),
+    ].join('\n');
   }
 
   void expectNoWrites() {
@@ -100,12 +115,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
       await settle(tester);
       expect(find.text('December 2026'), findsOneWidget);
-      expect(details(tester), contains('Money in this month: ₱0.00'));
-      expect(
-        details(tester),
-        contains('Carry over from last month: ₱6,000.00'),
-      );
-      expect(details(tester), contains('Assigned: ₱1,000.00'));
+      expect(details(tester), contains('+ Money in this month: ₱0.00'));
+      expect(details(tester), contains('Carry over: ₱6,000.00'));
+      expect(details(tester), contains('− Assigned: ₱1,000.00'));
       expect(find.text('₱5,000.00'), findsOneWidget);
       expectNoWrites();
     },
@@ -120,11 +132,8 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await settle(tester);
       expect(find.text('February 2027'), findsOneWidget);
-      expect(
-        details(tester),
-        contains('Carry over from last month: ₱6,000.00'),
-      );
-      expect(details(tester), contains('Assigned: ₱0.00'));
+      expect(details(tester), contains('Carry over: ₱6,000.00'));
+      expect(details(tester), contains('− Assigned: ₱0.00'));
       final before = details(tester);
       for (var i = 0; i < 3; i++) {
         tester.binding.handleAppLifecycleStateChanged(
@@ -155,7 +164,7 @@ void main() {
     await tester.tap(find.text('This month'));
     await settle(tester);
     expect(find.text('February 2027'), findsOneWidget);
-    expect(details(tester), contains('Carry over from last month: ₱6,000.00'));
+    expect(details(tester), contains('Carry over: ₱6,000.00'));
   });
 
   testWidgets('opening after missed months computes carry-over immediately', (
@@ -164,7 +173,7 @@ void main() {
     now = DateTime(2027, 3, 8);
     await pump(tester);
     expect(find.text('March 2027'), findsOneWidget);
-    expect(details(tester), contains('Carry over from last month: ₱6,000.00'));
+    expect(details(tester), contains('Carry over: ₱6,000.00'));
     expectNoWrites();
   });
 
