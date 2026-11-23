@@ -38,9 +38,9 @@ passed**, including the Part 2 rows before it.
 | Item | Status |
 |---|---|
 | Local suite on 1.2.0 (3): format, analyze, 1,149 Flutter tests, 794 pgTAP assertions, 28 concurrency races, 14 contract checks, 10,000-transaction timing | Done 2026-11-23, all pass |
-| Safety export of the iPhone's signed-out data, taken from 1.1.0 (2) before installing 1.2.0 (3) | **Part 2:** you (row 0) |
+| Safety export of the iPhone's signed-out data, taken from 1.1.0 (2) before installing 1.2.0 (3) | Done 2026-11-23, see row 0 |
 | Hosted server has the cash advance and several budget accounts migrations | Done 2026-11-23: up to date, functions match the local stack, lint clean, the 3 known advisor warnings (powersync/README.md) |
-| Release build 1.2.0 (3) on the iPhone, installed over the old app with its data kept | **Part 2:** after the safety export (row 0) |
+| Release build 1.2.0 (3) on the iPhone, installed over the old app with its data kept | Done 2026-11-23: `devicectl` reports 1.2.0 (3); the app's data files are unchanged; build kept in `~/fundly-releases/1.2.0-3/` |
 | Simulator build 1.2.0 (3) with the cloud config | Done 2026-11-23: installed over the old build; its existing data opens |
 | Web app on Vercel shows 1.2.0 (3) | Done 2026-11-23: the live `version.json` says 1.2.0 (3). Headers still live: `no-cache` on `/`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` and the PowerSync worker; `application/wasm` on `sqlite3.wasm` |
 | Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | Done 2026-11-23: 15 API checks pass; stream test passes (forged token refused, `401 PSYNC_S2101`) |
@@ -262,7 +262,7 @@ signed-out data to schema v13 when it first opens. Then the agent installs
 Expected: the file is saved off the phone, and the upgraded app shows the
 same data. Nothing later changes signed-out data, but this is the way back.
 
-Result:
+Result: Done 2026-11-23, with a different safety copy. The owner exported on the phone, but the file did not reach the Mac. Instead the agent copied the app's whole data folder off the phone with `devicectl` (to `~/Downloads/fundly-iphone-backup-1.1.0-2026-11-23/`; integrity check ok) before installing. Findings: the phone's signed-out store was already at schema v13 (the 1.1.0 (2) label also covered later builds) and held **no records**, only the 9 default categories; its signed-in store for A held 7 accounts, 13 categories, 17 transactions and 7 plans as of 3:41 pm, the same data as A before row 1. Profile version and counts after the install: owner to check.
 
 ### 1b. The release build on the iPhone
 
@@ -293,21 +293,27 @@ Result:
 
 ### 13. Your real data (last)
 
+Rewritten 2026-11-23 (owner approved): the real data is already in account A,
+and the iPhone's signed-out store is empty, so there is no reset and no copy.
+Copying the empty device data would have wiped A.
+
+Before tests, A held 7 accounts, 13 categories, 17 transactions and 7
+monthly plans (the iPhone's copy from 3:41 pm, kept in
+`~/Downloads/fundly-iphone-backup-1.1.0-2026-11-23/`). The row 10 restore
+put that data back with new IDs, and the leftover test records were deleted
+afterwards. On 2026-11-23 the agent found A identical to it, field by field
+(IDs aside).
+
 Start only when every other row has passed.
 
-1. On the iPhone, signed in as A, Profile → Reset all data. Export the
-   checkpoint, type "delete my data", then wait for "All data deleted".
-2. Profile → Copy this device's data → check the counts match row 0 →
-   Copy to my account.
-3. Wait for "Copied and checked", with every balance "Same in your
-   account".
-4. Open Chrome as A and compare balances, the Spending tab and Plans with
-   the iPhone.
-5. The agent compares the server's counts for A with row 0's counts (read
-   only).
+1. On the iPhone (1.2.0 (3)), signed in as A, wait for "Up to date".
+2. The agent copies the iPhone's synced store off the phone and compares it
+   with the before-tests copy, field by field.
+3. Compare balances, the Spending tab and Plans on the iPhone with Chrome.
+4. The agent reads the server's counts for A (read only).
 
-Expected: your real data is in the account, checked record by record, and
-the same on the web.
+Expected: A holds exactly the real data from before testing, the same on the
+iPhone, in Chrome and on the server, with nothing waiting or refused.
 
 Result:
 
