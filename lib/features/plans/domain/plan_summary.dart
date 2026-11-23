@@ -144,87 +144,100 @@ bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
       transaction.categoryId == category.id;
 }
 
-/// Current budget-account balance and the selected month's allocations.
+/// The selected month's money in the budget account and what is assigned.
 @immutable
 final class ReadyToAssign {
   const ReadyToAssign({
-    required this.balance,
     required this.carryOver,
+    required this.moneyIn,
+    required this.movedOut,
     required this.assigned,
-    required this.remaining,
   });
 
-  final Money balance;
-
-  /// Opening balance plus transactions before the selected month's first day.
-  /// Already included in [balance]; never add it again as income or a transfer.
+  /// Budget-account balance on the month's first day: opening balance plus
+  /// every transaction dated before it.
   final Money carryOver;
+
+  /// Inflows and transfers into the budget account dated in the month.
+  final Money moneyIn;
+
+  /// Transfers from the budget account to accounts without a linked Plans
+  /// row (Savings/Cash), dated in the month. Card and loan payments are
+  /// Activity on their debt row instead.
+  final Money movedOut;
+
+  /// Total assigned in the month, including archived plan rows.
   final Money assigned;
 
-  /// Assigned money still reserved, after eligible spending per category.
-  final Money remaining;
-
-  Money get amount => balance - remaining;
+  /// Money that came in and has not been given a job yet.
+  Money get amount => carryOver + moneyIn - movedOut - assigned;
 
   @override
   bool operator ==(Object other) =>
       other is ReadyToAssign &&
-      other.balance == balance &&
       other.carryOver == carryOver &&
-      other.assigned == assigned &&
-      other.remaining == remaining;
+      other.moneyIn == moneyIn &&
+      other.movedOut == movedOut &&
+      other.assigned == assigned;
 
   @override
-  int get hashCode => Object.hash(balance, carryOver, assigned, remaining);
+  int get hashCode => Object.hash(carryOver, moneyIn, movedOut, assigned);
 }
 
-/// Current balance (including opening money and all recorded transactions)
-/// minus the selected month's remaining allocations. This is a live balance,
-/// even when viewing another month; monthly allocations do not carry over.
-/// Spending and linked liability payments from the budget account in that
-/// month release their respective allocations.
-/// Each category's remaining allocation is floored at zero so overspending
-/// cannot release money reserved for other categories. Other transfers affect
-/// the balance without releasing allocations.
+/// Carry over plus money in, minus money moved out and the month's assigned
+/// total. Each month has its own figure.
+///
+/// Spending from the budget account does not change it: spending is Activity
+/// in its category, which turns negative when overspent. Card and loan
+/// payments (transfers or card payments into an account linked to a Plans row
+/// in [categories]) are likewise Activity on that row. Spending from other
+/// accounts and card purchases never touch it. Earlier months' spending still
+/// reaches later months through [ReadyToAssign.carryOver].
 ReadyToAssign readyToAssign({
   required CalendarMonth month,
   required Account budgetAccount,
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
-  Iterable<Category> categories = const [],
+  required Iterable<Category> categories,
 }) {
-  final entries = transactions.toList();
+  final budgetId = budgetAccount.id;
   final zero = Money.zero(budgetAccount.openingBalance.currencyCode);
-  final linkedAccountByCategory = {
-    for (final category in categories) category.id: category.linkedAccountId,
+  final linkedAccountIds = {
+    for (final category in categories)
+      if (category.linkedAccountId != null) category.linkedAccountId,
   };
+  final before = <TransactionDraft>[];
+  var moneyIn = zero;
+  var movedOut = zero;
+  for (final transaction in transactions) {
+    if (transaction.date.isBefore(month.dateRange.start)) {
+      before.add(transaction);
+    } else if (month.dateRange.contains(transaction.date)) {
+      if (transaction.destinationAccountId == budgetId) {
+        moneyIn += transaction.amount;
+      } else if (transaction.sourceAccountId == budgetId &&
+          transaction.type == TransactionType.transfer &&
+          !linkedAccountIds.contains(transaction.destinationAccountId)) {
+        movedOut += transaction.amount;
+      }
+    }
+  }
   var assigned = zero;
-  var remaining = zero;
   for (final plan in plans) {
-    if (plan.month != month) continue;
-    assigned += plan.assigned;
-    remaining += remainingPlanAllocation(
-      plan: plan,
-      budgetAccountId: budgetAccount.id,
-      linkedAccountId: linkedAccountByCategory[plan.categoryId],
-      transactions: entries,
-    );
+    if (plan.month == month) assigned += plan.assigned;
   }
   return ReadyToAssign(
-    balance: currentBalance(budgetAccount, entries),
-    carryOver: currentBalance(
-      budgetAccount,
-      entries.where(
-        (transaction) => transaction.date.isBefore(month.dateRange.start),
-      ),
-    ),
+    carryOver: currentBalance(budgetAccount, before),
+    moneyIn: moneyIn,
+    movedOut: movedOut,
     assigned: assigned,
-    remaining: remaining,
   );
 }
 
-/// Unspent allocation reserved in the budget account for this plan. This is
-/// shared by Ready to assign and the archive guard so their rules stay equal.
+/// Unspent allocation for this plan: Assigned minus that month's eligible
+/// Spending (or linked debt payments) from the budget account, floored at
+/// zero. The archive guard uses it to block archiving rows that still hold
+/// money.
 Money remainingPlanAllocation({
   required MonthlyPlan plan,
   required String? budgetAccountId,

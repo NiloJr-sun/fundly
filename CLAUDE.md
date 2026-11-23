@@ -330,8 +330,9 @@ them:
 -   Currency conversion.
 -   Full YNAB-style envelope budgeting and automatic money allocation.
     (Approved 2026-11-17: a manual Assigned amount per category per month,
-    and a Ready to assign figure: the budget account’s current balance
-    minus the selected month’s remaining allocations. Automatic allocation
+    and a Ready to assign figure, which since 2026-11-23 is the budget
+    account’s carry over plus the month’s money in, minus money moved out
+    and the month’s Assigned total. Automatic allocation
     and allocation carry-over between months remain out of scope.)
 
 Keep future extension in mind, but do not build abstractions for
@@ -898,7 +899,7 @@ suggestions as approved decisions.
                           planGroup; format 1     
                           still restores          
 
-  2026-11-17              Ready to assign on      Confirmed
+  2026-11-17              Ready to assign on      Superseded
                           Plans: live budget
                           account balance incl.
                           opening money, minus
@@ -918,6 +919,7 @@ suggestions as approved decisions.
                           when overallocated;
                           saving is allowed. Tap
                           opens account/month.
+                          Replaced 2026-11-23.
 
   2026-11-17              Budget account (schema  Confirmed
                           v9): exactly one or no  
@@ -1169,5 +1171,25 @@ suggestions as approved decisions.
                           "copied to" note.
                           Older app versions
                           cannot read format 7.
+
+  2026-11-23              Ready to assign is      Confirmed
+                          based on money in, per
+                          month: carry over
+                          (budget account balance
+                          on the 1st) + money in
+                          (inflows and transfers
+                          into it that month) −
+                          moved out (transfers to
+                          accounts without a
+                          linked Plans row) −
+                          that month's Assigned.
+                          Spending, card and loan
+                          payments are Activity
+                          only; overspending shows
+                          on its row, not here,
+                          and reaches later months
+                          via carry over. Archive
+                          guard unchanged. No
+                          schema or backup change.
 
   -----------------------------------------------------------------------

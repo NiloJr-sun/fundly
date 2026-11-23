@@ -311,7 +311,7 @@ void main() {
         categories: await categories.watchAll().first,
         transactions: await transactions.watchAll().first,
       );
-      expect(result.remaining, php(10000));
+      expect(result.assigned, php(10000));
       expect(result.amount, php(90000));
     },
   );

@@ -103,7 +103,7 @@ AsyncValue<List<CategoryPlanSummary>> _summaries(
   };
 }
 
-/// Current budget-account balance minus remaining allocations in [month]; see
+/// The budget account's money in [month] minus what is assigned; see
 /// [readyToAssign]. `null` (as data) when no budget account is chosen.
 final readyToAssignProvider =
     Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {

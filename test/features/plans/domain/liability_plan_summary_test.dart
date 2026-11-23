@@ -70,7 +70,7 @@ void main() {
     },
   );
 
-  test('budget payments release their allocation exactly once', () {
+  test('card and loan payments are row Activity, not moved out', () {
     final result = readyToAssign(
       month: month,
       budgetAccount: accounts[bdoId]!,
@@ -82,12 +82,13 @@ void main() {
         transfer(amount: 20000, to: carLoanId),
       ],
     );
-    expect(result.balance, php(70000));
-    expect(result.remaining, php(40000));
+    expect(result.moneyIn, php(100000));
+    expect(result.movedOut, php(0));
+    expect(result.assigned, php(70000));
     expect(result.amount, php(30000));
   });
 
-  test('payments from other accounts do not release budget reservations', () {
+  test('payments from other accounts do not change Ready to assign', () {
     final transactions = [cardPayment(amount: 20000, from: walletId)];
     final row = summarize(transactions, plans: [plan(card.id, 40000)])[1];
     expect(row.activity, php(20000));
@@ -99,11 +100,10 @@ void main() {
       plans: [plan(card.id, 40000)],
       transactions: [inflow(amount: 100000), ...transactions],
     );
-    expect(result.remaining, php(40000));
     expect(result.amount, php(60000));
   });
 
-  test('overpayments cannot release another category allocation', () {
+  test('overpaying a debt row leaves Ready to assign unchanged', () {
     final result = readyToAssign(
       month: month,
       budgetAccount: accounts[bdoId]!,
@@ -111,8 +111,8 @@ void main() {
       plans: [plan(card.id, 10000), plan(loan.id, 30000)],
       transactions: [inflow(amount: 100000), cardPayment(amount: 20000)],
     );
-    expect(result.remaining, php(30000));
-    expect(result.amount, php(50000));
+    expect(result.assigned, php(40000));
+    expect(result.amount, php(60000));
   });
 
   test(

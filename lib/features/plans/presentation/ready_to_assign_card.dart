@@ -10,8 +10,9 @@ import '../../transactions/domain/transaction_filter.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import 'plans_providers.dart';
 
-/// Live budget-account balance minus the selected month's remaining allocations.
-/// Negative amounts warn of overallocation without preventing plan edits.
+/// The selected month's carry over and money in, minus money moved out and
+/// the month's assigned total. Negative amounts warn of overallocation without
+/// preventing plan edits.
 class ReadyToAssignCard extends ConsumerWidget {
   const ReadyToAssignCard({super.key, required this.month});
 
@@ -38,11 +39,11 @@ class ReadyToAssignCard extends ConsumerWidget {
           ),
         );
         details = Text(
-          '${budgetAccount.name} balance: ${MoneyFormatter.format(value.balance)}'
-          '\nCarry over from last month: ${MoneyFormatter.format(value.carryOver)}'
+          'Carry over from last month: ${MoneyFormatter.format(value.carryOver)}'
+          '\nMoney in this month: ${MoneyFormatter.format(value.moneyIn)}'
+          '${value.movedOut.isZero ? '' : '\nMoved out this month: ${MoneyFormatter.format(value.movedOut)}'}'
           '\nAssigned: ${MoneyFormatter.format(value.assigned)}'
-          '\nRemaining: ${MoneyFormatter.format(value.remaining)}'
-          '${money.isNegative ? '\nOverallocated by: ${MoneyFormatter.format(value.remaining - value.balance)}' : ''}',
+          '${money.isNegative ? '\nOverallocated by: ${MoneyFormatter.format(-money)}' : ''}',
         );
       case AsyncData():
         amount = null;

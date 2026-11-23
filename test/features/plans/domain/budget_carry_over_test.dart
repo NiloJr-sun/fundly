@@ -44,7 +44,7 @@ void main() {
   test('opening money survives a month without transactions', () {
     final result = summarize([]);
     expect(result.carryOver, php(1000000));
-    expect(result.balance, php(1000000));
+    expect(result.moneyIn, php(0));
     expect(result.amount, php(1000000));
   });
 
@@ -56,7 +56,6 @@ void main() {
       ];
       final result = summarize(entries);
       expect(result.carryOver, php(600000));
-      expect(result.balance, php(600000));
       expect(result.amount, php(600000));
       expect(currentBalance(budget, entries), php(600000));
       expect(
@@ -71,28 +70,26 @@ void main() {
     },
   );
 
-  test(
-    'first-day transactions are excluded from carry-over but affect balance',
-    () {
-      final result = summarize([
-        entry(
-          TransactionType.inflow,
-          100000,
-          CalendarDate(2026, 11, 30),
-          to: bdoId,
-        ),
-        spending(amount: 200000, date: CalendarDate(2026, 12, 1)),
-        entry(
-          TransactionType.inflow,
-          300000,
-          CalendarDate(2027, 1, 1),
-          to: bdoId,
-        ),
-      ]);
-      expect(result.carryOver, php(1100000));
-      expect(result.balance, php(1200000));
-    },
-  );
+  test('first-day transactions are excluded from carry-over', () {
+    final result = summarize([
+      entry(
+        TransactionType.inflow,
+        100000,
+        CalendarDate(2026, 11, 30),
+        to: bdoId,
+      ),
+      spending(amount: 200000, date: CalendarDate(2026, 12, 1)),
+      entry(
+        TransactionType.inflow,
+        300000,
+        CalendarDate(2027, 1, 1),
+        to: bdoId,
+      ),
+    ]);
+    expect(result.carryOver, php(1100000));
+    expect(result.moneyIn, php(0));
+    expect(result.amount, php(1100000));
+  });
 
   test('all previous account movements count; other accounts do not', () {
     final date = CalendarDate(2026, 11, 30);
@@ -112,7 +109,6 @@ void main() {
       spending(amount: 800000, date: date, from: rcbcCardId),
     ]);
     expect(result.carryOver, php(1000000));
-    expect(result.balance, php(1000000));
   });
 
   test(
@@ -136,7 +132,7 @@ void main() {
       spending(amount: 200000, date: CalendarDate(2027, 1, 1)),
     ], month: CalendarMonth(2027, 1));
     expect(result.carryOver, php(900000));
-    expect(result.balance, php(700000));
+    expect(result.amount, php(900000));
   });
 
   test('leap-day spending is included in March opening money', () {
@@ -166,6 +162,7 @@ void main() {
           budgetAccount: budget.copyWith(openingBalance: php(2000000)),
           plans: [],
           transactions: [],
+          categories: categories.values,
         ).carryOver,
         php(2000000),
       );
@@ -180,6 +177,7 @@ void main() {
         month: december,
         budgetAccount: other,
         plans: [],
+        categories: categories.values,
         transactions: [
           spending(amount: 900000, date: CalendarDate(2026, 11, 30)),
           entry(
@@ -213,7 +211,6 @@ void main() {
     );
     expect(result.carryOver, php(1000000));
     expect(result.assigned, php(0));
-    expect(result.remaining, php(0));
     expect(result.amount, php(1000000));
   });
 

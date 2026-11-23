@@ -493,7 +493,7 @@ void main() {
       expect(tile.onTap, isNull);
     });
 
-    testWidgets('shows current balance minus remaining allocations, in green', (
+    testWidgets('shows money in minus moved out and assigned, in green', (
       tester,
     ) async {
       await pumpScreen(
@@ -502,7 +502,7 @@ void main() {
         plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
         transactions: [
           saved(inflow(amount: 4000000), id: '1'),
-          // Transfers out reduce the live balance.
+          // Transfers out to Savings/Cash are moved out.
           saved(transferToWallet(500000), id: '2'),
         ],
       );
@@ -511,9 +511,10 @@ void main() {
         find.descendant(
           of: card(),
           matching: find.text(
-            'BDO Savings balance: ₱35,000.00'
-            '\nCarry over from last month: ₱0.00\nAssigned: ₱5,000.00'
-            '\nRemaining: ₱5,000.00',
+            'Carry over from last month: ₱0.00'
+            '\nMoney in this month: ₱40,000.00'
+            '\nMoved out this month: ₱5,000.00'
+            '\nAssigned: ₱5,000.00',
           ),
         ),
         findsOneWidget,
@@ -539,14 +540,12 @@ void main() {
       );
       expect(amountText(tester).data, '₱6,000.00');
       expect(
-        find.textContaining('BDO Savings balance: ₱10,000.00'),
+        find.textContaining('Carry over from last month: ₱10,000.00'),
         findsOneWidget,
       );
     });
 
-    testWidgets('spending releases only the budget account allocation', (
-      tester,
-    ) async {
+    testWidgets('spending does not change it', (tester) async {
       await pumpScreen(
         tester,
         bdoIsBudgetAccount: true,
@@ -558,7 +557,11 @@ void main() {
         ],
       );
       expect(amountText(tester).data, '₱6,000.00');
-      expect(find.textContaining('Remaining: ₱3,000.00'), findsOneWidget);
+      expect(
+        find.textContaining('Money in this month: ₱10,000.00'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Moved out'), findsNothing);
     });
 
     testWidgets('is red when more was assigned than came in', (tester) async {
@@ -601,7 +604,8 @@ void main() {
       await tester.tap(find.byTooltip('Previous month'));
       await tester.pumpAndSettle();
 
-      expect(amountText(tester).data, '₱39,000.00');
+      // October has no money in, so its ₱1,000 assignment is overallocated.
+      expect(amountText(tester).data, '-₱1,000.00');
     });
 
     testWidgets("tapping it opens the budget account's month", (tester) async {

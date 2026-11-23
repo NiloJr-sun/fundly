@@ -7,6 +7,7 @@ import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/domain/plan_summary.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 import '../../transactions/domain/transaction_fixtures.dart';
 
@@ -290,12 +291,28 @@ void main() {
   });
 
   group('readyToAssign', () {
+    const cardRow = Category(
+      id: '101',
+      name: 'RCBC',
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+      linkedAccountId: rcbcCardId,
+    );
+    const loanRow = Category(
+      id: '102',
+      name: 'Car loan',
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+      linkedAccountId: carLoanId,
+    );
+
     ReadyToAssign ready({
       int opening = 1000000,
+      CalendarMonth? month,
       List<MonthlyPlan> plans = const [],
       List<TransactionDraft> transactions = const [],
     }) => readyToAssign(
-      month: november,
+      month: month ?? november,
       budgetAccount: Account(
         id: bdoId,
         name: 'Budget',
@@ -305,29 +322,68 @@ void main() {
       ),
       plans: plans,
       transactions: transactions,
+      categories: [...allCategories, cardRow, loanRow],
     );
 
-    test('opening balance funds assignments including archived categories', () {
+    TransactionDraft dated(
+      TransactionType type,
+      int amount,
+      CalendarDate date, {
+      String? from,
+      String? to,
+    }) => TransactionDraft(
+      type: type,
+      amount: php(amount),
+      date: date,
+      sourceAccountId: from,
+      destinationAccountId: to,
+      categoryId: switch (type) {
+        TransactionType.spending => foodId,
+        TransactionType.inflow => salaryId,
+        _ => null,
+      },
+    );
+
+    test('carry over plus money in minus assigned', () {
+      // ₱10,000 carried over, ₱30,000 salary, ₱25,000 assigned and ₱8,000
+      // spent within plan leave ₱15,000, as the old live-balance rule did.
+      final result = ready(
+        plans: [plan(foodId, 1000000), plan(transportId, 1500000)],
+        transactions: [inflow(amount: 3000000), spending(amount: 800000)],
+      );
+      expect(result.carryOver, php(1000000));
+      expect(result.moneyIn, php(3000000));
+      expect(result.movedOut, php(0));
+      expect(result.assigned, php(2500000));
+      expect(result.amount, php(1500000));
+    });
+
+    test('assigned includes archived categories', () {
       final result = ready(
         plans: [plan(foodId, 400000), plan(giftsId, null, assigned: 100000)],
       );
-      expect(result.balance, php(1000000));
       expect(result.assigned, php(500000));
-      expect(result.remaining, php(500000));
       expect(result.amount, php(500000));
     });
 
-    test('budget spending is counted once', () {
-      final result = ready(
-        plans: [plan(foodId, 400000)],
-        transactions: [spending(amount: 100000)],
+    test('overspending a category leaves it unchanged', () {
+      final plans = [plan(foodId, 100000), plan(transportId, 200000)];
+      expect(ready(plans: plans).amount, php(700000));
+      expect(
+        ready(plans: plans, transactions: [spending(amount: 300000)]).amount,
+        php(700000),
       );
-      expect(result.balance, php(900000));
-      expect(result.remaining, php(300000));
-      expect(result.amount, php(600000));
     });
 
-    test('other accounts and card purchases do not release allocations', () {
+    test('spending with nothing assigned leaves it unchanged', () {
+      final result = ready(
+        plans: [plan(transportId, 200000)],
+        transactions: [spending(amount: 100000)],
+      );
+      expect(result.amount, php(800000));
+    });
+
+    test('spending from other accounts and card purchases are ignored', () {
       final result = ready(
         plans: [plan(foodId, 400000)],
         transactions: [
@@ -335,91 +391,157 @@ void main() {
           spending(amount: 100000, from: rcbcCardId),
         ],
       );
-      expect(result.balance, php(1000000));
-      expect(result.remaining, php(400000));
+      expect(result.moneyIn, php(0));
+      expect(result.movedOut, php(0));
       expect(result.amount, php(600000));
     });
 
-    test('overspending cannot consume another category allocation', () {
+    test('a transfer into the budget account is money in', () {
       final result = ready(
-        plans: [plan(foodId, 100000), plan(transportId, 200000)],
-        transactions: [spending(amount: 300000)],
+        transactions: [transfer(amount: 100000, from: walletId, to: bdoId)],
       );
-      expect(result.remaining, php(200000));
-      expect(result.amount, php(500000));
+      expect(result.moneyIn, php(100000));
+      expect(result.amount, php(1100000));
     });
 
-    test('unassigned spending reduces only the balance', () {
+    test('a transfer out to a Savings/Cash account is moved out', () {
+      final result = ready(transactions: [transfer(amount: 100000)]);
+      expect(result.movedOut, php(100000));
+      expect(result.amount, php(900000));
+    });
+
+    test('card and loan payments are debt-row Activity, not moved out', () {
       final result = ready(
-        plans: [plan(transportId, 200000)],
-        transactions: [spending(amount: 100000)],
+        plans: [plan(cardRow.id, null, assigned: 100000)],
+        transactions: [
+          cardPayment(amount: 200000),
+          transfer(amount: 300000, to: carLoanId),
+        ],
       );
-      expect(result.remaining, php(200000));
+      expect(result.movedOut, php(0));
+      expect(result.amount, php(900000));
+    });
+
+    test('inflows to other accounts are not money in', () {
+      final result = ready(
+        transactions: [
+          inflow(amount: 900000, to: walletId),
+          cardPayment(amount: 100000, from: walletId),
+        ],
+      );
+      expect(result.moneyIn, php(0));
+      expect(result.amount, php(1000000));
+    });
+
+    test('each month has its own money in, moved out and assigned', () {
+      final transactions = [
+        dated(
+          TransactionType.inflow,
+          500000,
+          CalendarDate(2026, 10, 31),
+          to: bdoId,
+        ),
+        dated(
+          TransactionType.spending,
+          100000,
+          CalendarDate(2026, 10, 31),
+          from: bdoId,
+        ),
+        dated(
+          TransactionType.inflow,
+          3000000,
+          CalendarDate(2026, 11, 1),
+          to: bdoId,
+        ),
+        dated(
+          TransactionType.transfer,
+          200000,
+          CalendarDate(2026, 11, 30),
+          from: bdoId,
+          to: walletId,
+        ),
+        dated(
+          TransactionType.inflow,
+          700000,
+          CalendarDate(2026, 12, 1),
+          to: bdoId,
+        ),
+      ];
+      final plans = [
+        plan(foodId, 400000),
+        plan(transportId, 900000, month: CalendarMonth(2026, 10)),
+      ];
+
+      final october = ready(
+        month: CalendarMonth(2026, 10),
+        plans: plans,
+        transactions: transactions,
+      );
+      expect(october.carryOver, php(1000000));
+      expect(october.moneyIn, php(500000));
+      expect(october.assigned, php(900000));
+      expect(october.amount, php(600000));
+
+      final current = ready(plans: plans, transactions: transactions);
+      expect(current.carryOver, php(1400000));
+      expect(current.moneyIn, php(3000000));
+      expect(current.movedOut, php(200000));
+      expect(current.assigned, php(400000));
+      expect(current.amount, php(3800000));
+
+      final december = ready(
+        month: CalendarMonth(2026, 12),
+        plans: plans,
+        transactions: transactions,
+      );
+      expect(december.carryOver, php(4200000));
+      expect(december.moneyIn, php(700000));
+      expect(december.assigned, php(0));
+      expect(december.amount, php(4900000));
+    });
+
+    test('last month\'s spending reduces this month through carry over', () {
+      final result = ready(
+        transactions: [
+          dated(
+            TransactionType.spending,
+            300000,
+            CalendarDate(2026, 10, 31),
+            from: bdoId,
+          ),
+        ],
+      );
+      expect(result.carryOver, php(700000));
       expect(result.amount, php(700000));
     });
 
-    test(
-      'transfers and card payments change balance without releasing money',
-      () {
-        final result = ready(
-          plans: [plan(foodId, 400000)],
-          transactions: [transfer(amount: 100000), cardPayment(amount: 200000)],
-        );
-        expect(result.balance, php(700000));
-        expect(result.remaining, php(400000));
-        expect(result.amount, php(300000));
-      },
-    );
-
-    test(
-      'live balance includes all dates; allocations and spending are monthly',
-      () {
-        final result = ready(
-          plans: [
-            plan(foodId, 400000),
-            plan(transportId, 900000, month: CalendarMonth(2026, 10)),
-          ],
-          transactions: [
-            spending(amount: 100000, date: CalendarDate(2026, 10, 31)),
-            spending(amount: 200000, date: CalendarDate(2026, 12, 1)),
-            inflow(amount: 50000),
-            inflow(amount: 900000, to: walletId),
-            transfer(amount: 100000, from: walletId, to: bdoId),
-          ],
-        );
-        expect(result.balance, php(850000));
-        expect(result.assigned, php(400000));
-        expect(result.remaining, php(400000));
-        expect(result.amount, php(450000));
-      },
-    );
-
-    test('overallocated and negative balances remain negative', () {
+    test('overallocated amounts are negative', () {
       expect(ready(plans: [plan(foodId, 1200000)]).amount, php(-200000));
       expect(
-        ready(transactions: [spending(amount: 1200000)]).amount,
+        ready(transactions: [transfer(amount: 1200000)]).amount,
         php(-200000),
       );
     });
 
-    test('zero with no balance or assignments', () {
+    test('zero with no money or assignments', () {
       expect(ready(opening: 0).amount, php(0));
     });
 
-    test(
-      'editing or deleting spending recalculates balance and reservations',
-      () {
-        final plans = [plan(foodId, 400000)];
-        expect(
-          ready(plans: plans, transactions: [spending(amount: 100000)]).amount,
-          php(600000),
-        );
-        expect(
-          ready(plans: plans, transactions: [spending(amount: 200000)]).amount,
-          php(600000),
-        );
-        expect(ready(plans: plans).amount, php(600000));
-      },
-    );
+    test('editing or deleting a transaction recalculates it', () {
+      final plans = [plan(foodId, 400000)];
+      expect(
+        ready(plans: plans, transactions: [inflow(amount: 100000)]).amount,
+        php(700000),
+      );
+      expect(
+        ready(plans: plans, transactions: [inflow(amount: 200000)]).amount,
+        php(800000),
+      );
+      expect(
+        ready(plans: plans, transactions: [transfer(amount: 100000)]).amount,
+        php(500000),
+      );
+      expect(ready(plans: plans).amount, php(600000));
+    });
   });
 }

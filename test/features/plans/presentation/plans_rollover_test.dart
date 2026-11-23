@@ -100,7 +100,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
       await settle(tester);
       expect(find.text('December 2026'), findsOneWidget);
-      expect(details(tester), contains('Budget balance: ₱6,000.00'));
+      expect(details(tester), contains('Money in this month: ₱0.00'));
       expect(
         details(tester),
         contains('Carry over from last month: ₱6,000.00'),

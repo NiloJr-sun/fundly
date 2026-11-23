@@ -119,8 +119,8 @@ simulator build for anything that changes app code. macOS has no
   **budget account**; four transaction types; Spending tab with period
   totals and filters; categories with Plans groups (Spending, Savings,
   Liability); Plans with Target, Assigned, Activity, Available, Status and
-  **Ready to assign** (current budget-account balance minus the selected
-  month’s remaining allocations). Credit/Loan accounts automatically get a
+  **Ready to assign** (the month’s carry over plus money in, minus money
+  moved out and Assigned). Credit/Loan accounts automatically get a
   linked Liability Plans row; Activity counts payments into that account.
   Plans rows can be archived independently across all months, only when current
   and future remaining allocations are zero. Archived plans keeps history and
@@ -232,12 +232,15 @@ Rules that matter everywhere:
 
 ## 6. Known limitations (agreed, not bugs)
 
-- Ready to assign uses the live budget-account balance for every selected
-  month, including opening money. Remaining allocations are calculated per
-  category as max(Assigned minus that month’s Spending (or linked debt payments)
-  from the budget account,
-  0). Other-account spending does not release allocations. Monthly allocations
-  do not carry over; overallocation warns but does not block saving.
+- Ready to assign is per month: carry over (budget-account balance on the
+  1st, including opening money) plus inflows and transfers into the budget
+  account, minus transfers out to accounts without a linked Plans row, minus
+  that month’s Assigned. Spending and card/loan payments do not change it;
+  they are Activity on their row, so it can show more than the account holds
+  after overspending. Monthly allocations do not carry over; overallocation
+  warns but does not block saving. The archive guard still uses
+  `remainingPlanAllocation` (Assigned minus eligible budget-account spending,
+  floored at zero).
 - Restore replaces all data; there is no merge and no encryption. Backups
   are plain text.
 - Accounts with transactions can only be archived, never deleted (G7).
