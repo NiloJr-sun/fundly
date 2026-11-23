@@ -42,7 +42,7 @@ passed**, including the Part 2 rows before it.
 | Hosted server has the cash advance and several budget accounts migrations | Done 2026-11-23: up to date, functions match the local stack, lint clean, the 3 known advisor warnings (powersync/README.md) |
 | Release build 1.2.0 (3) on the iPhone, installed over the old app with its data kept | **Part 2:** after the safety export (row 0) |
 | Simulator build 1.2.0 (3) with the cloud config | Done 2026-11-23: installed over the old build; its existing data opens |
-| Web app on Vercel shows 1.2.0 (3) | **Open:** after your push. 1.1.0 (2) was live on 2026-11-23 with the `vercel.json` headers (`no-cache` on `/`, `main.dart.js` and the PowerSync worker; `application/wasm` on `sqlite3.wasm`) |
+| Web app on Vercel shows 1.2.0 (3) | Done 2026-11-23: the live `version.json` says 1.2.0 (3). Headers still live: `no-cache` on `/`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` and the PowerSync worker; `application/wasm` on `sqlite3.wasm` |
 | Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Open:** export the test users' credentials (powersync/README.md step 5), then ask the agent |
 | PowerSync Sync Streams match `powersync/sync-config.yaml` | **Open:** you, in the PowerSync dashboard |
 | Supabase redirect URLs list `https://fundly-budget.vercel.app/**` and `http://localhost:7358/**` | **Open:** you, in Supabase → Authentication → URL Configuration |
