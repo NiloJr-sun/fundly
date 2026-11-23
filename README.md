@@ -1,15 +1,19 @@
 # Fundly
 
 A personal finance and budgeting app for tracking accounts, transactions and
-spending. It works offline and keeps all data on the device.
+spending. It works offline with data on the device; signing in with Google
+syncs it between the iPhone and the web app.
 
 - Product direction and engineering rules: [CLAUDE.md](CLAUDE.md)
 - Delivery plan and open decisions: [docs/ROADMAP.md](docs/ROADMAP.md)
 - Guide for AI coding agents (Codex and others): [AGENTS.md](AGENTS.md)
+- Deploying, rollback and backups: [docs/OPERATIONS.md](docs/OPERATIONS.md)
 
 **Status:** Phases 0–4 are complete, so the MVP is delivered, along with
-post-MVP refinements and Phase 5's JSON backup export and restore. Nothing
-else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
+post-MVP refinements and Phase 5's JSON backup export and restore. Cloud sync
+is released as version **1.2.0 (3)** (2026-11-23), the minimum supported
+version. Web: <https://fundly-budget.vercel.app>. Next steps are in
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Features
 
@@ -80,6 +84,12 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   in Files, checks it fully, shows what it holds next to what's on the phone
   (with an option to export the current data first), and on confirmation
   replaces all data in one step. An invalid file changes nothing.
+- **Sign-in and sync:** Profile → Sign in with Google keeps your records in
+  your account and in sync on the iPhone and the web app. The app keeps
+  working offline; changes wait and upload when you are back online. A change
+  the server refuses (for example, edited on another device first) is listed
+  under Refused changes. Signed-out data on a device stays separate and can be
+  copied into the account once.
 
 ## Requirements
 

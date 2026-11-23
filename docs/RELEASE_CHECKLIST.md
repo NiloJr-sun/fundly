@@ -323,4 +323,4 @@ Result: Pass (2026-11-23). After rows 1b and 4 and the clean-up, the iPhone (sig
 |---|---|
 | Rows passed | All: 0, 1, 1b, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 (Part 1 on the simulator and Chrome, Part 2 on the iPhone) |
 | Failures and fix tasks | None so far. Follow-up (row 5): refused delete cards do not say which record |
-| Owner sign-off (release 1.2.0) | |
+| Owner sign-off (release 1.2.0) | Signed off 2026-11-23 |

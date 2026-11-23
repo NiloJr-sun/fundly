@@ -2,8 +2,9 @@
 
 Date: 2026-11-22
 
-Status: **approved 2026-11-22** (Decisions 1–7, all as recommended). S7.1
-is in progress. S7 is split into three sub-slices; each
+Status: **complete 2026-11-23.** Release 1.2.0 (3) signed off by the owner
+after every checklist row passed; cloud sync is released. (Approved
+2026-11-22, Decisions 1–7, all as recommended.) S7 is split into three sub-slices; each
 is planned in detail, done, verified and reviewed on its own, and the agent
 stops after each.
 

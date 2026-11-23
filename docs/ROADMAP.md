@@ -14,10 +14,10 @@ Last updated: 2026-11-17
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**; the rest is a proposal, not approved |
+| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**. **Cloud sync released as 1.2.0 (3)** on 2026-11-23 (`docs/CLOUD_SYNC_PLAN.md`, S1–S7). Approved next: F.1, then planning shared spaces C0 |
 | Platforms | iOS (primary), Android best-effort |
 | Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl, share_plus (share sheet for backups), file_picker (choosing a backup to restore); dev: drift_dev, build_runner, flutter_lints |
-| Database | Schema **v9**: accounts (one can be the budget account), custom_account_types, categories (with Plans group), transactions, monthly_plans; migration tests for every step |
+| Database | Schema **v13** on the device; signed in, a synced store per user (Supabase + PowerSync). Tables: accounts (any number of budget accounts), custom_account_types, categories, transactions, monthly_plans; migration tests for every step |
 | Git | One commit per task on `main` |
 | Tests | Domain, repository, migration and widget tests; all passing |
 
@@ -246,7 +246,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
-### After the 1.2.0 release (approved, not started)
+### After the 1.2.0 release (approved, not started; 1.2.0 signed off 2026-11-23)
 
 | ID | Task | Status |
 |---|---|---|
@@ -337,8 +337,9 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 
 ## 6. Next step
 
-The MVP roadmap, the post-MVP refinements and JSON backup export and restore
-(5.1, 5.2) are delivered. Nothing further is approved. The product owner
-decides what comes next; the remaining Phase 5 proposal is CSV export of
-transactions (5.3). Plan it like any other task: propose, approve, then
-build.
+The MVP roadmap, the post-MVP refinements, JSON backup export and restore
+(5.1, 5.2) and cloud sync (released as 1.2.0) are delivered. Approved next,
+one at a time: F.1 (above), then planning shared spaces slice C0
+(`docs/SHARED_SPACES_PROPOSAL.md`). The remaining Phase 5 proposal is CSV
+export of transactions (5.3). Plan each task like any other: propose,
+approve, then build.

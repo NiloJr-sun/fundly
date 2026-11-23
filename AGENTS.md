@@ -37,8 +37,10 @@ The user is the product owner and orchestrator. They review every change.
 - **Report honestly:** list what changed, what you verified (with the
   commands), test counts, and known limitations. Never claim tests passed
   unless you ran them.
-- Out of scope until explicitly requested: everything in CLAUDE.md §6,
-  authentication, cloud sync, and unapproved Phase 5 items.
+- Out of scope until explicitly requested: everything else in CLAUDE.md
+  §6, shared spaces slices before they are planned and approved, and
+  unapproved Phase 5 items. Cloud sync is released (1.2.0); deploying and
+  operating it follows `docs/OPERATIONS.md`.
 
 ## 2. Commands
 
@@ -133,7 +135,7 @@ simulator build for anything that changes app code. macOS has no
   before the selected month), already included in the live balance. It refreshes
   at local midnight while open and catches up on open/resume; category
   allocations do not roll forward.
-- **Cloud sync (in progress, see `docs/CLOUD_SYNC_S5_PLAN.md`):** Google
+- **Cloud sync (released as 1.2.0 on 2026-11-23; S5 detail in `docs/CLOUD_SYNC_S5_PLAN.md`, release in `docs/CLOUD_SYNC_S7_PLAN.md`):** Google
   sign-in (S4). Domain record IDs are `String` (S5.1); the signed-out database
   keeps integer keys, converted only in `core/database/record_id.dart`.
   Signed in, records come from a per-user synchronized store
@@ -154,7 +156,10 @@ simulator build for anything that changes app code. macOS has no
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run
   `python3 supabase/tests/client_contract_test.py` (local Supabase).
-- **Nothing further is approved** beyond the S5 slices. The remaining Phase 5
+- **Approved next, one at a time:** F.1 in `docs/ROADMAP.md` (name the
+  record on refused delete cards, as 1.2.1 (4)), then planning shared spaces
+  C0. The minimum supported app version is 1.2.0; bump the version for every
+  release and follow `docs/OPERATIONS.md` to deploy. The remaining Phase 5
   proposal is CSV export of transactions (5.3).
 
 ## 4. Where things live

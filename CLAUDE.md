@@ -320,7 +320,10 @@ them:
     [docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md).
     Work starts after cloud sync S6 and S7, one slice at a time, each
     planned and approved before implementation.)
--   Cloud sync and account registration.
+-   Cloud sync and account registration. (Delivered 2026-11-23: Google
+    sign-in and cloud sync, released as app 1.2.0 after the S7.2 release
+    checklist passed. Deploying, rollback and backups:
+    [docs/OPERATIONS.md](docs/OPERATIONS.md).)
 -   Recurring transactions and scheduled payments.
 -   Investment and net-worth tracking.
 -   Loan amortization schedules and interest calculations.
@@ -520,19 +523,28 @@ correct screen is not sufficient.
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
 refinements (R.1–R.17 in the roadmap, including automatic liability rows,
 Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
-(JSON backup export and restore) are also done. The database is at schema
-v13 and backups at format 7. [AGENTS.md](AGENTS.md) summarises the current
-state, commands and pitfalls for any coding agent. The rest of Phase 5 in
-[docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
-must approve any next step before work starts.
+(JSON backup export and restore) are also done. Cloud sync (S1–S7) is
+released as app **1.2.0 (3)**, signed off on 2026-11-23: Google sign-in,
+Supabase and PowerSync, the web app on Vercel and iOS installed with
+`devicectl`. The minimum supported app version is 1.2.0.
+[docs/OPERATIONS.md](docs/OPERATIONS.md) is the runbook for deploying,
+rolling back, outages and backups. The database is at schema v13 and backups
+at format 7. [AGENTS.md](AGENTS.md) summarises the current state, commands
+and pitfalls for any coding agent.
+
+Approved next, one at a time: roadmap task F.1 (name the record on refused
+delete cards, as 1.2.1), then planning shared spaces slice C0
+([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
+of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the
+product owner must approve any next step before work starts.
 
 Every schema change must bump `schemaVersion`, run
 `dart run drift_dev make-migrations`, and ship with a data-integrity
 migration test.
 
 Work one roadmap task at a time and stop after each. Do not implement
-authentication, cloud sync, unapproved Phase 5 items, or anything in §6 until
-explicitly requested.
+unapproved Phase 5 items, shared spaces slices before they are planned and
+approved, or anything else in §6 until explicitly requested.
 
 ------------------------------------------------------------------------
 
@@ -1250,5 +1262,32 @@ suggestions as approved decisions.
                           accounts. Backup format
                           stays 7; app 1.1.0
                           refuses such a file.
+
+
+  2026-11-23              Cloud sync released as  Confirmed
+                          app 1.2.0 (3) (S7):
+                          signed off after the
+                          release checklist passed
+                          every row (simulator and
+                          web first, then the
+                          iPhone). Minimum
+                          supported app 1.2.0;
+                          server changes stay
+                          additive under protocol
+                          1; no forced update.
+                          Runbook:
+                          docs/OPERATIONS.md.
+                          Android not verified.
+
+  2026-11-23              Refused delete cards    Approved, not started
+                          name the record (F.1,
+                          after 1.2.0, as 1.2.1):
+                          label from PowerSync's
+                          download log; payee-less
+                          transactions labelled by
+                          type, amount and date;
+                          no detail lines on
+                          deletes. No schema or
+                          backup change.
 
   -----------------------------------------------------------------------
