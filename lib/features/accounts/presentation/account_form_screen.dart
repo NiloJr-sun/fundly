@@ -118,10 +118,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     final account = widget.account;
     final wantsBudget = _isBudgetAccount && _canBeBudgetAccount;
     final wasBudget = account?.isBudgetAccount ?? false;
-    if (wantsBudget && !wasBudget && !await _confirmMoveBudgetAccount()) {
-      return;
-    }
-    if (!mounted) return;
 
     setState(() => _isSaving = true);
     final repository = ref.read(accountRepositoryProvider);
@@ -142,7 +138,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
       if (wantsBudget && !wasBudget) {
         await repository.setBudgetAccount(saved.id);
       } else if (!wantsBudget && wasBudget) {
-        await repository.clearBudgetAccount();
+        await repository.clearBudgetAccount(saved.id);
       }
       if (mounted) Navigator.of(context).pop();
     } on AccountValidationException catch (exception) {
@@ -159,35 +155,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  /// When another account is the budget account, asks before moving the tag.
-  /// Returns whether to go ahead.
-  Future<bool> _confirmMoveBudgetAccount() async {
-    final current = ref.read(budgetAccountProvider);
-    if (current == null || current.id == widget.account?.id) return true;
-    final name = _nameController.text.trim();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change budget account?'),
-        content: Text(
-          'Make $name your budget account instead of ${current.name}? '
-          'Ready to assign on Plans will use the money coming into $name.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Change'),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
   }
 
   Future<void> _addType() async {
@@ -216,8 +183,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   @override
   Widget build(BuildContext context) {
     final customTypes = _customTypes();
-    // Keeps the current budget account loaded for the save confirmation.
-    ref.watch(budgetAccountProvider);
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit account' : 'New account')),
       body: Form(
@@ -269,7 +234,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 title: const Text('Use as budget account'),
                 subtitle: const Text(
                   'Money coming into it funds Ready to assign on Plans. '
-                  'Only one account can be the budget account.',
+                  'Transfers between budget accounts are not counted.',
                 ),
                 value: _isBudgetAccount,
                 onChanged: (value) => setState(() => _isBudgetAccount = value),

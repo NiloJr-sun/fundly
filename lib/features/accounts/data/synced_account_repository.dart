@@ -215,12 +215,10 @@ class SyncedAccountRepository implements AccountRepository {
             'Only a Savings/Cash account can be the budget account.',
           );
         }
-        final previous = await _currentBudget();
-        // Already the budget account: the server would change nothing.
-        if (previous?.id == id) {
+        // Already a budget account: the server would change nothing.
+        if (existing.isBudgetAccount) {
           return (syncedAccount(existing), <SyncOperation>[]);
         }
-        if (previous != null) await _setBudgetFlag(previous, false);
         final row = await _setBudgetFlag(existing, true);
         return (
           syncedAccount(row),
@@ -229,36 +227,28 @@ class SyncedAccountRepository implements AccountRepository {
               'account.set_budget',
               id,
               expectedRevision: existing.revision,
-              data: {
-                // The server checks that this is still the budget account.
-                'previous_budget': previous == null
-                    ? null
-                    : {
-                        'id': previous.id,
-                        'revision': previous.revision.toString(),
-                      },
-              },
             ),
           ],
         );
       });
 
   @override
-  Future<void> clearBudgetAccount() => _database.writeAndQueue(() async {
-    final current = await _currentBudget();
-    if (current == null) return (null, <SyncOperation>[]);
-    await _setBudgetFlag(current, false);
-    return (
-      null,
-      [
-        SyncOperation(
-          'account.clear_budget',
-          current.id,
-          expectedRevision: current.revision,
-        ),
-      ],
-    );
-  });
+  Future<void> clearBudgetAccount(String id) =>
+      _database.writeAndQueue(() async {
+        final current = await _find(id);
+        if (!current.isBudgetAccount) return (null, <SyncOperation>[]);
+        await _setBudgetFlag(current, false);
+        return (
+          null,
+          [
+            SyncOperation(
+              'account.clear_budget',
+              current.id,
+              expectedRevision: current.revision,
+            ),
+          ],
+        );
+      });
 
   @override
   Future<void> delete(String id) => _database.writeAndQueue(() async {
@@ -320,11 +310,6 @@ class SyncedAccountRepository implements AccountRepository {
     if (row == null) throw StateError('Account $id does not exist.');
     return row;
   }
-
-  Future<SyncedAccountRow?> _currentBudget() =>
-      (_database.select(_accounts)
-            ..where((account) => account.isBudgetAccount.equals(true)))
-          .getSingleOrNull();
 
   Future<SyncedAccountRow> _setBudgetFlag(
     SyncedAccountRow account,

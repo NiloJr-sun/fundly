@@ -103,7 +103,7 @@ AsyncValue<List<CategoryPlanSummary>> _summaries(
   };
 }
 
-/// The budget account's money in [month] minus what is assigned; see
+/// The budget accounts' money in [month] minus what is assigned; see
 /// [readyToAssign]. `null` (as data) when no budget account is chosen.
 final readyToAssignProvider =
     Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {
@@ -122,7 +122,7 @@ final readyToAssignProvider =
             final budget when budget.isEmpty => null,
             final budget => readyToAssign(
               month: month,
-              budgetAccount: budget.first,
+              budgetAccounts: budget,
               plans: p,
               transactions: t,
               categories: c,

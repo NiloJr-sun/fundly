@@ -55,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +136,12 @@ class AppDatabase extends _$AppDatabase {
       // v12: permanent Plans deletion leaves its category/account intact.
       from11To12: (m, schema) async {
         await m.addColumn(schema.categories, schema.categories.isPlanDeleted);
+      },
+      // v13: any number of Savings/Cash accounts can be budget accounts.
+      // Existing budget flags are kept.
+      // The v13 schema no longer has the index, so it is dropped by name.
+      from12To13: (m, schema) async {
+        await customStatement('DROP INDEX accounts_one_budget_account');
       },
     ),
     beforeOpen: (details) async {

@@ -372,18 +372,24 @@ void main() {
 
     ReadyToAssign ready({
       int opening = 1000000,
+      int? walletOpening,
       CalendarMonth? month,
       List<MonthlyPlan> plans = const [],
       List<TransactionDraft> transactions = const [],
     }) => readyToAssign(
       month: month ?? november,
-      budgetAccount: Account(
-        id: bdoId,
-        name: 'Budget',
-        type: accounts[bdoId]!.type,
-        openingBalance: php(opening),
-        createdAt: DateTime.utc(2026, 11, 1),
-      ),
+      budgetAccounts: [
+        Account(
+          id: bdoId,
+          name: 'Budget',
+          type: accounts[bdoId]!.type,
+          openingBalance: php(opening),
+          createdAt: DateTime.utc(2026, 11, 1),
+        ),
+        // A second budget account, when given an opening balance.
+        if (walletOpening != null)
+          accounts[walletId]!.copyWith(openingBalance: php(walletOpening)),
+      ],
       plans: plans,
       transactions: transactions,
       categories: [...allCategories, cardRow, loanRow],
@@ -594,6 +600,58 @@ void main() {
         ready(transactions: [transfer(amount: 1200000)]).amount,
         php(-200000),
       );
+    });
+
+    group('several budget accounts', () {
+      test('carry over adds up every budget account', () {
+        final result = ready(
+          walletOpening: 200000,
+          transactions: [
+            dated(
+              TransactionType.spending,
+              50000,
+              CalendarDate(2026, 10, 31),
+              from: walletId,
+            ),
+          ],
+        );
+        expect(result.carryOver, php(1150000));
+        expect(result.amount, php(1150000));
+      });
+
+      test('transfers between budget accounts are neither in nor out', () {
+        final result = ready(
+          walletOpening: 0,
+          plans: [plan(foodId, 100000)],
+          transactions: [
+            transfer(amount: 100000, from: bdoId, to: walletId),
+            transfer(amount: 30000, from: walletId, to: bdoId),
+            // The money is then spent from the second budget account.
+            spending(amount: 100000, from: walletId),
+          ],
+        );
+        expect(result.moneyIn, php(0));
+        expect(result.movedOut, php(0));
+        expect(result.amount, php(900000));
+      });
+
+      test('inflows into any budget account are money in', () {
+        final result = ready(
+          walletOpening: 0,
+          transactions: [
+            inflow(amount: 100000),
+            inflow(amount: 50000, to: walletId),
+          ],
+        );
+        expect(result.moneyIn, php(150000));
+      });
+
+      test('a transfer to a non-budget account is still moved out', () {
+        final result = ready(
+          transactions: [transfer(amount: 100000, from: bdoId, to: walletId)],
+        );
+        expect(result.movedOut, php(100000));
+      });
     });
 
     test('zero with no money or assignments', () {

@@ -21,12 +21,12 @@ class ReadyToAssignCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final budgetAccount = ref.watch(budgetAccountProvider);
+    final budgetAccounts = ref.watch(budgetAccountsProvider);
     final ready = ref.watch(readyToAssignProvider(month));
     final Widget? amount;
     final Widget? details;
     switch (ready) {
-      case AsyncData(value: final value?) when budgetAccount != null:
+      case AsyncData(value: final value?) when budgetAccounts.isNotEmpty:
         final money = value.amount;
         amount = Text(
           MoneyFormatter.format(money),
@@ -39,7 +39,9 @@ class ReadyToAssignCard extends ConsumerWidget {
           ),
         );
         details = Text(
-          'Carry over from last month: ${MoneyFormatter.format(value.carryOver)}'
+          '${budgetAccounts.length == 1 ? 'Budget account' : 'Budget accounts'}: '
+          '${budgetAccounts.map((account) => account.name).join(', ')}'
+          '\nCarry over from last month: ${MoneyFormatter.format(value.carryOver)}'
           '\nMoney in this month: ${MoneyFormatter.format(value.moneyIn)}'
           '${value.movedOut.isZero ? '' : '\nMoved out this month: ${MoneyFormatter.format(value.movedOut)}'}'
           '\nAssigned: ${MoneyFormatter.format(value.assigned)}'
@@ -69,14 +71,14 @@ class ReadyToAssignCard extends ConsumerWidget {
         title: const Text('Ready to assign'),
         subtitle: details,
         trailing: amount,
-        onTap: budgetAccount == null
+        // The filter takes one account, so this opens the whole month.
+        onTap: budgetAccounts.isEmpty
             ? null
             : () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => AllTransactionsScreen(
                     initialFilter: TransactionFilter(
                       dateRange: month.dateRange,
-                      accountId: budgetAccount.id,
                     ),
                   ),
                 ),

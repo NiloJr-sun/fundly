@@ -59,6 +59,7 @@ void main() {
     List<MonthlyPlan> plans = const [],
     List<Transaction> transactions = const [],
     bool bdoIsBudgetAccount = false,
+    bool walletIsBudgetAccount = false,
     int? budgetOpeningBalance,
   }) async {
     final bdo = accounts[bdoId]!;
@@ -73,6 +74,15 @@ void main() {
                 ? bdo.openingBalance
                 : php(budgetOpeningBalance),
             createdAt: bdo.createdAt,
+            isBudgetAccount: true,
+          )
+        else if (account.id == walletId && walletIsBudgetAccount)
+          Account(
+            id: account.id,
+            name: account.name,
+            type: account.type,
+            openingBalance: account.openingBalance,
+            createdAt: account.createdAt,
             isBudgetAccount: true,
           )
         else
@@ -544,7 +554,8 @@ void main() {
         find.descendant(
           of: card(),
           matching: find.text(
-            'Carry over from last month: ₱0.00'
+            'Budget account: BDO Savings'
+            '\nCarry over from last month: ₱0.00'
             '\nMoney in this month: ₱40,000.00'
             '\nMoved out this month: ₱5,000.00'
             '\nAssigned: ₱5,000.00',
@@ -641,7 +652,9 @@ void main() {
       expect(amountText(tester).data, '-₱1,000.00');
     });
 
-    testWidgets("tapping it opens the budget account's month", (tester) async {
+    testWidgets("tapping it opens the month's transactions, all accounts", (
+      tester,
+    ) async {
       await pumpScreen(
         tester,
         bdoIsBudgetAccount: true,
@@ -653,7 +666,28 @@ void main() {
 
       expect(find.byType(AllTransactionsScreen), findsOneWidget);
       expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
-      expect(find.textContaining('BDO Savings'), findsWidgets);
+      expect(find.text('All accounts'), findsOneWidget);
+    });
+
+    testWidgets('lists several budget accounts; transfers between them '
+        'do not count', (tester) async {
+      await pumpScreen(
+        tester,
+        bdoIsBudgetAccount: true,
+        walletIsBudgetAccount: true,
+        plans: [plan(foodId, 500000)],
+        transactions: [
+          saved(inflow(amount: 4000000), id: '1'),
+          saved(transferToWallet(1000000), id: '2'),
+        ],
+      );
+
+      expect(
+        find.textContaining('Budget accounts: BDO Savings, Cash Wallet'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Moved out'), findsNothing);
+      expect(amountText(tester).data, '₱35,000.00');
     });
   });
 

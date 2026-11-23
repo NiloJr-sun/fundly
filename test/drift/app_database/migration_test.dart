@@ -10,6 +10,7 @@ import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
+import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1092,6 +1093,102 @@ void main() {
           await expectLater(
             db.customStatement(
               'UPDATE categories SET is_plan_archived = 0 WHERE id = 3',
+            ),
+            throwsA(isA<Exception>()),
+          );
+          expect(
+            await db.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+          expect(
+            (await db.customSelect('PRAGMA integrity_check').get())
+                .single
+                .data
+                .values
+                .single,
+            'ok',
+          );
+        },
+      );
+    },
+  );
+
+  test(
+    'v12 to v13 keeps every account and budget flag; more may be added',
+    () async {
+      const accounts = [
+        v12.AccountsData(
+          id: 1,
+          name: 'BPI 1',
+          type: 'savingsCash',
+          openingBalanceMinor: 100000,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          isArchived: 0,
+          isBudgetAccount: 1,
+        ),
+        v12.AccountsData(
+          id: 2,
+          name: 'BPI 2',
+          type: 'savingsCash',
+          openingBalanceMinor: 0,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          isArchived: 0,
+          isBudgetAccount: 0,
+        ),
+        v12.AccountsData(
+          id: 3,
+          name: 'Card',
+          type: 'credit',
+          openingBalanceMinor: -10000,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          isArchived: 0,
+          isBudgetAccount: 0,
+        ),
+      ];
+      const transfer = v12.TransactionsData(
+        id: 1,
+        type: 'transfer',
+        amountMinor: 50000,
+        currencyCode: 'PHP',
+        date: '2026-11-10',
+        payee: '',
+        sourceAccountId: 1,
+        destinationAccountId: 2,
+        note: '',
+        createdAt: '2026-11-10T00:00:00.000Z',
+        updatedAt: '2026-11-10T00:00:00.000Z',
+      );
+      await verifier.testWithDataIntegrity(
+        oldVersion: 12,
+        newVersion: 13,
+        createOld: v12.DatabaseAtV12.new,
+        createNew: v13.DatabaseAtV13.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, db) => batch
+          ..insertAll(db.accounts, accounts)
+          ..insert(db.transactions, transfer),
+        validateItems: (db) async {
+          final rows = await (db.select(
+            db.accounts,
+          )..orderBy([(a) => OrderingTerm(expression: a.id)])).get();
+          expect(
+            rows.map((a) => a.toJson()).toList(),
+            accounts.map((a) => a.toJson()).toList(),
+          );
+          expect(
+            (await db.select(db.transactions).get()).single.toJson(),
+            transfer.toJson(),
+          );
+          // A second budget account is now allowed; a Credit one still is not.
+          await db.customStatement(
+            'UPDATE accounts SET is_budget_account = 1 WHERE id = 2',
+          );
+          await expectLater(
+            db.customStatement(
+              'UPDATE accounts SET is_budget_account = 1 WHERE id = 3',
             ),
             throwsA(isA<Exception>()),
           );

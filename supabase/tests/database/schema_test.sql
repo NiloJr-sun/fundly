@@ -61,7 +61,6 @@ from (values
   ($$update public.accounts set currency_code = 'USD' where name = 'Card'$$, '23514', 'non-PHP account'),
   ($$update public.accounts set is_budget_account = true where name = 'Card'$$, '23514', 'liability cannot be budget account'),
   ($$update public.accounts set is_archived = true where is_budget_account$$, '23514', 'archived account cannot remain budget account'),
-  ($$insert into public.accounts(id,owner_id,name,type,opening_balance_minor,is_budget_account) values(gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','Another budget','savingsCash',0,true)$$, '23505', 'one budget account per owner'),
   ($$update public.accounts set custom_type_id = '10000000-0000-4000-8000-000000000002' where id = '20000000-0000-4000-8000-000000000001'$$, '23503', 'account cannot reference another owner custom type'),
   ($$delete from public.custom_account_types where id = '10000000-0000-4000-8000-000000000001'$$, '23503', 'used custom type cannot be deleted'),
   ($$update public.custom_account_types set name = ''$$, '23514', 'empty custom type name'),
@@ -117,6 +116,8 @@ from (values
   ($$update public.monthly_plans set category_id = '30000000-0000-4000-8000-000000000004' where id = '50000000-0000-4000-8000-000000000001'$$, '23503', 'plan category must share owner'),
   ($$insert into public.monthly_plans(id,owner_id,month,category_id,assigned_amount_minor) values(gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','2026-11','30000000-0000-4000-8000-000000000001',0)$$, '23505', 'one monthly plan per owner/category/month')
 ) as cases(statement, state, description);
+select lives_ok($$insert into public.accounts(id,owner_id,name,type,opening_balance_minor,is_budget_account) values(gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','Another budget','savingsCash',0,true)$$,
+  'several budget accounts per owner');
 
 select lives_ok($$insert into public.accounts(id,owner_id,name,type,opening_balance_minor) values
   (gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','É','savingsCash',0),

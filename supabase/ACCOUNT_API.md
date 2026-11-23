@@ -22,8 +22,8 @@ allowlisted; owner, audit timestamps and stored revisions cannot be supplied.
 | `account.update` | Nonempty partial object containing `name`, `entered_opening_amount_minor`, and/or nullable `custom_type_id`. Account base type and currency cannot change. |
 | `account.set_archived` | Required Boolean `archived`. |
 | `account.delete` | Omitted or `{}`; account must be archived and unused by any transaction. |
-| `account.set_budget` | Required `previous_budget`: either explicit null or an object with `id` and decimal-string `revision`. |
-| `account.clear_budget` | Omitted or `{}`; item `id` identifies the observed current budget account. |
+| `account.set_budget` | Omitted or `{}`; a `previous_budget` key from app 1.1.0 is accepted and ignored. |
+| `account.clear_budget` | Omitted or `{}`; item `id` is the budget account to clear. |
 
 Opening amounts are canonical nonnegative decimal strings, including `"0"`,
 bounded by signed bigint maximum. The server stores assets positively and
@@ -49,30 +49,23 @@ history rather than deleting those records.
 
 ## Budget selection
 
-The target's `expected_revision` alone is insufficient: another device might
-have selected a different budget account without changing the target. Therefore
-`account.set_budget` also requires the observed previous selection:
+Any number of active Savings/Cash accounts can be budget accounts
+(2026-11-23, migration `20261123020000`). Each account is set or cleared on its
+own, guarded only by its `expected_revision`:
 
 ```json
 {
   "operation": "account.set_budget",
   "id": "21000000-0000-4000-8000-000000000005",
-  "expected_revision": "1",
-  "data": {
-    "previous_budget": {
-      "id": "21000000-0000-4000-8000-000000000001",
-      "revision": "2"
-    }
-  }
+  "expected_revision": "1"
 }
 ```
 
-Use `"previous_budget": null` only when none was observed. A changed previous
-ID/revision yields `budget_conflict`; the switch changes nothing. Clear validates
-the observed current account's ID/revision and flag, so a stale clear cannot
-remove a newer selection. When there is no budget account, the client has
-nothing to clear and should not enqueue a clear operation. Selecting the already
-current account with a matching snapshot is a no-op and preserves its revision.
+`account.set_budget` never clears another account. App 1.1.0 still sends
+`data: {"previous_budget": …}`; it is accepted and ignored. Setting an account
+that is already a budget account, or clearing one that is not, is a no-op that
+keeps its revision. `budget_conflict` is no longer raised. An archived or
+non-Savings/Cash account still yields `invalid_account`.
 
 ## Linked liability rows
 
@@ -98,8 +91,8 @@ separate dataset-import task must preserve historical names explicitly.
 
 Account/custom-type results include `entity`, `id`, decimal-string `revision`,
 and a canonical `record` (or `deleted: true`). Account results additionally
-include `changes`, an array of canonical side effects: changed previous budget
-accounts, created/updated linked categories, or a detached category after account
+include `changes`, an array of canonical side effects: created/updated linked
+categories, or a detached category after account
 deletion. Revisions and opening balances are strings; audit times use UTC `Z`.
 Receipt replay returns the original side effects and generated UUIDs unchanged.
 
@@ -124,6 +117,6 @@ python3 supabase/tests/concurrency/account_write_api_test.py
 Run database suites sequentially: concurrency fixtures are committed briefly
 before cleanup, while some schema assertions expect a fresh local database.
 The account runner observes real advisory-lock waits in separate sessions. It
-tests competing budget selections/switches, archive-versus-spending in both
+tests concurrent budget selections and archive-versus-selection, archive-versus-spending in both
 orders, custom-base changes versus account creation in both orders, and
 idempotent linked-category creation. No hosted credentials or `.env` are read.

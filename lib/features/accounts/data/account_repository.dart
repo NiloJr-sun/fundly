@@ -135,8 +135,8 @@ class AccountRepository {
   /// `needsArchiveConfirmation`. Throws [StateError] if the account does not
   /// exist.
   ///
-  /// Archiving the budget account also stops it being the budget account:
-  /// archived accounts are left out of summaries (G7).
+  /// Archiving a budget account also stops it being one: archived accounts
+  /// are left out of summaries (G7).
   Future<void> setArchived(String id, {required bool archived}) =>
       _database.transaction(() async {
         final changed =
@@ -154,9 +154,8 @@ class AccountRepository {
         await syncLiabilityPlanCategories(_database);
       });
 
-  /// Makes account [id] the budget account, whose current balance funds Ready
-  /// to assign on Plans. Any previous budget account stops being one, in the
-  /// same transaction.
+  /// Makes account [id] a budget account, whose money in funds Ready to
+  /// assign on Plans. Other budget accounts stay budget accounts.
   ///
   /// Throws [ArgumentError] unless it is a Savings/Cash account (custom asset
   /// types included), or [StateError] if it does not exist or is archived.
@@ -178,7 +177,6 @@ class AccountRepository {
           'Only a Savings/Cash account can be the budget account.',
         );
       }
-      await clearBudgetAccount();
       final rows =
           await (_database.update(
             _accounts,
@@ -189,10 +187,11 @@ class AccountRepository {
     },
   );
 
-  /// Leaves the app without a budget account.
-  Future<void> clearBudgetAccount() =>
+  /// Stops account [id] being a budget account. Does nothing if it is not
+  /// one or does not exist.
+  Future<void> clearBudgetAccount(String id) =>
       (_database.update(_accounts)
-            ..where((account) => account.isBudgetAccount.equals(true)))
+            ..where((account) => account.id.equals(rowIdOf(id))))
           .write(const AccountsCompanion(isBudgetAccount: Value(false)));
 
   /// Permanently deletes archived account [id]. Only an account no

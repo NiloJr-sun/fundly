@@ -484,6 +484,37 @@ void main() {
     expect(advance.sourceAccountId, cardRow.id);
   });
 
+  test('several budget accounts restore and survive a round trip', () async {
+    final backup = await sourceBackup();
+    final gcash = (backup['accounts']! as List)
+        .cast<Map<String, Object?>>()
+        .singleWhere((a) => a['name'] == 'GCash');
+    gcash
+      ..['isArchived'] = false
+      ..['isBudgetAccount'] = true;
+    final importer = BackupImporter(target);
+
+    await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+    final restored = await target.select(target.accounts).get();
+    expect(
+      [
+        for (final a in restored)
+          if (a.isBudgetAccount) a.name,
+      ]..sort(),
+      ['BDO Savings', 'GCash'],
+    );
+    final again = jsonDecode(await exportJson(target)) as Map<String, Object?>;
+    expect(
+      [
+        for (final a
+            in (again['accounts']! as List).cast<Map<String, Object?>>())
+          if (a['isBudgetAccount'] == true) a['name'],
+      ]..sort(),
+      ['BDO Savings', 'GCash'],
+    );
+  });
+
   test('the budget account survives a round trip', () async {
     final importer = BackupImporter(target);
 
@@ -776,22 +807,6 @@ void main() {
       await expectLater(
         restore(json: backup),
         throwsProblem(BackupImportProblem.invalidData, 'have no group'),
-      );
-      await expectUnchanged();
-    });
-
-    test('two budget accounts', () async {
-      final backup = await withRecord(
-        'accounts',
-        1, // GCash, archived in the source; made active here
-        (a) => a
-          ..['isArchived'] = false
-          ..['isBudgetAccount'] = true,
-      );
-
-      await expectLater(
-        restore(json: backup),
-        throwsProblem(BackupImportProblem.invalidData, 'only one budget'),
       );
       await expectUnchanged();
     });

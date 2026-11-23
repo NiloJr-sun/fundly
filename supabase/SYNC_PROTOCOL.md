@@ -22,7 +22,7 @@ JSON detail:
 | `index` | Always: 0-based position of the failing item in `items`. |
 | `operation`, `id` | When the item has them as strings. |
 | `current_revision` | `revision_conflict`: the target's revision (owner-scoped). |
-| `current` | `plan_conflict`: `{id, revision}` of the plan for that category/month, or null. `budget_conflict`: `{id, revision}` of the budget account, or null. |
+| `current` | `plan_conflict`: `{id, revision}` of the plan for that category/month, or null. `budget_conflict`: no longer raised (several budget accounts, 2026-11-23). |
 | `entity`, `deleted_id` | `record_deleted`: which retired record caused it. |
 | `months` / `reason` | `plan_allocation_remaining` / `plan_delete_blocked`, as before. |
 

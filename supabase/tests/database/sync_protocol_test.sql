@@ -179,9 +179,8 @@ select is(pg_temp.fail(pg_temp.plan('74000000-0000-4000-8000-000000000008','3100
   '{"id":"74000000-0000-4000-8000-000000000008","revision":"1"}'))#>'{detail,current}','null'::jsonb,'plan conflict with no record');
 select lives_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000001',
   '{"previous_budget":null}','1'))$$,'select a budget account');
-select is(pg_temp.fail(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005',
-  '{"previous_budget":null}','1'))#>'{detail,current}',
-  '{"id":"21000000-0000-4000-8000-000000000001","revision":"2"}'::jsonb,'budget conflict shows the current budget');
+select lives_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005',
+  '{"previous_budget":null}','1'))$$,'a second budget account is not a conflict');
 select is(pg_temp.fail(pg_temp.operation('plan.delete_permanently','31000000-0000-4000-8000-000000000001',null,'1'))->'detail',
   '{"reason":"not_archived","index":0,"operation":"plan.delete_permanently","id":"31000000-0000-4000-8000-000000000001"}'::jsonb,
   'existing detail merged with item identity');

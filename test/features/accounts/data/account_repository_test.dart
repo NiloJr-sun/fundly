@@ -325,14 +325,14 @@ void main() {
       );
     });
 
-    test('tagging another account moves the tag', () async {
+    test('tagging another account adds a second budget account', () async {
       final bdo = await create('BDO Savings');
       final bpi = await create('BPI Savings');
       await repository.setBudgetAccount(bdo.id);
 
       await repository.setBudgetAccount(bpi.id);
 
-      expect(await budgetAccountNames(), ['BPI Savings']);
+      expect(await budgetAccountNames(), ['BDO Savings', 'BPI Savings']);
     });
 
     test('tagging the budget account again keeps it', () async {
@@ -344,12 +344,19 @@ void main() {
       expect(await budgetAccountNames(), ['BDO Savings']);
     });
 
-    test('clearBudgetAccount leaves none', () async {
+    test('clearBudgetAccount untags only that account', () async {
       final bdo = await create('BDO Savings');
+      final bpi = await create('BPI Savings');
       await repository.setBudgetAccount(bdo.id);
+      await repository.setBudgetAccount(bpi.id);
 
-      await repository.clearBudgetAccount();
+      await repository.clearBudgetAccount(bdo.id);
+      expect(await budgetAccountNames(), ['BPI Savings']);
 
+      await repository.clearBudgetAccount(bdo.id);
+      expect(await budgetAccountNames(), ['BPI Savings'], reason: 'no-op');
+
+      await repository.clearBudgetAccount(bpi.id);
       expect(await budgetAccountNames(), isEmpty);
     });
 
@@ -644,20 +651,23 @@ void main() {
       expect(insertRaw(name: 'a' * 41), throwsA(isA<Exception>()));
     });
 
-    test('allows only one budget account', () async {
+    test('allows several budget accounts (schema v13)', () async {
       await database.customStatement(
         'INSERT INTO accounts (name, type, opening_balance_minor, created_at, '
         "is_budget_account) VALUES ('A', 'savingsCash', 0, '2026', 1)",
       );
-
-      expect(
-        database.customStatement(
-          'INSERT INTO accounts (name, type, opening_balance_minor, '
-          'created_at, is_budget_account) '
-          "VALUES ('B', 'savingsCash', 0, '2026', 1)",
-        ),
-        throwsA(isA<Exception>()),
+      await database.customStatement(
+        'INSERT INTO accounts (name, type, opening_balance_minor, '
+        'created_at, is_budget_account) '
+        "VALUES ('B', 'savingsCash', 0, '2026', 1)",
       );
+
+      final count = await database
+          .customSelect(
+            'SELECT COUNT(*) AS c FROM accounts WHERE is_budget_account = 1',
+          )
+          .getSingle();
+      expect(count.read<int>('c'), 2);
     });
 
     test('a budget account must be Savings/Cash', () {

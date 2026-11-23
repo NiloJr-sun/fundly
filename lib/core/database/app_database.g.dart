@@ -599,8 +599,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// repository enforces this, because SQLite checks cannot see other tables.
   final int? customTypeId;
 
-  /// Whether this account’s current balance funds Ready to assign on Plans.
-  /// Only one account, of type Savings/Cash, can be the budget account.
+  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Any number of Savings/Cash accounts can be budget accounts.
   final bool isBudgetAccount;
   const AccountRow({
     required this.id,
@@ -2753,10 +2753,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $MonthlyPlansTable monthlyPlans = $MonthlyPlansTable(this);
-  late final Index accountsOneBudgetAccount = Index(
-    'accounts_one_budget_account',
-    'CREATE UNIQUE INDEX accounts_one_budget_account ON accounts (is_budget_account) WHERE is_budget_account = 1',
-  );
   late final Index transactionsDate = Index(
     'transactions_date',
     'CREATE INDEX transactions_date ON transactions (date)',
@@ -2779,7 +2775,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categories,
     transactions,
     monthlyPlans,
-    accountsOneBudgetAccount,
     transactionsDate,
     transactionsSourceAccount,
     transactionsDestinationAccount,

@@ -198,11 +198,31 @@ void main() {
       await transactions.create(
         spending(from: budget.id, category: food, amount: 10000),
       );
-      await accounts.clearBudgetAccount();
+      await accounts.clearBudgetAccount(budget.id);
       await expectLater(
         plans.setArchived(food, archived: true),
         blocked({november: 10000}),
       );
+    },
+  );
+
+  test(
+    'spending from a second budget account releases the allocation',
+    () async {
+      final second = await accounts.create(
+        name: 'Second budget',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(50000),
+      );
+      await accounts.setBudgetAccount(second.id);
+      await assign(food, 10000);
+      await transactions.create(
+        spending(from: second.id, category: food, amount: 10000),
+      );
+
+      await plans.setArchived(food, archived: true);
+
+      expect((await category(food)).isPlanArchived, isTrue);
     },
   );
 
@@ -306,7 +326,7 @@ void main() {
       await transactions.delete(original.id);
       final result = readyToAssign(
         month: november,
-        budgetAccount: budget,
+        budgetAccounts: [budget],
         plans: await plans.watchForMonth(november).first,
         categories: await categories.watchAll().first,
         transactions: await transactions.watchAll().first,

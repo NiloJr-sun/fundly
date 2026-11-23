@@ -156,16 +156,19 @@ class PlanRepository {
                 )
                 ..orderBy([(p) => OrderingTerm(expression: p.month)]))
               .get();
-      final budget = await (_database.select(
-        _database.accounts,
-      )..where((a) => a.isBudgetAccount.equals(true))).getSingleOrNull();
-      final entries = budget == null
+      final budgetRowIds = [
+        for (final account in await (_database.select(
+          _database.accounts,
+        )..where((a) => a.isBudgetAccount.equals(true))).get())
+          account.id,
+      ];
+      final entries = budgetRowIds.isEmpty
           ? <TransactionDraft>[]
           : [
               for (final row
                   in await (_database.select(_database.transactions)..where(
                         (t) =>
-                            t.sourceAccountId.equals(budget.id) &
+                            t.sourceAccountId.isIn(budgetRowIds) &
                             t.date.isBiggerOrEqualValue(
                               currentMonth.dateRange.start.toIsoString(),
                             ),
@@ -190,7 +193,7 @@ class PlanRepository {
         final plan = _toDomain(row);
         final allocation = remainingPlanAllocation(
           plan: plan,
-          budgetAccountId: recordIdOrNull(budget?.id),
+          budgetAccountIds: {for (final id in budgetRowIds) recordIdOf(id)},
           linkedAccountId: recordIdOrNull(category.linkedAccountId),
           transactions: entries,
         );

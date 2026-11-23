@@ -413,48 +413,26 @@ void main() {
       await tester.pumpAndSettle();
       await tapSave(tester, 'Add account');
 
-      expect(find.byType(AlertDialog), findsNothing, reason: 'nothing to move');
-      expect(repository.budgetAccountChanges, ['${repository.created.length}']);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(repository.budgetAccountChanges, [
+        (id: '${repository.created.length}', isBudget: true),
+      ]);
       expect(find.byType(AccountFormScreen), findsNothing);
     });
 
-    testWidgets('moving the tag asks first, then moves it', (tester) async {
+    testWidgets('a second budget account is added without asking', (
+      tester,
+    ) async {
       await openForm(tester, account: bpi, existingAccounts: [bdo, bpi]);
 
       await tester.tap(budgetSwitch());
       await tester.pumpAndSettle();
       await tapSave(tester, 'Save changes');
 
-      expect(
-        find.text(
-          'Make BPI Savings your budget account instead of BDO Savings? '
-          'Ready to assign on Plans will use the money coming into BPI '
-          'Savings.',
-        ),
-        findsOneWidget,
-      );
-      expect(repository.updated, isEmpty, reason: 'nothing saved yet');
-
-      await tester.tap(find.text('Change'));
-      await tester.pumpAndSettle();
-
+      expect(find.byType(AlertDialog), findsNothing);
       expect(repository.updated.single.id, bpi.id);
-      expect(repository.budgetAccountChanges, [bpi.id]);
+      expect(repository.budgetAccountChanges, [(id: bpi.id, isBudget: true)]);
       expect(find.byType(AccountFormScreen), findsNothing);
-    });
-
-    testWidgets('cancelling the move saves nothing', (tester) async {
-      await openForm(tester, account: bpi, existingAccounts: [bdo, bpi]);
-
-      await tester.tap(budgetSwitch());
-      await tester.pumpAndSettle();
-      await tapSave(tester, 'Save changes');
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-
-      expect(repository.updated, isEmpty);
-      expect(repository.budgetAccountChanges, isEmpty);
-      expect(find.byType(AccountFormScreen), findsOneWidget);
     });
 
     testWidgets('the budget account starts switched on; off clears it', (
@@ -469,7 +447,7 @@ void main() {
       await tester.pumpAndSettle();
       await tapSave(tester, 'Save changes');
 
-      expect(repository.budgetAccountChanges, [null]);
+      expect(repository.budgetAccountChanges, [(id: bdo.id, isBudget: false)]);
     });
 
     testWidgets('saving the budget account unchanged keeps the tag', (

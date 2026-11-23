@@ -205,32 +205,32 @@ select throws_ok($$select pg_temp.call(pg_temp.account('{"name":"Conflicting chi
 select is_empty($$select id from public.accounts where id='22000000-0000-4000-8000-000000000098'$$,
   'linked UUID failure rolls back account insert');
 
--- Optimistic budget selection includes both the target and previous selection.
+-- Several budget accounts: each is set and cleared on its own (2026-11-23).
 insert into pg_temp.responses values('budget',pg_temp.call(pg_temp.operation('account.set_budget',
-  '21000000-0000-4000-8000-000000000001','{"previous_budget":null}','1')));
-select ok((select is_budget_account from public.accounts where id='21000000-0000-4000-8000-000000000001'),'budget set from observed none');
-select is(pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000001',
-  '{"previous_budget":{"id":"21000000-0000-4000-8000-000000000001","revision":"2"}}','2'))#>>'{results,0,revision}',
-  '2','setting the already-current budget is a no-op');
-select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005','{"previous_budget":null}','1'))$$,
-  'P0001','budget_conflict','stale none selection cannot overwrite budget');
-select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005',
-  '{"previous_budget":{"id":"21000000-0000-4000-8000-000000000001","revision":"1"}}','1'))$$,
-  'P0001','budget_conflict','previous budget revision must match');
-select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005','{}','1'))$$,
-  '22023','invalid_request','budget snapshot is mandatory');
-insert into pg_temp.responses values('switch',pg_temp.call(pg_temp.operation('account.set_budget',
-  '21000000-0000-4000-8000-000000000005','{"previous_budget":{"id":"21000000-0000-4000-8000-000000000001","revision":"2"}}','1')));
-select is((select count(*) from public.accounts where is_budget_account),1::bigint,'switch leaves exactly one budget account');
-select is((select value#>>'{results,0,changes,0,record,is_budget_account}' from pg_temp.responses where name='switch'),
-  'false','previous account change returned');
-select throws_ok($$select pg_temp.call(pg_temp.operation('account.clear_budget','21000000-0000-4000-8000-000000000001',null,'2'))$$,
-  'P0001','revision_conflict','stale clear cannot clear newer selection');
+  '21000000-0000-4000-8000-000000000001',null,'1')));
+select ok((select is_budget_account from public.accounts where id='21000000-0000-4000-8000-000000000001'),'budget set without data');
+select is(pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000001',null,'2'))#>>'{results,0,revision}',
+  '2','setting a budget account again is a no-op');
+select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005',null,'2'))$$,
+  'P0001','revision_conflict','a stale account revision is still refused');
+insert into pg_temp.responses values('second',pg_temp.call(pg_temp.operation('account.set_budget',
+  '21000000-0000-4000-8000-000000000005','{"previous_budget":null}','1')));
+select is((select count(*) from public.accounts where is_budget_account),2::bigint,'a second budget account keeps the first');
+select is((select jsonb_array_length(value#>'{results,0,changes}') from pg_temp.responses where name='second'),
+  0,'no other account changes');
+select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005','{"other":1}','2'))$$,
+  '22023','invalid_request','unknown budget data denied');
+select lives_ok($$select pg_temp.call(pg_temp.operation('account.clear_budget','21000000-0000-4000-8000-000000000001',null,'2'))$$,
+  'clear one budget account');
+select is((select array_agg(id::text) from public.accounts where is_budget_account),
+  array['21000000-0000-4000-8000-000000000005'],'clearing leaves the other');
+select is(pg_temp.call(pg_temp.operation('account.clear_budget','21000000-0000-4000-8000-000000000001',null,'3'))#>>'{results,0,revision}',
+  '3','clearing a non-budget account is a no-op');
 select lives_ok($$select pg_temp.call(pg_temp.operation('account.clear_budget','21000000-0000-4000-8000-000000000005',null,'2'))$$,
-  'clear guarded current budget');
+  'clear the last budget account');
 select is_empty('select id from public.accounts where is_budget_account','clearing leaves none');
 select lives_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005','{"previous_budget":null}','3'))$$,
-  'set again after clear');
+  'set again after clear, as app 1.1.0 sends it');
 select lives_ok($$select pg_temp.call(pg_temp.operation('account.set_archived','21000000-0000-4000-8000-000000000005','{"archived":true}','4'))$$,
   'archive budget account atomically clears budget');
 select is_empty('select id from public.accounts where is_budget_account','archive leaves no budget');
@@ -243,9 +243,6 @@ select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_archived',
 select lives_ok($$select pg_temp.call(pg_temp.operation('account.set_archived','21000000-0000-4000-8000-000000000005','{"archived":false}','5'))$$,
   'unarchive a former budget account');
 select is_empty('select id from public.accounts where is_budget_account','unarchive does not automatically reinstate budget');
-select throws_ok($$select pg_temp.call(pg_temp.operation('account.set_budget','21000000-0000-4000-8000-000000000005',
-  '{"previous_budget":{"id":"21000000-0000-4000-8000-000000000006","revision":"1","owner_id":"forged"}}','6'))$$,
-  '22023','invalid_request','unknown fields in budget snapshot denied');
 
 -- A later failure undoes both account and generated linked category creation.
 select throws_ok($$select public.fundly_apply_operations('62000000-0000-4000-8000-000000000002',

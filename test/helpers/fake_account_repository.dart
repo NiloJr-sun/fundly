@@ -20,8 +20,8 @@ class FakeAccountRepository implements AccountRepository {
   final List<({String id, bool archived})> archivedChanges = [];
   final List<String> deleted = [];
 
-  /// Calls to [setBudgetAccount] (the id) and [clearBudgetAccount] (`null`).
-  final List<String?> budgetAccountChanges = [];
+  /// Calls to [setBudgetAccount] and [clearBudgetAccount], with the id.
+  final List<({String id, bool isBudget})> budgetAccountChanges = [];
 
   /// When set, the next create/update/delete throws this instead.
   AccountValidationError? failWith;
@@ -82,7 +82,7 @@ class FakeAccountRepository implements AccountRepository {
   @override
   Future<Account> setBudgetAccount(String id) async {
     _maybeFail();
-    budgetAccountChanges.add(id);
+    budgetAccountChanges.add((id: id, isBudget: true));
     return Account(
       id: id,
       name: '',
@@ -94,9 +94,9 @@ class FakeAccountRepository implements AccountRepository {
   }
 
   @override
-  Future<void> clearBudgetAccount() async {
+  Future<void> clearBudgetAccount(String id) async {
     _maybeFail();
-    budgetAccountChanges.add(null);
+    budgetAccountChanges.add((id: id, isBudget: false));
   }
 
   @override

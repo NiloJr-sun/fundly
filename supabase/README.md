@@ -32,6 +32,10 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `migrations/20261123010000_cash_advance.sql`: Transfers may come from a Credit
   account, to Savings/Cash only (cash advance). Replaces `apply_transaction` and
   `fundly_import_dataset` with only those account checks changed.
+- `migrations/20261123020000_multiple_budget_accounts.sql`: any number of budget
+  accounts. Drops the one-per-owner index; replaces `apply_account` (set/clear
+  per account, no `budget_conflict`) and `fundly_import_dataset` (no
+  `only_one_budget_account` check).
 - `tests/database/`: **794 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
@@ -200,4 +204,11 @@ Cash advances (2026-11-23) bring the total to **794 passing SQL assertions**: a
 Transfer from a Credit account to Savings/Cash is accepted by both the write API
 and the import, Credit to Loan is refused by both, and a Loan still cannot be a
 Transfer source. Lint is clean; the write-API and import races and the 14
+client-contract checks pass. Not yet deployed to the hosted project.
+
+Several budget accounts (2026-11-23) keep the total at **794**: the one-budget
+refusals became checks that a second budget account is accepted (schema,
+write API, sync protocol and import), plus per-account set/clear no-ops. The
+account races now check that two concurrent selections both apply and that an
+archive committed first blocks a selection. All races and the 14
 client-contract checks pass. Not yet deployed to the hosted project.

@@ -174,8 +174,8 @@ void main() {
     await accounts.delete(loan.id);
     await accounts.setArchived(bdo.id, archived: true);
     await accounts.setArchived(bdo.id, archived: false);
-    await accounts.setBudgetAccount(gcash.id);
-    await accounts.clearBudgetAccount();
+    await accounts.setBudgetAccount(bdo.id);
+    await accounts.clearBudgetAccount(gcash.id);
     final g2 = await types.create(name: 'Temp', baseType: AccountType.loan);
     await types.delete(g2.id);
 
@@ -242,7 +242,8 @@ void main() {
         }),
       );
     }
-    expect(batches, hasLength(40));
+    // Setting BDO again while it is already a budget account queues nothing.
+    expect(batches, hasLength(39));
     await store.close();
   });
 }

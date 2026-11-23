@@ -373,8 +373,6 @@ class _Parser {
   /// which also defaults to false.
   final int formatVersion;
 
-  bool _hasBudgetAccount = false;
-
   final _customTypes = <int, AccountType>{};
   final _customTypeNames = <String>{};
   final _accounts = <String, Account>{};
@@ -517,17 +515,9 @@ class _Parser {
     final isArchived = reader.boolean('isArchived');
     final isBudgetAccount =
         formatVersion >= 3 && reader.boolean('isBudgetAccount');
-    if (isBudgetAccount) {
-      if (_hasBudgetAccount) {
-        reader.fail('isBudgetAccount', 'only one budget account is allowed');
-      }
-      if (type != AccountType.savingsCash || isArchived) {
-        reader.fail(
-          'isBudgetAccount',
-          'must be an active Savings/Cash account',
-        );
-      }
-      _hasBudgetAccount = true;
+    // Any number of accounts may be budget accounts (schema v13).
+    if (isBudgetAccount && (type != AccountType.savingsCash || isArchived)) {
+      reader.fail('isBudgetAccount', 'must be an active Savings/Cash account');
     }
     _accounts[recordIdOf(id)] = Account(
       id: recordIdOf(id),

@@ -521,7 +521,7 @@ Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
 refinements (R.1–R.17 in the roadmap, including automatic liability rows,
 Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. The database is at schema
-v12 and backups at format 7. [AGENTS.md](AGENTS.md) summarises the current
+v13 and backups at format 7. [AGENTS.md](AGENTS.md) summarises the current
 state, commands and pitfalls for any coding agent. The rest of Phase 5 in
 [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the product owner
 must approve any next step before work starts.
@@ -923,7 +923,7 @@ suggestions as approved decisions.
                           opens account/month.
                           Replaced 2026-11-23.
 
-  2026-11-17              Budget account (schema  Confirmed
+  2026-11-17              Budget account (schema  Superseded
                           v9): exactly one or no  
                           account; must be an     
                           active Savings/Cash     
@@ -935,6 +935,8 @@ suggestions as approved decisions.
                           archiving removes it.   
                           Backup format 3 adds    
                           isBudgetAccount         
+                          (several allowed from
+                          2026-11-23)
 
   2026-11-17              Liability Plans rows    Confirmed
                           (schema v10): auto-add
@@ -1226,5 +1228,27 @@ suggestions as approved decisions.
                           write API and import.
                           No schema or backup
                           format change.
+
+
+  2026-11-23              Several budget          Confirmed
+                          accounts (schema v13):
+                          any number of active
+                          Savings/Cash accounts,
+                          incl. none; each set
+                          with its own switch, no
+                          move prompt; archiving
+                          clears it. Ready to
+                          assign adds them up;
+                          transfers between them
+                          are neither money in nor
+                          moved out; spending and
+                          payments from any of
+                          them release
+                          allocations. The card
+                          lists them; tapping it
+                          opens the month for all
+                          accounts. Backup format
+                          stays 7; app 1.1.0
+                          refuses such a file.
 
   -----------------------------------------------------------------------

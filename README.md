@@ -15,9 +15,9 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - **Account:** create Savings/Cash, Credit and Loan accounts with an opening
   balance; view details and history; rename; archive and unarchive. Archived
-  accounts with no transactions can be deleted permanently. One asset
-  account can be the budget account ("Use as budget account" in the
-  account form); money coming into it funds Ready to assign on Plans.
+  accounts with no transactions can be deleted permanently. Any number of
+  asset accounts can be budget accounts ("Use as budget account" in the
+  account form); money coming into them funds Ready to assign on Plans.
 - **Account types:** add your own types (e.g. E-wallet, Pay later) as an
   Asset or a Liability that works like a credit card or a loan; rename them,
   change their class while unused, and delete them when unused. The Account
@@ -40,12 +40,14 @@ else is approved yet; see [docs/ROADMAP.md](docs/ROADMAP.md).
   Target or Assigned to edit just that amount. Categories are listed in
   Spending, Savings and Liability sections (set the group in the category
   form). At the top, Ready to assign shows the selected month’s carry over
-  plus money in (inflows and transfers into the budget account), minus money
+  plus money in (inflows into budget accounts, and transfers into them from
+  other accounts), minus money
   moved out (transfers to Savings/Cash accounts) and the month’s Assigned
   total. Spending and card or loan payments do not change it; overspending
   shows as a negative Available on its row. Overallocated amounts appear in
   red; saving remains allowed. Allocations do not carry over.
-  “Carry over from last month” is the budget account’s balance on the
+  Transfers between budget accounts don’t count either way.
+  “Carry over from last month” is the budget accounts’ balance on the
   month’s first day: the opening balance plus transactions dated before the
   selected month. Plans refreshes at local
   midnight while open, and catches up on the next open or resume if closed.
@@ -194,7 +196,7 @@ lib/
                             # format (version 6), checks, replace-all restore
       presentation/         # Export and restore actions, confirmation dialog
 test/                       # mirrors lib/; helpers/ holds fakes and fixtures
-drift_schemas/              # schema snapshot per version (currently v12)
+drift_schemas/              # schema snapshot per version (currently v13)
 ```
 
 Code is organised by feature. Folders for `data/` and `domain/` are added

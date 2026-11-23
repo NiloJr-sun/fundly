@@ -75,7 +75,7 @@ void main() {
   test('card and loan payments are row Activity, not moved out', () {
     final result = readyToAssign(
       month: month,
-      budgetAccount: accounts[bdoId]!,
+      budgetAccounts: [accounts[bdoId]!],
       categories: allCategories,
       plans: [plan(card.id, 40000), plan(loan.id, 30000)],
       transactions: [
@@ -107,7 +107,7 @@ void main() {
     expect(row.available, php(20000));
     final result = readyToAssign(
       month: month,
-      budgetAccount: accounts[bdoId]!,
+      budgetAccounts: [accounts[bdoId]!],
       categories: allCategories,
       plans: [plan(card.id, 40000)],
       transactions: [inflow(amount: 100000), ...transactions],
@@ -118,7 +118,7 @@ void main() {
   test('overpaying a debt row leaves Ready to assign unchanged', () {
     final result = readyToAssign(
       month: month,
-      budgetAccount: accounts[bdoId]!,
+      budgetAccounts: [accounts[bdoId]!],
       categories: allCategories,
       plans: [plan(card.id, 10000), plan(loan.id, 30000)],
       transactions: [inflow(amount: 100000), cardPayment(amount: 20000)],

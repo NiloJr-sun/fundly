@@ -95,8 +95,8 @@ Archived accounts and categories may hold history.
   - Savings/Cash opening balances are ≥ 0, and Credit and Loan opening
     balances are ≤ 0;
   - the currency is PHP;
-  - there is at most one budget account, and it is an active Savings/Cash
-    account.
+  - every budget account is an active Savings/Cash account (any number,
+    from 2026-11-23).
 - **Categories:**
   - inflow categories are in the Spending group and are never Plans rows;
   - a plan-deleted row is plan-archived.
@@ -176,7 +176,7 @@ A refused import changes nothing and stores no receipt.
 | `duplicate_id` | The same ID appears twice in one table. |
 | `wrong_sign` | Opening balance has the wrong sign for the account type. |
 | `not_eligible` | Account cannot be the budget account. |
-| `only_one_budget_account` | A second budget account. |
+| `only_one_budget_account` | No longer used (several budget accounts are allowed from 2026-11-23). |
 | `invalid_reference` | A referenced record is missing, or a custom type has the wrong base type. |
 | `invalid_link` | A linked liability row breaks the linked-row rules. |
 | `missing_linked_category` | An active Credit or Loan account has no linked row. |

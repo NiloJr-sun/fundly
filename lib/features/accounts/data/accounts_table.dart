@@ -4,18 +4,14 @@ import '../domain/account_type.dart';
 import 'custom_account_types_table.dart';
 
 /// SQLite table for [Account]s (schema v1; `custom_type_id` in v7;
-/// `is_budget_account` in v9).
+/// `is_budget_account` in v9; several budget accounts from v13).
 ///
 /// The database enforces the integrity rules too, so a bug in Dart code cannot
 /// store an invalid account:
 /// - names are unique ignoring ASCII case and 1-40 characters long;
 /// - the opening balance sign matches the account type (CLAUDE.md §11, D1);
-/// - at most one account is the budget account, and it is Savings/Cash.
+/// - only Savings/Cash accounts can be budget accounts.
 @DataClassName('AccountRow')
-@TableIndex.sql(
-  'CREATE UNIQUE INDEX accounts_one_budget_account ON accounts '
-  '(is_budget_account) WHERE is_budget_account = 1',
-)
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -45,8 +41,8 @@ class Accounts extends Table {
     onDelete: KeyAction.restrict,
   )();
 
-  /// Whether this account’s current balance funds Ready to assign on Plans.
-  /// Only one account, of type Savings/Cash, can be the budget account.
+  /// Whether money coming into this account funds Ready to assign on Plans.
+  /// Any number of Savings/Cash accounts can be budget accounts.
   BoolColumn get isBudgetAccount => boolean()
       .withDefault(const Constant(false))
       // The check refers to the column itself, which is drift's documented

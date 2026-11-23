@@ -71,7 +71,7 @@ simulator build for anything that changes app code. macOS has no
 
 ## 3. Current state (2026-11-17)
 
-- **Database:** drift (SQLite), **schema v12**. Tables: `accounts`
+- **Database:** drift (SQLite), **schema v13**. Tables: `accounts`
   (`custom_type_id`, `is_budget_account`), `custom_account_types`,
   `categories` (`kind`, `is_archived`, `is_plan_archived`, `is_plan_deleted`,
   `plan_group`, `linked_account_id`), `transactions`,

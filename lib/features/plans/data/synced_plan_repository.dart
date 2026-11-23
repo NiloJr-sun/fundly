@@ -263,16 +263,19 @@ class SyncedPlanRepository implements PlanRepository {
               )
               ..orderBy([(p) => OrderingTerm(expression: p.month)]))
             .get();
-    final budget = await (_database.select(
-      _database.syncedAccounts,
-    )..where((a) => a.isBudgetAccount.equals(true))).getSingleOrNull();
-    final entries = budget == null
+    final budgetIds = {
+      for (final account in await (_database.select(
+        _database.syncedAccounts,
+      )..where((a) => a.isBudgetAccount.equals(true))).get())
+        account.id,
+    };
+    final entries = budgetIds.isEmpty
         ? <TransactionDraft>[]
         : [
             for (final row
                 in await (_database.select(_database.syncedTransactions)..where(
                       (t) =>
-                          t.sourceAccountId.equals(budget.id) &
+                          t.sourceAccountId.isIn(budgetIds) &
                           t.date.isBiggerOrEqualValue(
                             currentMonth.dateRange.start.toIsoString(),
                           ),
@@ -295,7 +298,7 @@ class SyncedPlanRepository implements PlanRepository {
       final plan = syncedPlan(row);
       final allocation = remainingPlanAllocation(
         plan: plan,
-        budgetAccountId: budget?.id,
+        budgetAccountIds: budgetIds,
         linkedAccountId: category.linkedAccountId,
         transactions: entries,
       );

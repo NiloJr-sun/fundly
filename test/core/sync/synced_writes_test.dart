@@ -316,7 +316,7 @@ void main() {
       });
     });
 
-    test('switching the budget account names the previous one', () async {
+    test('budget accounts are set and cleared one at a time', () async {
       await store.download({
         'accounts': [SyncedRows.account('acc-wallet', 'Wallet')],
       });
@@ -324,23 +324,23 @@ void main() {
       await repository.setBudgetAccount(bdo);
       await repository.setBudgetAccount(bdo);
       await repository.setBudgetAccount('acc-wallet');
-      await repository.clearBudgetAccount();
-      await repository.clearBudgetAccount();
+      expect((await row('accounts', bdo))['is_budget_account'], 1);
+      expect((await row('accounts', 'acc-wallet'))['is_budget_account'], 1);
+      await repository.clearBudgetAccount('acc-wallet');
+      await repository.clearBudgetAccount('acc-wallet');
+      expect((await row('accounts', bdo))['is_budget_account'], 1);
+      expect((await row('accounts', 'acc-wallet'))['is_budget_account'], 0);
       final items = await store.queuedItems();
       expect(items, [
         {
           'operation': 'account.set_budget',
           'id': bdo,
           'expected_revision': '1',
-          'data': {'previous_budget': null},
         },
         {
           'operation': 'account.set_budget',
           'id': 'acc-wallet',
           'expected_revision': '1',
-          'data': {
-            'previous_budget': {'id': bdo, 'revision': '2'},
-          },
         },
         {
           'operation': 'account.clear_budget',

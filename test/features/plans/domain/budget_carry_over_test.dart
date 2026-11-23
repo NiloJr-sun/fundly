@@ -35,7 +35,7 @@ void main() {
     List<MonthlyPlan> plans = const [],
   }) => readyToAssign(
     month: month ?? december,
-    budgetAccount: budget,
+    budgetAccounts: [budget],
     plans: plans,
     transactions: entries,
     categories: categories.values,
@@ -159,7 +159,7 @@ void main() {
       expect(
         readyToAssign(
           month: december,
-          budgetAccount: budget.copyWith(openingBalance: php(2000000)),
+          budgetAccounts: [budget.copyWith(openingBalance: php(2000000))],
           plans: [],
           transactions: [],
           categories: categories.values,
@@ -175,7 +175,7 @@ void main() {
       final other = accounts[walletId]!.copyWith(openingBalance: php(50000));
       final result = readyToAssign(
         month: december,
-        budgetAccount: other,
+        budgetAccounts: [other],
         plans: [],
         categories: categories.values,
         transactions: [

@@ -29,6 +29,10 @@ def main():
         return {'operation': 'account.set_budget', 'id': target,
                 'expected_revision': str(revision), 'data': {'previous_budget': previous}}
 
+    def archive_at(target, revision):
+        return {'operation': 'account.set_archived', 'id': target,
+                'expected_revision': str(revision), 'data': {'archived': True}}
+
     def archive(target):
         return {'operation': 'account.set_archived', 'id': target,
                 'expected_revision': '1', 'data': {'archived': True}}
@@ -49,15 +53,15 @@ def main():
               'data': {'name': 'Race type', 'base_type': 'savingsCash'}})
 
         overlap(actor, rpc(str(uuid.uuid4()), budget(accounts[0], 1, None)), actor,
-                rpc(str(uuid.uuid4()), budget(accounts[1], 1, None)), run_name + '_none', 'budget_conflict')
-        assert execute(f'SELECT id FROM public.accounts WHERE owner_id={literal(actor)} AND is_budget_account;') == accounts[0]
-        print('PASS: competing budget selections from none have one winner', flush=True)
+                rpc(str(uuid.uuid4()), budget(accounts[1], 1, None)), run_name + '_two')
+        assert execute(f'SELECT count(*) FROM public.accounts WHERE owner_id={literal(actor)} '
+                       'AND is_budget_account;') == '2'
+        print('PASS: concurrent budget selections of two accounts both apply', flush=True)
 
-        previous = {'id': accounts[0], 'revision': '2'}
-        overlap(actor, rpc(str(uuid.uuid4()), budget(accounts[1], 1, previous)), actor,
-                rpc(str(uuid.uuid4()), budget(accounts[2], 1, previous)), run_name + '_switch', 'budget_conflict')
-        assert execute(f'SELECT id FROM public.accounts WHERE owner_id={literal(actor)} AND is_budget_account;') == accounts[1]
-        print('PASS: stale previous-budget snapshot cannot overwrite a concurrent switch', flush=True)
+        overlap(actor, rpc(str(uuid.uuid4()), archive_at(accounts[2], 1)), actor,
+                rpc(str(uuid.uuid4()), budget(accounts[2], 2, None)), run_name + '_archived', 'invalid_account')
+        assert execute(f'SELECT is_budget_account FROM public.accounts WHERE id={literal(accounts[2])};') == 'f'
+        print('PASS: an archive committed first prevents a concurrent budget selection', flush=True)
 
         entry = str(uuid.uuid4())
         overlap(actor, rpc(str(uuid.uuid4()), archive(accounts[3])), actor,

@@ -204,11 +204,11 @@ select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{accounts,1,custom_type_id
   'invalid_import accounts[1].custom_type_id invalid_reference','a custom type has the account''s base type');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{accounts,1,is_budget_account}','true')),
   'invalid_import accounts[1].is_budget_account not_eligible','the budget account is Savings/Cash');
-select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{accounts,4}',
+select is(pg_temp.try_rolled_back(jsonb_set(pg_temp.dataset('x'),'{accounts,4}',
   jsonb_build_object('id',pg_temp.id('x','A5'),'name','Spare','type','savingsCash',
     'opening_balance_minor','0','currency_code','PHP','is_archived',false,
     'custom_type_id',null,'is_budget_account',true))),
-  'invalid_import accounts[4].is_budget_account only_one_budget_account','one budget account at most');
+  'ok','several budget accounts import');
 select is(pg_temp.try(jsonb_set(jsonb_set(pg_temp.dataset('x'),'{accounts,0,is_archived}','true'),
   '{accounts,0,is_budget_account}','true')),
   'invalid_import accounts[0].is_budget_account not_eligible','an archived account is not the budget account');
