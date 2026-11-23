@@ -43,7 +43,7 @@ passed**, including the Part 2 rows before it.
 | Release build 1.2.0 (3) on the iPhone, installed over the old app with its data kept | **Part 2:** after the safety export (row 0) |
 | Simulator build 1.2.0 (3) with the cloud config | Done 2026-11-23: installed over the old build; its existing data opens |
 | Web app on Vercel shows 1.2.0 (3) | Done 2026-11-23: the live `version.json` says 1.2.0 (3). Headers still live: `no-cache` on `/`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` and the PowerSync worker; `application/wasm` on `sqlite3.wasm` |
-| Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Open:** export the test users' credentials (powersync/README.md step 5), then ask the agent |
+| Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | Done 2026-11-23: 15 API checks pass; stream test passes (forged token refused, `401 PSYNC_S2101`) |
 | PowerSync Sync Streams match `powersync/sync-config.yaml` | Done 2026-11-23 (owner, dashboard) |
 | Supabase redirect URLs list `https://fundly-budget.vercel.app/**` and `http://localhost:7358/**` | Done 2026-11-23 (owner, dashboard) |
 | Account B exists and can sign in with Google | Done 2026-11-23 (owner) |
@@ -95,7 +95,7 @@ Result: Pass (2026-11-23). Fresh simulator install signed in as A: 7 accounts, 1
 Expected: no records cross between the users, and both automated checks
 pass.
 
-Result: Manual steps pass (2026-11-23): B in a second Chrome profile sees none of A's records; the account B added is not on the simulator signed in as A (still 7 accounts, 0 waiting uploads). Hosted isolation checks: **open**, waiting for the test users' credentials
+Result: Pass (2026-11-23). Manual: B in a second Chrome profile sees none of A's records; the account B added is not on the simulator signed in as A. Hosted isolation checks, run by the agent with two new disposable test users: `api_isolation.py` all 15 checks passed (check records removed); `fundly_stream_test.dart` passed, a forged token refused with `401 PSYNC_S2101`.
 
 ### 5. The same record on two clients
 
@@ -315,6 +315,6 @@ Result:
 
 | | |
 |---|---|
-| Rows passed | Part 1: 1, 2, 5, 6, 7, 8, 9, 10, 11, 12. Row 3: manual steps pass, hosted isolation checks open. Part 2 (0, 1b, 4, 13): waiting for the iPhone |
+| Rows passed | Part 1 complete: 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12. Part 2 (0, 1b, 4, 13): waiting for the iPhone |
 | Failures and fix tasks | None so far. Follow-up (row 5): refused delete cards do not say which record |
 | Owner sign-off (release 1.2.0) | |
