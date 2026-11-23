@@ -44,9 +44,9 @@ passed**, including the Part 2 rows before it.
 | Simulator build 1.2.0 (3) with the cloud config | Done 2026-11-23: installed over the old build; its existing data opens |
 | Web app on Vercel shows 1.2.0 (3) | Done 2026-11-23: the live `version.json` says 1.2.0 (3). Headers still live: `no-cache` on `/`, `flutter_bootstrap.js`, `main.dart.js`, `version.json` and the PowerSync worker; `application/wasm` on `sqlite3.wasm` |
 | Hosted isolation checks (`api_isolation.py`, `fundly_stream_test.dart`) | **Open:** export the test users' credentials (powersync/README.md step 5), then ask the agent |
-| PowerSync Sync Streams match `powersync/sync-config.yaml` | **Open:** you, in the PowerSync dashboard |
-| Supabase redirect URLs list `https://fundly-budget.vercel.app/**` and `http://localhost:7358/**` | **Open:** you, in Supabase → Authentication → URL Configuration |
-| Account B exists and can sign in with Google | **Open:** you |
+| PowerSync Sync Streams match `powersync/sync-config.yaml` | Done 2026-11-23 (owner, dashboard) |
+| Supabase redirect URLs list `https://fundly-budget.vercel.app/**` and `http://localhost:7358/**` | Done 2026-11-23 (owner, dashboard) |
+| Account B exists and can sign in with Google | Done 2026-11-23 (owner) |
 
 ## Part 1: simulator and Chrome
 
@@ -65,7 +65,7 @@ passed**, including the Part 2 rows before it.
 Expected: the same records and the same figures on both. "Up to date" on
 both, with nothing waiting to upload.
 
-Result:
+Result: Pass (2026-11-23, simulator 1.2.0 (3) and Chrome)
 
 ### 2. New client and default categories (agent)
 
@@ -82,7 +82,7 @@ Expected:
   "Utilities" or similar;
 - there is one debt row per credit card or loan.
 
-Result:
+Result: Pass (2026-11-23). Fresh simulator install signed in as A: 7 accounts, 13 categories (no duplicates), 17 transactions, 7 monthly plans, 4 debt rows for the 4 credit/loan accounts (none missing or doubled), 0 waiting uploads. Every record identical, field by field, to the pre-reinstall store (backup in `~/Downloads/fundly-simulator-backup-2026-11-23/`)
 
 ### 3. Two users
 
@@ -95,7 +95,7 @@ Result:
 Expected: no records cross between the users, and both automated checks
 pass.
 
-Result:
+Result: Manual steps pass (2026-11-23): B in a second Chrome profile sees none of A's records; the account B added is not on the simulator signed in as A (still 7 accounts, 0 waiting uploads). Hosted isolation checks: **open**, waiting for the test users' credentials
 
 ### 5. The same record on two clients
 
@@ -114,7 +114,9 @@ Expected:
 - That client's records return to the server's version.
 - A deleted transaction never comes back.
 
-Result:
+Result: Pass (2026-11-23, Chrome offline as the losing client). X: the simulator's amount change won; Chrome's edit was refused ("Changed on another device first") and Chrome showed the server's version. Y (the same transaction): the simulator's edit won; Chrome's offline delete was refused and the transaction came back in Chrome as "Edit", ₱300.00 (revision 4). Simulator: 18 transactions, no refused changes, nothing waiting.
+
+Follow-up (not blocking): a refused **delete** card names no transaction and shows no details, unlike a refused edit card, so several refused deletes cannot be told apart.
 
 ### 6. Archive against spending
 
@@ -127,7 +129,7 @@ Result:
 Expected: the server applies its rule, and the refused spending is listed
 under Refused changes in Chrome. Afterwards both show the same records.
 
-Result:
+Result: Pass (2026-11-23, Chrome offline). Z was a new Savings/Cash account with a ₱2,345.00 opening balance, archived on the simulator with confirmation. Chrome's offline spending on Z was refused and listed under Refused changes; Z shows as archived in Chrome and the spending is gone. Simulator: 8 accounts, 18 transactions, none on Z, no refused changes, nothing waiting.
 
 ### 7. Retry after the server committed (automated evidence)
 
@@ -166,7 +168,7 @@ Expected:
 - Plans shows a debt row named after the renamed card;
 - the loan's debt row has moved to Archived plans.
 
-Result:
+Result: Pass (2026-11-23, simulator and Chrome; the agent compared before/after figures from the synced store). Budget accounts BPI 1, BPI 2 and Metrobank (already set). Internal transfer BPI 1 → BPI 2 (₱1.00): not money in or moved out. New credit card (opening −₱2,000.00) and loan (opening −₱1,000.00). Cash advance card → BPI 1 (₱100.00): accepted; card owed −₱2,000.00 → −₱2,100.00; November money in ₱17,083.03 → ₱17,183.03; moved out stays ₱0.00; Inflow and Spending totals unchanged; card debt row Activity ₱0.00. Card renamed and its debt row followed; loan archived and its row moved to Archived plans. Chrome's Ready to assign lists the three budget accounts with the same money in. No refused or waiting changes.
 
 ### 9. Sign out or switch users with changes waiting
 
@@ -180,7 +182,7 @@ Result:
 Expected: nothing leaves the browser without your confirmation, and B never
 sees, or uploads, A's records.
 
-Result:
+Result: Pass (2026-11-23, Chrome). Offline change: spending "Row9" ₱9.99 on BPI 1. Sign out showed the waiting-change warning; Cancel kept A signed in. Back online it uploaded under A once (on the simulator: revision 1, 21 transactions, nothing waiting or refused). Signed in as B in the same Chrome profile: none of A's records, no "Row9"; only B's own account.
 
 ### 10. Copy and restore (S6.2 and S6.3)
 
@@ -204,7 +206,7 @@ Expected:
   the backup's, never a mix, and no record is duplicated;
 - step 5 restores locally with the same counts.
 
-Result:
+Result: Pass (2026-11-23). Step 2 was done into **A** instead of B: the simulator, signed in as A, restored a format 7 file (7 accounts, 17 transactions, exported 5:40 pm) with Replace and showed "Restored and checked"; the agent confirmed A's counts and every account balance match the file. This replaced A's rows 1–9 test records, whose results were already recorded; A is reset in row 13 anyway. Step 3: a format 6 file restored into B in Chrome with Replace (owner: pass). Step 4: an interrupted Replace in Chrome as B, reopened afterwards, showed whole counts with nothing mixed or doubled (owner: pass). Step 5: signed-out restore on the simulator; the agent confirmed 7 accounts, 13 categories, 17 transactions and 7 monthly plans, with every balance identical to the file.
 
 ### 11. Browser refresh, tabs, cleared storage
 
@@ -223,7 +225,7 @@ Expected:
 - only the offline change from step 3 is gone, as the browser-only note
   warned.
 
-Result:
+Result: Pass (2026-11-23, owner in Chrome as A): refresh and two tabs stayed consistent; the offline change was marked browser-only; after clearing site data the app signed in again and downloaded every accepted record, losing only that offline change.
 
 ### 12. Expired session or service down
 
@@ -240,7 +242,7 @@ Expected:
 - after unblocking, it uploads and shows "Up to date";
 - after signing in again, the simulator downloads and matches Chrome.
 
-Result:
+Result: Pass (2026-11-23). With PowerSync blocked in Chrome as A, spending "ENV" ₱22.00 on BPI 1 stayed usable and uploaded once after unblocking. The simulator signed in as A again ("Not now" on the copy prompt), showed "Up to date" and matched the account: 7 accounts, 13 categories, 18 transactions, 7 plans, "ENV" at revision 1, nothing waiting or refused; its signed-out data stayed unchanged.
 
 ## Part 2: when the iPhone is back
 
@@ -313,6 +315,6 @@ Result:
 
 | | |
 |---|---|
-| Rows passed | |
-| Failures and fix tasks | |
+| Rows passed | Part 1: 1, 2, 5, 6, 7, 8, 9, 10, 11, 12. Row 3: manual steps pass, hosted isolation checks open. Part 2 (0, 1b, 4, 13): waiting for the iPhone |
+| Failures and fix tasks | None so far. Follow-up (row 5): refused delete cards do not say which record |
 | Owner sign-off (release 1.2.0) | |
