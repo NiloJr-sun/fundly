@@ -246,11 +246,11 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
-### After the 1.2.0 release (approved, not started; 1.2.0 signed off 2026-11-23)
+### After the 1.2.0 release (1.2.0 signed off 2026-11-23)
 
 | ID | Task | Status |
 |---|---|---|
-| F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | Approved 2026-11-23; build after the 1.2.0 sign-off as 1.2.1 (4) |
+| F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | ✅ Built 2026-11-23 as 1.2.1 (4); deploy per `docs/OPERATIONS.md` (web, then iPhone) |
 
 F.1 plan, approved 2026-11-23 with all three decisions as recommended:
 

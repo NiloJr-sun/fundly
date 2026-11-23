@@ -58,6 +58,74 @@ void main() {
     ]);
   });
 
+  group('a refused delete is named (F.1)', () {
+    test('by its label, with no details', () {
+      final description = describeRefusedChange(
+        rejection([item('transaction.delete')], labels: {record: 'Edit'}),
+      );
+      expect(description.title, 'Delete transaction · Edit');
+      expect(description.details, isEmpty);
+    });
+
+    test('by type, amount and date without a payee', () {
+      final description = describeRefusedChange(
+        rejection(
+          [item('transaction.delete')],
+          labels: {
+            '$record$transactionFactsSuffix': 'transfer|260000|PHP|2026-11-10',
+          },
+        ),
+      );
+      expect(
+        description.title,
+        'Delete transaction · Transfer ₱2,600.00 · Nov 10, 2026',
+      );
+      expect(description.details, isEmpty);
+    });
+  });
+
+  test('an edit without a payee is named by type, amount and date', () {
+    final description = describeRefusedChange(
+      rejection(
+        [
+          item('transaction.update', {
+            'amount_minor': '300000',
+            'currency_code': 'PHP',
+            'date': '2026-11-12',
+            'payee': '',
+            'note': '',
+            'category_id': null,
+            'source_account_id': account,
+            'destination_account_id': category,
+          }),
+        ],
+        labels: {
+          '$record$transactionFactsSuffix':
+              'creditCardPayment|300000|PHP|2026-11-12',
+        },
+      ),
+    );
+    expect(
+      description.title,
+      'Edit transaction · Credit card payment ₱3,000.00 · Nov 12, 2026',
+    );
+  });
+
+  test('facts that cannot be read leave the title plain', () {
+    for (final facts in [
+      'transfer|abc|PHP|2026-11-10',
+      'unknown|1|PHP|2026-11-10',
+    ]) {
+      final description = describeRefusedChange(
+        rejection(
+          [item('transaction.delete')],
+          labels: {'$record$transactionFactsSuffix': facts},
+        ),
+      );
+      expect(description.title, 'Delete transaction');
+    }
+  });
+
   test('a created record is named from its own data', () {
     expect(
       describeRefusedChange(

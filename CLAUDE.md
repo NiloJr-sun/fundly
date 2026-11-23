@@ -1279,7 +1279,7 @@ suggestions as approved decisions.
                           docs/OPERATIONS.md.
                           Android not verified.
 
-  2026-11-23              Refused delete cards    Approved, not started
+  2026-11-23              Refused delete cards    Implemented in F.1
                           name the record (F.1,
                           after 1.2.0, as 1.2.1):
                           label from PowerSync's

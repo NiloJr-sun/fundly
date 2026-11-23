@@ -34,7 +34,7 @@ class RefusedChangeDescription {
 
 RefusedChangeDescription describeRefusedChange(SyncRejection rejection) {
   final items = rejection.items;
-  final titles = [for (final item in items) _title(item, rejection.labels)];
+  final titles = [for (final item in items) _title(item, rejection)];
   return RefusedChangeDescription(
     title: titles.isEmpty
         ? 'Change'
@@ -69,7 +69,8 @@ String refusalReason(SyncRejection rejection) => switch (rejection) {
   SyncRejection(:final code) => "The server's rules refused it ($code)",
 };
 
-String _title(Map<String, Object?> item, Map<String, String> labels) {
+String _title(Map<String, Object?> item, SyncRejection rejection) {
+  final labels = rejection.labels;
   final operation = item['operation']! as String;
   final data = (item['data'] as Map<String, Object?>?) ?? const {};
   final archived = data['archived'] == true;
@@ -100,11 +101,40 @@ String _title(Map<String, Object?> item, Map<String, String> labels) {
   };
   final subject = switch (operation) {
     'plan.save' => labels[data['category_id']],
-    _ => labels[item['id']] ?? data['name'] ?? data['payee'],
+    _ =>
+      labels[item['id']] ??
+          data['name'] ??
+          _nonEmpty(data['payee']) ??
+          _transactionFactsLabel(
+            rejection.transactionFacts(item['id']! as String),
+          ),
   };
   return subject is String && subject.isNotEmpty
       ? '$action · $subject'
       : action;
+}
+
+String? _nonEmpty(Object? text) =>
+    text is String && text.isNotEmpty ? text : null;
+
+/// A transaction without a payee, such as `Transfer ₱2,600.00 · Nov 10, 2026`.
+String? _transactionFactsLabel(TransactionFacts? facts) {
+  if (facts == null) return null;
+  final type = TransactionType.values
+      .where((type) => type.name == facts.type)
+      .firstOrNull;
+  if (type == null) return null;
+  final amount = MoneyFormatter.format(
+    Money(minorUnits: facts.amountMinor, currencyCode: facts.currencyCode),
+  );
+  final CalendarDate day;
+  try {
+    day = CalendarDate.parse(facts.date);
+  } on FormatException {
+    return '${transactionTypeLabel(type)} $amount';
+  }
+  final date = DateFormat.yMMMd().format(day.toLocalDateTime());
+  return '${transactionTypeLabel(type)} $amount · $date';
 }
 
 List<(String, String)> _details(

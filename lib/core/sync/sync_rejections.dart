@@ -66,9 +66,50 @@ class SyncRejection {
   /// The batch's items as queued (`operation`, `id`, `data`, ...).
   final List<Map<String, Object?>> items;
 
-  /// Record ID → name or payee as shown when the change was refused.
+  /// Record ID → name or payee as shown when the change was refused. A
+  /// transaction without a payee has no label; its facts are stored under
+  /// `'$id$transactionFactsSuffix'` instead (see [transactionFacts]).
   final Map<String, String> labels;
   final DateTime rejectedAt;
+
+  /// The type, amount and date of transaction [id] when it had no payee,
+  /// for naming it on screen; null otherwise.
+  TransactionFacts? transactionFacts(String id) =>
+      TransactionFacts._parse(labels['$id$transactionFactsSuffix']);
+}
+
+/// Key suffix for [TransactionFacts] in [SyncRejection.labels].
+const transactionFactsSuffix = '#transaction';
+
+/// What identifies a transaction without a payee: its type (wire name),
+/// amount in minor units, currency and date (`YYYY-MM-DD`).
+class TransactionFacts {
+  const TransactionFacts({
+    required this.type,
+    required this.amountMinor,
+    required this.currencyCode,
+    required this.date,
+  });
+
+  static TransactionFacts? _parse(String? text) {
+    final parts = text?.split('|');
+    if (parts == null || parts.length != 4) return null;
+    final amount = int.tryParse(parts[1]);
+    if (amount == null) return null;
+    return TransactionFacts(
+      type: parts[0],
+      amountMinor: amount,
+      currencyCode: parts[2],
+      date: parts[3],
+    );
+  }
+
+  final String type;
+  final int amountMinor;
+  final String currencyCode;
+  final String date;
+
+  String encode() => '$type|$amountMinor|$currencyCode|$date';
 }
 
 final _uuid = RegExp(
@@ -209,22 +250,105 @@ Future<Map<String, String>> _labels(
   List<String> ids,
 ) async {
   if (ids.isEmpty) return const {};
-  final rows = await database.getAll(
+  final labels = <String, String>{};
+  final found = <String>{};
+  final names = await database.getAll(
     'WITH wanted(id) AS (SELECT value FROM json_each(?1)) '
     'SELECT id, name AS label FROM custom_account_types '
     'WHERE id IN wanted '
     'UNION ALL SELECT id, name FROM accounts WHERE id IN wanted '
     'UNION ALL SELECT id, name FROM categories WHERE id IN wanted '
-    'UNION ALL SELECT id, payee FROM transactions WHERE id IN wanted '
     'UNION ALL SELECT p.id, c.name FROM monthly_plans p '
     'JOIN categories c ON c.id = p.category_id WHERE p.id IN wanted',
     [jsonEncode(ids)],
   );
-  return {
-    for (final row in rows)
-      if ((row['label'] as String).isNotEmpty)
-        row['id'] as String: row['label'] as String,
+  for (final row in names) {
+    final id = row['id'] as String;
+    found.add(id);
+    _addLabel(labels, id, row['label']);
+  }
+  final transactions = await database.getAll(
+    'SELECT id, type, amount_minor, currency_code, date, payee '
+    'FROM transactions WHERE id IN (SELECT value FROM json_each(?1))',
+    [jsonEncode(ids)],
+  );
+  for (final row in transactions) {
+    final id = row['id'] as String;
+    found.add(id);
+    _addTransactionLabel(labels, id, row);
+  }
+
+  // A record this device already deleted is gone from its tables, but the
+  // download log keeps the server's copy until the server confirms the
+  // delete, which a refused delete never gets.
+  final missing = [
+    for (final id in ids)
+      if (!found.contains(id)) id,
+  ];
+  if (missing.isEmpty) return labels;
+  final logged = await database.getAll(
+    'SELECT row_type, row_id, data FROM ps_oplog '
+    'WHERE row_id IN (SELECT value FROM json_each(?1)) ORDER BY op_id',
+    [jsonEncode(missing)],
+  );
+  for (final row in logged) {
+    final id = row['row_id'] as String;
+    final data = switch (row['data']) {
+      final String text => jsonDecode(text),
+      _ => null,
+    };
+    if (data is! Map<String, Object?>) continue;
+    switch (row['row_type']) {
+      case 'transactions':
+        _addTransactionLabel(labels, id, data);
+      case 'monthly_plans':
+        final category = await database.getOptional(
+          'SELECT name FROM categories WHERE id = ?',
+          [data['category_id']],
+        );
+        _addLabel(labels, id, category?['name']);
+      case 'custom_account_types' || 'accounts' || 'categories':
+        _addLabel(labels, id, data['name']);
+    }
+  }
+  return labels;
+}
+
+void _addLabel(Map<String, String> labels, String id, Object? label) {
+  if (label is String && label.isNotEmpty) labels[id] = label;
+}
+
+/// The payee, or for a transaction without one, its [TransactionFacts].
+void _addTransactionLabel(
+  Map<String, String> labels,
+  String id,
+  Map<String, Object?> row,
+) {
+  final payee = (row['payee'] as String?)?.trim() ?? '';
+  if (payee.isNotEmpty) {
+    labels[id] = payee;
+    return;
+  }
+  final amount = switch (row['amount_minor']) {
+    final num value => value.toInt(),
+    final String text => int.tryParse(text),
+    _ => null,
   };
+  final type = row['type'];
+  final currency = row['currency_code'];
+  final date = row['date'];
+  if (amount == null ||
+      type is! String ||
+      currency is! String ||
+      date is! String) {
+    return;
+  }
+  labels['$id$transactionFactsSuffix'] = TransactionFacts(
+    type: type,
+    amountMinor: amount,
+    currencyCode: currency,
+    date: date,
+  ).encode();
 }
 
 /// The refused-changes log, for the screen that lists it.

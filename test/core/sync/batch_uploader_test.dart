@@ -318,13 +318,14 @@ void main() {
       /// requested write checkpoint; returns whether PowerSync applied it.
       Future<bool> download([
         List<Map<String, Object?>> newRows = const [],
+        String table = 'categories',
       ]) async {
         final operations = [
           for (final row in newRows)
             {
               'op_id': '${++lastOp}',
               'op': 'PUT',
-              'object_type': 'categories',
+              'object_type': table,
               'object_id': row['id'],
               'checksum': 1,
               'subkey': null,
@@ -388,6 +389,52 @@ void main() {
         return result.contains('DidCompleteSync');
       }
 
+      Map<String, Object?> account(String id, String name) => {
+        'id': id,
+        'name': name,
+        'type': 'savingsCash',
+        'opening_balance_minor': 0,
+        'currency_code': 'PHP',
+        'is_archived': 0,
+        'custom_type_id': null,
+        'is_budget_account': 0,
+        'created_at': '2026-11-16 09:30:00+00',
+        'updated_at': '2026-11-16 09:30:00+00',
+        'revision': 1,
+      };
+
+      Map<String, Object?> transaction(
+        String id, {
+        required String type,
+        required int amountMinor,
+        required String payee,
+        String? sourceAccountId,
+        String? destinationAccountId,
+      }) => {
+        'id': id,
+        'type': type,
+        'amount_minor': amountMinor,
+        'currency_code': 'PHP',
+        'date': '2026-11-10',
+        'payee': payee,
+        'category_id': null,
+        'source_account_id': sourceAccountId,
+        'destination_account_id': destinationAccountId,
+        'note': '',
+        'created_at': '2026-11-16 09:30:00+00',
+        'updated_at': '2026-11-16 09:30:00+00',
+        'revision': 1,
+      };
+
+      Future<void> refuseAll() async {
+        while (await uploadNextBatch(sync, (_, _) async {
+          throw const PostgrestException(
+            message: 'revision_conflict',
+            code: 'P0001',
+          );
+        })) {}
+      }
+
       Future<Map<String, String>> names() async => {
         for (final row in await sync.getAll(
           'SELECT id, name FROM categories ORDER BY name',
@@ -433,6 +480,76 @@ void main() {
           removed: 'Internet',
         });
         expect(await database.watchRejections().first, hasLength(3));
+      });
+
+      group('a refused delete still names its record (F.1)', () {
+        test('from the download log, for a category', () async {
+          const removed = '00000000-0000-4000-8000-000000000003';
+          await download([category(removed, 'Internet')]);
+          await SyncedCategoryRepository(database).delete(removed);
+          await refuseAll();
+
+          final rejection = (await database.watchRejections().first).single;
+          expect(rejection.items.single['operation'], 'category.delete');
+          expect(rejection.labels, {removed: 'Internet'});
+        });
+
+        test('by payee, or by type, amount and date without one', () async {
+          const wallet = '00000000-0000-4000-8000-000000000011';
+          const savings = '00000000-0000-4000-8000-000000000012';
+          const groceries = '00000000-0000-4000-8000-000000000021';
+          const move = '00000000-0000-4000-8000-000000000022';
+          await download([
+            account(wallet, 'Wallet'),
+            account(savings, 'Savings'),
+          ], 'accounts');
+          await download([
+            transaction(
+              groceries,
+              type: 'spending',
+              amountMinor: 50000,
+              payee: 'Groceries',
+              sourceAccountId: wallet,
+            ),
+            transaction(
+              move,
+              type: 'transfer',
+              amountMinor: 260000,
+              payee: '',
+              sourceAccountId: wallet,
+              destinationAccountId: savings,
+            ),
+          ], 'transactions');
+          final transactions = SyncedTransactionRepository(database);
+          await transactions.delete(groceries);
+          await transactions.delete(move);
+          await refuseAll();
+
+          final entries = (await database.watchRejections().first).reversed
+              .toList();
+          expect(entries, hasLength(2));
+          expect(entries[0].labels, {groceries: 'Groceries'});
+          expect(entries[0].transactionFacts(groceries), isNull);
+          expect(entries[1].labels.containsKey(move), isFalse);
+          final facts = entries[1].transactionFacts(move)!;
+          expect(facts.type, 'transfer');
+          expect(facts.amountMinor, 260000);
+          expect(facts.currencyCode, 'PHP');
+          expect(facts.date, '2026-11-10');
+        });
+
+        test('but not one the server never had', () async {
+          final categories = SyncedCategoryRepository(database);
+          final added = await addCategory('Gifts');
+          await categories.delete(added);
+          await refuseAll();
+
+          final entries = await database.watchRejections().first;
+          expect(entries, hasLength(2));
+          for (final entry in entries) {
+            expect(entry.labels.containsKey(added), isFalse);
+          }
+        });
       });
 
       test('without a refusal, optimistic rows are left alone', () async {
