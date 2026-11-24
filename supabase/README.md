@@ -36,7 +36,17 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   accounts. Drops the one-per-owner index; replaces `apply_account` (set/clear
   per account, no `budget_conflict`) and `fundly_import_dataset` (no
   `only_one_budget_account` check).
-- `tests/database/`: **794 pgTAP assertions**, run in
+- `migrations/20261124010000_spaces.sql` (shared spaces C1.1): `spaces`,
+  `space_members`, a Personal space per user (id = user id), `space_id`,
+  `created_by` and `updated_by` on every record, per-space keys and rules, and
+  membership reads. `owner_id` stays, equal to `space_id`, for the live stream.
+- `migrations/20261124020000_space_write_api.sql` (C1.2): the write and
+  import RPCs work per space, with an optional `space_id`, role checks and
+  per-space locks ([WRITE_API.md](WRITE_API.md), Spaces).
+- `rollback/20261124_c1_rollback.sql`: **not a migration.** Restores the pre-C1
+  API and rules without touching data; rehearsed by
+  `tests/migration/c1_rollback_test.py`.
+- `tests/database/`: **940 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -60,13 +70,19 @@ cache; it does not change Fundly's Flutter dependencies.
 ```sh
 npx --yes supabase@3.2.0 db start
 npx --yes supabase@3.2.0 test db
-npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
+npx --yes supabase@3.2.0 db lint --schema public,fundly_private,fundly_access --fail-on warning
 python3 supabase/tests/concurrency/write_api_test.py
 python3 supabase/tests/concurrency/account_write_api_test.py
 python3 supabase/tests/concurrency/category_plan_write_api_test.py
 python3 supabase/tests/concurrency/sync_protocol_test.py
 python3 supabase/tests/concurrency/dataset_import_test.py
+python3 supabase/tests/concurrency/dataset_initialize_test.py
+python3 supabase/tests/concurrency/space_write_api_test.py
+python3 supabase/tests/client_contract_test.py
 python3 supabase/tests/performance/dataset_import_timing.py
+# These two RESET the local database (and leave it reset, fully migrated):
+python3 supabase/tests/migration/spaces_backfill_test.py
+python3 supabase/tests/migration/c1_rollback_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -96,17 +112,17 @@ To stop this local stack, use `npx --yes supabase@3.2.0 stop`.
 |---|---|
 | Tables | `custom_account_types`, `accounts`, `categories`, `transactions`, `monthly_plans`. No probe tables or derived balances. |
 | Shared identity | Explicit UUID `id`; no local auto-increment ID is treated as globally unique. Identity and owner cannot change after insertion. |
-| Ownership | Non-null `owner_id` references Supabase Auth; all financial references use owner-qualified foreign keys. |
-| Reads | Authenticated users see their own rows through RLS. Missing user claims see no rows. Anonymous reads are denied. |
+| Ownership | Every record has a non-null `space_id` (C1); all financial references use space-qualified foreign keys. `owner_id` stays equal to `space_id` while every space is Personal. |
+| Reads | Authenticated users see the rows of spaces they are members of through RLS (C1). Missing user claims see no rows. Anonymous reads are denied. |
 | Writes | Direct client INSERT, UPDATE, DELETE and TRUNCATE are denied. The RPC permits validated transaction/account/custom-type operations. Trusted backend access remains privileged; never ship that key to Flutter. |
 | Revisions | Trigger sets initial revision to 1 and increments on updates. Transaction update/delete RPCs require the exact expected revision. |
 | Audit metadata | `created_at` / `updated_at` are `timestamptz`. The transaction RPC supplies server time and preserves creation time on edits; clients cannot set audit fields. |
 | Money | PostgreSQL `bigint` minor units; PHP only. Asset/liability opening signs, positive transactions, and nonnegative plan amounts are enforced. No floating-point columns. |
-| Names | 1–40 characters; owner-scoped uniqueness folds ASCII A–Z only, matching SQLite NOCASE rather than a locale-dependent Unicode fold. |
-| Budget account | At most one per owner; active asset accounts only. Switching it atomically is an S2.2 operation. |
-| Plans | Unique per owner/category/month; nullable Target differs from zero. Archive/deleted flags and linked-plan shape are constrained. |
+| Names | 1–40 characters; space-scoped uniqueness folds ASCII A–Z only, matching SQLite NOCASE rather than a locale-dependent Unicode fold. |
+| Budget account | Any number per space since 2026-11-23; active asset accounts only. |
+| Plans | Unique per space/category/month; nullable Target differs from zero. Archive/deleted flags and linked-plan shape are constrained. |
 | Deletion | Transactions restrict account/category deletion; used custom types cannot be deleted. Deleting an unused category cascades plans. Deleting an unused linked account nulls only the category's link, preserving its owner and advancing its revision. |
-| Auth-user deletion | Restricted while Fundly records reference the user. Account deletion workflows are not implemented here. |
+| Auth-user deletion | Restricted while Fundly records reference the user; a user with none takes their Personal space and memberships with them (C1). Account deletion workflows are not implemented here. |
 
 Transaction row CHECKs enforce valid types and field combinations, different
 transfer endpoints, payee/note limits, and required spending/inflow payees.

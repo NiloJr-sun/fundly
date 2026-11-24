@@ -8,7 +8,7 @@ Run from the repository root against the LOCAL stack only:
 It RESETS the local database to the migration before C1.1, writes data through
 the current write API (several users, edits, a delete, receipts), snapshots
 every row, applies the remaining migrations, and compares. The local database
-is left fully migrated. With --verify-only it skips the reset and seed and
+is then reset (empty, fully migrated). With --verify-only it skips the reset and seed and
 checks an already migrated copy against a snapshot file (C1.3 rehearsal).
 """
 
@@ -158,8 +158,12 @@ def main():
     seed()
     before = snapshot(strip_new=False)
     supabase('migration', 'up')
-    verify(before)
-    print('All C1 backfill checks passed; the local database is fully migrated.')
+    try:
+        verify(before)
+    finally:
+        # Leave an empty, fully migrated database: other tests count rows.
+        supabase('db', 'reset')
+    print('All C1 backfill checks passed; the local database is reset and fully migrated.')
 
 
 if __name__ == '__main__':

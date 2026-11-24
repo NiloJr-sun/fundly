@@ -3,7 +3,7 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C1-1 to C1-6, all as
-recommended). **C1.1 done 2026-11-24**; C1.2 next. Slice C1 of
+recommended). **C1.1 and C1.2 done 2026-11-24**; C1.3 next. Slice C1 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after the C0 go
 ([findings](SHARED_SPACES_C0_FINDINGS.md)). The agent stops after each
 sub-slice and never commits or pushes. Production writes (`db push --remote`)
@@ -122,8 +122,11 @@ stream still uses `owner_id`, so PowerSync output is unchanged.
   **`space_id`** in their request. Without it (every app today), the server
   uses the caller's Personal space, creating it if needed. With it, the
   caller must be a member; writes need owner or editor; import, replace and
-  reset need owner. Other cases are refused with the existing `42501`
-  refusal, which the app already logs to Refused changes (C0 finding 3).
+  reset need owner. Other cases are refused with `P0001` `not_space_member`,
+  `space_read_only` or `space_owner_only`, final rejections that apps 1.2.x
+  already log in Refused changes and move past. (Not `42501`: apps treat it as
+  blocked, which would stall the queue and keep a removed member's space on
+  the device, C0 finding 3. Corrected during C1.2.)
 - Locks, revision conflicts, tombstones, `dataset.initialize` (default
   categories once per space), linked liability rows and import into an empty
   or replaced dataset all work per space.
@@ -199,7 +202,7 @@ Adjustments made while building (no decision changed):
 For C1.4: the runbook's lint command gains `fundly_access`, and its full
 local suite gains `spaces_backfill_test.py`.
 
-### C1.2: Write API per space (agent, local)
+### C1.2: Write API per space (agent, local) ✅ Done 2026-11-24
 
 A second migration rewriting the private functions to (space, actor), the
 optional `space_id`, role checks, per-space locks, tombstones and receipts,
@@ -212,6 +215,54 @@ memberships inserted directly in SQL (no member API until C2/C3); concurrency
 tests for two members writing one space; idempotent retries per sender. The
 client contract test (`client_contract_test.py`) and all existing tests pass
 **unchanged**, which shows apps 1.2.x are unaffected.
+
+**Result** (migration `supabase/migrations/20261124020000_space_write_api.sql`
+and `supabase/rollback/20261124_c1_rollback.sql`, local only):
+
+- The 17 private write functions take the space (a mechanical rename of each
+  current definition, `actor` → `space`, `owner_id` → `space_id`);
+  `retired_owner` became `retired_space`. The two RPCs resolve the space
+  (`space_id` or the caller's Personal space), take the space's lock, answer
+  retries from receipts, then check the role.
+- New `tests/database/space_write_api_test.sql`, 105 checks: all 21 write
+  operations by an editor in another user's space; the same 21 refused for a
+  viewer (`space_read_only`), an outsider and a removed member
+  (`not_space_member`) with nothing changed; a removed member's earlier batch
+  still answered from its receipt; placement and attribution (created by the
+  editor, last changed by the owner; the editor's receipt names the space);
+  retired IDs per space; missing, malformed and `null` `space_id`; imports
+  owner-only. With the viewer check disabled, 42 checks fail.
+- New `tests/concurrency/space_write_api_test.py`, 3 checks: an editor's write
+  waits for the owner's open write to the same space; two members editing one
+  revision: the second waits and conflicts; a write to another space does not
+  wait.
+- Rollback rehearsal `tests/migration/c1_rollback_test.py`: writes data
+  through the C1 API, runs the rollback in one transaction, finds every
+  existing value unchanged in all 8 tables, then all 7 pre-C1 pgTAP files and
+  7 pre-C1 Python suites pass on the rolled-back database.
+- Unchanged and passing: every earlier test (940 pgTAP in total, lint with
+  `fundly_access`, 7 concurrency suites, the client contract, import timing,
+  the backfill check) and the app (format, analyze, 1156 tests).
+- Docs: WRITE_API.md (a Spaces section and two error codes), IMPORT_API.md,
+  SYNC_PROTOCOL.md, ACCOUNT_API.md, PLANS_API.md, supabase/README.md.
+
+Adjustments made while building:
+
+1. **Refusals are `P0001`, not `42501`** (see Writes above).
+2. **Lock first, then create a missing Personal space.** Creating it before
+   the lock made a second simultaneous first write wait on the insert instead
+   of the advisory lock (two existing concurrency tests caught it).
+3. **Attribution by trigger.** The RPCs set a transaction-local
+   `fundly.actor`; the bridge trigger stamps `created_by` and `updated_by`, so
+   no insert or update statement changed. Clients cannot set it; it affects
+   only attribution, never permissions.
+4. **The rollback keeps import working**: the pre-C1 import function, with
+   its row column lists extended for the columns the rollback leaves in place.
+   The first rehearsal caught that the verbatim pre-C1 version fails.
+5. **Write results keep their shape** (whole rows, now with the three new
+   columns); apps ignore them.
+6. The backfill check now resets the local database when it finishes (other
+   tests count whole tables).
 
 ### C1.3: Rehearsal on a copy of production (owner and agent)
 

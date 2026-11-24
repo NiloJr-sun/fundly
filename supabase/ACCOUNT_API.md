@@ -2,8 +2,9 @@
 
 Implemented by `20261118030000_account_write_api.sql`, locally verified only.
 Use the same protocol-1 envelope and `fundly_apply_operations` RPC described in
-[WRITE_API.md](WRITE_API.md). Every operation inherits its authenticated owner,
-per-user transaction lock, atomic batch rollback, and durable success receipt.
+[WRITE_API.md](WRITE_API.md). Every operation inherits its target space (since
+shared spaces C1, "owner" below means that space), per-space transaction lock,
+role check, atomic batch rollback, and durable success receipt.
 Direct table writes and private-helper access remain denied.
 
 ## Operations

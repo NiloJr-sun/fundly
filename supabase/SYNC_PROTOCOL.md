@@ -46,7 +46,9 @@ offline client could otherwise revive a record.
 
 - Creating with a retired UUID (`*.create`, the `plan.save` create path,
   `account.create`'s `linked_category_id`): `record_deleted` for the same owner,
-  `record_id_unavailable` for another owner. Re-create with a fresh UUID.
+  `record_id_unavailable` for another owner. Since C1 "owner" means the
+  record's space: tombstones keep the space, and reuse inside that space is
+  `record_deleted`, anywhere else `record_id_unavailable`. Re-create with a fresh UUID.
 - Editing, deleting or changing the lifecycle of a retired record, or
   referencing one (transaction accounts/category, a plan's category, an
   account's custom type): `record_deleted` for the same owner. Other owners,
@@ -60,7 +62,7 @@ offline client could otherwise revive a record.
 | Accepted | Result returned | Complete the queue item; downloads confirm the rows. |
 | Transient | Network failure or timeout, HTTP 5xx, SQLSTATE `40001`, `40P01`, `55P03`, `57014`, `57P01`, `53xxx`, `08xxx`; expired session | Keep the item; retry the **same batch UUID and payload** with backoff; refresh an expired session first. |
 | Rejected (final) | `22023 invalid_request`; the `P0001` domain codes in the API documents; `record_deleted` | Store a local rejection (payload, code, detail, time), **then** complete the queue item so later writes continue, then restore server state for the affected rows. |
-| Blocked | `unsupported_operation` (server older than client), `batch_key_reused` (client bug), any unclassified error such as `42501` | Keep the item, retry slowly and show "sync is stuck". Never discard automatically; the user can export or discard explicitly. |
+| Blocked | `unsupported_operation` (server older than client), `batch_key_reused` (client bug), any unclassified error such as `42501`. Space refusals are therefore `P0001` (`not_space_member`, `space_read_only`, `space_owner_only`) and final, never `42501`: a blocked queue would also keep a removed member's space on the device (shared spaces C0, finding 3) | Keep the item, retry slowly and show "sync is stuck". Never discard automatically; the user can export or discard explicitly. |
 
 **No automatic merge.** `revision_conflict`, `plan_conflict`, `budget_conflict`
 and `record_deleted` are final rejections. The user sees "changed (or deleted)

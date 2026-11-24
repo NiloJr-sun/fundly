@@ -46,7 +46,8 @@ reference, but must still produce a valid transaction. Type cannot change.
 For transaction operations, allowed data keys are `type`, `amount_minor`, `currency_code`, `date`, `payee`,
 `note`, `category_id`, `source_account_id`, `destination_account_id`. Reject all
 other envelope, operation, and data keys, including owner, IDs inside data,
-revisions, and audit timestamps. The owner always comes from `auth.uid()`.
+revisions, and audit timestamps. The target space comes from the envelope's
+optional `space_id`, or is the caller's Personal space (see Spaces below).
 
 Limits: 1–100 ordered operations, at most 262144 bytes of canonical JSONB text.
 Transaction amounts and expected revisions are positive canonical decimal **strings** without
@@ -83,12 +84,36 @@ original result even if records have since changed or been deleted. That cached
 result is not necessarily the current row state; future clients must reconcile
 by revision and the synchronized dataset.
 
-Every batch holds a transaction-level advisory lock derived from the authenticated
-user, through commit/rollback. RPCs use PostgreSQL's default READ COMMITTED
+Every batch holds a transaction-level advisory lock derived from the target
+space (for a Personal space, the authenticated user's id), through commit/rollback. RPCs use PostgreSQL's default READ COMMITTED
 isolation with VOLATILE writes/queries, so a waiting request sees the preceding
 commit. Future domain operations must share this lock protocol. Direct admin
 writes outside the API are not covered by this serialization contract; row
 locks also protect referenced accounts/categories during validation and commit.
+
+## Spaces (shared spaces C1)
+
+Records belong to a **space**; users are members of spaces with a role
+(`owner`, `editor`, `viewer`). Every user has a **Personal** space whose id is
+their user id. Wherever these documents say "owner" or "the caller's", read
+"the target space's".
+
+- The envelope may carry an optional `space_id` (UUID string). Without it, the
+  batch goes to the caller's Personal space, which is what every app up to
+  1.2.1 sends. An explicit `null` or a malformed value is `invalid_request`.
+- The caller must be an owner or editor of the target space. Otherwise the
+  whole batch is refused with `P0001`:
+  - `not_space_member`: not, or no longer, a member (or no such space);
+  - `space_read_only`: a viewer.
+  These are final rejections (SYNC_PROTOCOL.md): apps 1.2.x log them in
+  Refused changes and continue.
+- A retried batch is answered from its receipt before the role check, so a
+  batch applied before a membership ended still returns its original result.
+- The advisory lock is per **space** (`'fundly:' || space_id`); for a Personal
+  space it is the same key as before C1. Receipts stay keyed by the sender and
+  record the space.
+- Each record stores `created_by` and `updated_by` (the sender). They are not
+  downloaded yet; results may include them, and clients ignore them.
 
 ## Errors
 
@@ -103,6 +128,8 @@ locks also protect referenced accounts/categories during validation and commit.
 | `P0001` | `invalid_transaction` | A financial/domain rule fails. |
 | `P0001` | `transaction_id_unavailable` | Create would reuse an existing UUID; no other owner's record details are returned. |
 | `P0001` | `batch_key_reused` | A committed key was used for another payload. |
+| `P0001` | `not_space_member` | The caller is not a member of the target space. |
+| `P0001` | `space_read_only` | The caller is a viewer of the target space. |
 
 Database availability/serialization failures can still occur; retry the whole
 request with the original key after transient errors. Do not silently retire a

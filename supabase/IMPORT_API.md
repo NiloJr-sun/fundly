@@ -27,8 +27,12 @@ their constraints are unchanged.
 select public.fundly_import_dataset(import_id uuid, request jsonb);
 ```
 
-It is open to `authenticated` users only, and imports into the caller's own
-dataset.
+It is open to `authenticated` users only. The request may carry an optional
+`space_id`; without it the import goes to the caller's Personal space (every
+app up to 1.2.1). Importing or replacing a space needs its **owner**:
+other callers are refused with `P0001` `not_space_member`, `space_read_only`
+(viewer) or `space_owner_only` (editor), after the receipt lookup. The lock
+and every count, delete and insert are per space (WRITE_API.md, Spaces).
 
 ```json
 {
