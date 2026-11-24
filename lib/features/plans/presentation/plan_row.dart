@@ -5,120 +5,187 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../domain/plan_summary.dart';
-import 'plan_editor_dialog.dart';
 
-/// One category's target, assigned, activity and available amounts, with its
-/// status.
-///
-/// [onEdit] edits the whole plan (`field` null) or one amount, and is `null`
-/// when showing read-only archived history.
-/// [onActivityTap] shows the transactions behind the activity amount.
-/// Available is derived, so it is not editable.
+/// Width of the Assigned and Available columns, shared by the rows and their
+/// group header so the amounts line up.
+const double planAmountColumnWidth = 112;
+
+/// One category's month in the compact Plans layout: its name, Assigned, and
+/// Available in a pill coloured by its status. Target and Activity are in the
+/// details opened by [onTap].
 class PlanRow extends StatelessWidget {
-  const PlanRow({
-    super.key,
-    required this.summary,
-    required this.onEdit,
-    required this.onActivityTap,
-    this.onArchive,
-  });
+  const PlanRow({super.key, required this.summary, required this.onTap});
 
   final CategoryPlanSummary summary;
-  final void Function(PlanAmountField? field)? onEdit;
-  final VoidCallback onActivityTap;
-  final VoidCallback? onArchive;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final category = summary.category;
-    final target = summary.target;
-    final status = summary.status;
-    final onEdit = this.onEdit;
-
     return InkWell(
-      onTap: onEdit == null ? null : () => onEdit(null),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: Spacing.md,
-          vertical: Spacing.sm,
+          vertical: Spacing.sm + Spacing.xs,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    category.isArchivedInPlans
-                        ? '${category.name} (archived)'
-                        : category.name,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                if (status != null) PlanStatusChip(status: status),
-                if (onArchive != null)
-                  PopupMenuButton<String>(
-                    tooltip: '${category.name} plan actions',
-                    onSelected: (_) => onArchive!(),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'archive',
-                        child: Text('Archive plan'),
-                      ),
-                    ],
-                  ),
-              ],
+            Expanded(
+              child: Text(
+                category.isArchivedInPlans
+                    ? '${category.name} (archived)'
+                    : category.name,
+                style: theme.textTheme.bodyLarge,
+              ),
             ),
-            const SizedBox(height: Spacing.xs),
-            Row(
-              children: [
-                _Amount(
-                  label: 'Target',
-                  value: MoneyFormatter.format(
-                    target ?? Money.zero(summary.assigned.currencyCode),
+            SizedBox(
+              width: planAmountColumnWidth,
+              child: _RightAligned(
+                Text(
+                  MoneyFormatter.format(summary.assigned),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  onTap: onEdit == null
-                      ? null
-                      : () => onEdit(PlanAmountField.target),
-                  tooltip: 'Edit ${category.name} target',
                 ),
-                _Amount(
-                  label: 'Assigned',
-                  value: MoneyFormatter.format(summary.assigned),
-                  color: summary.assigned.isZero
-                      ? AppColors.of(context).expense
-                      : switch (summary.isFunded) {
-                          false => AppColors.of(context).warning,
-                          true => AppColors.of(context).positive,
-                          null => theme.colorScheme.onSurface,
-                        },
-                  onTap: onEdit == null
-                      ? null
-                      : () => onEdit(PlanAmountField.assigned),
-                  tooltip: 'Edit ${category.name} assigned',
-                ),
-                _Amount(
-                  label: 'Activity',
-                  value: MoneyFormatter.format(summary.activity),
-                  onTap: onActivityTap,
-                  tooltip: 'Show ${category.name} transactions',
-                  underline: true,
-                ),
-                _Amount(
-                  label: 'Available',
-                  value: MoneyFormatter.format(summary.available),
-                  color: summary.available.isNegative
-                      ? AppColors.of(context).expense
-                      : null,
-                ),
-              ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            SizedBox(
+              width: planAmountColumnWidth,
+              child: _RightAligned(AvailablePill(summary: summary)),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// Available in a pill: green when the Target is funded, yellow when it is
+/// underfunded, red when overspent, and grey without a Target.
+class AvailablePill extends StatelessWidget {
+  const AvailablePill({super.key, required this.summary});
+
+  final CategoryPlanSummary summary;
+
+  /// The pill colour for [status], from the theme so every palette works.
+  static Color? colorFor(BuildContext context, PlanStatus? status) {
+    final colors = AppColors.of(context);
+    return switch (status) {
+      PlanStatus.funded => colors.positive,
+      PlanStatus.underfunded => colors.warning,
+      PlanStatus.overspent => colors.expense,
+      null => null,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = colorFor(context, summary.status);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color:
+            color?.withValues(alpha: 0.2) ??
+            theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(Spacing.lg),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.sm + Spacing.xs,
+          vertical: Spacing.xs,
+        ),
+        child: Text(
+          MoneyFormatter.format(summary.available),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: color ?? theme.colorScheme.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A Plans group's name with its Assigned and Available totals, lined up
+/// with the rows' columns.
+class PlanGroupHeader extends StatelessWidget {
+  const PlanGroupHeader({
+    super.key,
+    required this.label,
+    required this.assigned,
+    required this.available,
+  });
+
+  final String label;
+  final Money assigned;
+  final Money available;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget total(String name, Money amount) => SizedBox(
+      width: planAmountColumnWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            name,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          _RightAligned(
+            Text(
+              MoneyFormatter.format(amount),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: amount.isNegative ? AppColors.of(context).expense : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Row(
+      children: [
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(
+              label,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        total('Assigned', assigned),
+        const SizedBox(width: Spacing.sm),
+        total('Available', available),
+      ],
+    );
+  }
+}
+
+/// Right-aligns [child], shrinking it rather than overflowing on narrow
+/// phones or with large amounts.
+class _RightAligned extends StatelessWidget {
+  const _RightAligned(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.centerRight,
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: child,
+    ),
+  );
 }
 
 /// "Funded", "Underfunded" or "Overspent".
@@ -163,65 +230,6 @@ class PlanStatusChip extends StatelessWidget {
           style: theme.textTheme.labelMedium?.copyWith(color: foreground),
         ),
       ),
-    );
-  }
-}
-
-/// A small label above an amount, sharing the row's width equally.
-class _Amount extends StatelessWidget {
-  const _Amount({
-    required this.label,
-    required this.value,
-    this.color,
-    this.onTap,
-    this.tooltip,
-    this.underline = false,
-  });
-
-  final String label;
-  final String value;
-  final Color? color;
-  final VoidCallback? onTap;
-  final String? tooltip;
-
-  /// Underlines a value that opens another screen; editable values are only
-  /// tinted.
-  final bool underline;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final linked = onTap != null;
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        // Large amounts shrink rather than overflow on narrow phones.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: color ?? (linked ? theme.colorScheme.primary : null),
-              decoration: underline ? TextDecoration.underline : null,
-            ),
-          ),
-        ),
-      ],
-    );
-    return Expanded(
-      child: linked
-          ? Tooltip(
-              message: tooltip ?? label,
-              child: InkWell(onTap: onTap, child: content),
-            )
-          : content,
     );
   }
 }

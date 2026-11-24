@@ -9,8 +9,8 @@ import '../data/plan_repository.dart';
 import '../domain/plan_deletion.dart';
 import '../domain/plan_summary.dart';
 import 'plan_activity.dart';
+import 'plan_details.dart';
 import 'plan_month_bar.dart';
-import 'plan_row.dart';
 import 'plans_providers.dart';
 
 /// All archived Plans rows. The month selector allows browsing their history.
@@ -203,9 +203,11 @@ class _ArchivedPlanDetailScreenState
     return ListView(
       children: [
         const PlanMonthBar(),
-        PlanRow(
+        const SizedBox(height: Spacing.sm),
+        // Read-only history: every amount, with Activity linking to its
+        // transactions.
+        PlanDetails(
           summary: summary,
-          onEdit: null,
           onActivityTap: () => showPlanActivity(context, month, category),
         ),
         Padding(

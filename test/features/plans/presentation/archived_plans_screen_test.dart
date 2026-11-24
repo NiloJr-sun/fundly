@@ -66,7 +66,7 @@ void main() {
   }
 
   Future<void> openArchive(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Food plan actions'));
+    await tester.tap(find.text('Food'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Archive plan'));
     await tester.pumpAndSettle();

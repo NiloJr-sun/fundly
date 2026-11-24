@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
+import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../../core/time/clock_provider.dart';
 import '../../../core/widgets/centered_message.dart';
@@ -20,16 +21,18 @@ import '../domain/plan_summary.dart';
 import 'archive_plan.dart';
 import 'archived_plans_screen.dart';
 import 'plan_activity.dart';
+import 'plan_details.dart';
 import 'plan_editor_dialog.dart';
 import 'plan_month_bar.dart';
 import 'plan_row.dart';
 import 'plans_providers.dart';
 import 'ready_to_assign_card.dart';
 
-/// The Plans tab: target, assigned, activity, available and status per
-/// spending category for one month, in Spending, Savings and Liability
-/// sections, below the month's Ready to assign. Tap a row to edit its target and assigned amount, or tap either
-/// amount to edit just that one; tap Activity to see its transactions.
+/// The Plans tab: one month's Ready to assign, then a compact row per spending
+/// category (Assigned, and Available in a pill coloured by status) in
+/// collapsible Spending, Savings and Liability sections with their totals.
+/// Tap a row for its details: Target, Activity and status, editing, its
+/// transactions and archiving.
 class PlansScreen extends ConsumerStatefulWidget {
   const PlansScreen({super.key});
 
@@ -131,6 +134,26 @@ class _PlanList extends ConsumerWidget {
   final CalendarMonth month;
   final List<CategoryPlanSummary> rows;
 
+  List<CategoryPlanSummary> _rowsIn(PlanGroup group) => [
+    for (final row in rows)
+      if (row.category.planGroup == group) row,
+  ];
+
+  /// The group's name with the sums of its rows' Assigned and Available.
+  Widget _groupHeader(PlanGroup group) {
+    var assigned = const Money.zero(Account.defaultCurrency);
+    var available = const Money.zero(Account.defaultCurrency);
+    for (final row in _rowsIn(group)) {
+      assigned += row.assigned;
+      available += row.available;
+    }
+    return PlanGroupHeader(
+      label: planGroupLabel(group),
+      assigned: assigned,
+      available: available,
+    );
+  }
+
   Future<void> _edit(
     BuildContext context,
     WidgetRef ref,
@@ -169,6 +192,31 @@ class _PlanList extends ConsumerWidget {
     }
   }
 
+  Future<void> _openDetails(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryPlanSummary summary,
+  ) async {
+    final action = await showPlanDetailsSheet(
+      context,
+      summary: summary,
+      monthLabel: DateFormatter.monthYear(month.year, month.month),
+    );
+    if (action == null || !context.mounted) return;
+    switch (action) {
+      case PlanDetailsAction.editPlan:
+        await _edit(context, ref, summary, null);
+      case PlanDetailsAction.editTarget:
+        await _edit(context, ref, summary, PlanAmountField.target);
+      case PlanDetailsAction.editAssigned:
+        await _edit(context, ref, summary, PlanAmountField.assigned);
+      case PlanDetailsAction.showActivity:
+        showPlanActivity(context, month, summary.category);
+      case PlanDetailsAction.archive:
+        await archivePlan(context, ref, summary.category);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
@@ -194,27 +242,21 @@ class _PlanList extends ConsumerWidget {
                 controlAffinity: ListTileControlAffinity.leading,
                 shape: const Border(),
                 collapsedShape: const Border(),
-                tilePadding: const EdgeInsets.symmetric(horizontal: Spacing.sm),
-                expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-                title: Semantics(
-                  header: true,
-                  child: Text(
-                    planGroupLabel(group),
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
+                // The right edge matches the rows, so the totals line up.
+                tilePadding: const EdgeInsets.only(
+                  left: Spacing.sm,
+                  right: Spacing.md,
                 ),
+                expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                title: _groupHeader(group),
                 children: [
-                  for (final summary in rows)
-                    if (summary.category.planGroup == group)
-                      PlanRow(
-                        summary: summary,
-                        onEdit: (field) => _edit(context, ref, summary, field),
-                        onActivityTap: () =>
-                            showPlanActivity(context, month, summary.category),
-                        onArchive: () =>
-                            archivePlan(context, ref, summary.category),
-                      ),
+                  for (final (index, summary) in _rowsIn(group).indexed) ...[
+                    if (index > 0) const Divider(height: 1),
+                    PlanRow(
+                      summary: summary,
+                      onTap: () => _openDetails(context, ref, summary),
+                    ),
+                  ],
                 ],
               ),
             ),

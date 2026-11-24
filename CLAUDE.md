@@ -876,12 +876,27 @@ suggestions as approved decisions.
                           Target left empty       
                           stays a zero Target)    
 
-  2026-11-17              Plans: tap Target or    Confirmed
-                          Assigned to edit just   
-                          that amount, the row    
-                          to edit both, and       
-                          Activity to open that   
-                          month's transactions    
+  2026-11-17              Plans rows (compact,    Confirmed
+                          2026-11-25): name,
+                          Assigned and Available
+                          in a pill: green funded,
+                          yellow underfunded, red
+                          overspent, grey without
+                          a Target. Group headers
+                          total Assigned and
+                          Available. Tap a row
+                          for its details sheet:
+                          status, Target,
+                          Assigned, Activity and
+                          Available; tap Target
+                          or Assigned to edit
+                          just that amount, Edit
+                          plan for both, Activity
+                          or See transactions for
+                          that month's
+                          transactions, and
+                          Archive plan. Display
+                          only.
 
   2026-11-17              JSON backup export      Confirmed
                           (Phase 5 task 5.1):     

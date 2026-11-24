@@ -8,6 +8,7 @@ import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/presentation/plan_details.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
 import 'package:fundly/features/plans/presentation/ready_to_assign_card.dart';
@@ -113,28 +114,44 @@ void main() {
   Finder inRow(String name, String text) =>
       find.descendant(of: row(name), matching: find.text(text));
 
-  /// The value under [label] in [name]'s row, e.g. Target or Available.
-  String amount(WidgetTester tester, String name, String label) {
-    final column = find
-        .ancestor(of: inRow(name, label), matching: find.byType(Column))
-        .first;
-    final texts = tester
-        .widgetList<Text>(
-          find.descendant(of: column, matching: find.byType(Text)),
-        )
-        .map((text) => text.data)
-        .where((data) => data != label);
-    return texts.single!;
+  Finder inDetails(String text) =>
+      find.descendant(of: find.byType(PlanDetails), matching: find.text(text));
+
+  /// Taps [name]'s row, opening its details sheet.
+  Future<void> openDetails(WidgetTester tester, String name) async {
+    await tester.tap(inRow(name, name));
+    await tester.pumpAndSettle();
   }
 
-  ({String target, String assigned, String activity, String available}) amounts(
-    WidgetTester tester,
-    String name,
-  ) => (
-    target: amount(tester, name, 'Target'),
-    assigned: amount(tester, name, 'Assigned'),
-    activity: amount(tester, name, 'Activity'),
-    available: amount(tester, name, 'Available'),
+  /// The value beside [label] (Target, Assigned, Activity or Available) in
+  /// [name]'s details. Opens the row's sheet and closes it again, unless the
+  /// details are already shown (archived history).
+  Future<String> amount(WidgetTester tester, String name, String label) async {
+    final open = find.byType(PlanDetails).evaluate().isEmpty;
+    if (open) await openDetails(tester, name);
+    final line = find
+        .ancestor(of: inDetails(label), matching: find.byType(Row))
+        .first;
+    final value = tester
+        .widgetList<Text>(
+          find.descendant(of: line, matching: find.byType(Text)),
+        )
+        .map((text) => text.data)
+        .where((data) => data != label)
+        .single!;
+    if (open) {
+      Navigator.of(tester.element(find.byType(PlanDetails))).pop();
+      await tester.pumpAndSettle();
+    }
+    return value;
+  }
+
+  Future<({String target, String assigned, String activity, String available})>
+  amounts(WidgetTester tester, String name) async => (
+    target: await amount(tester, name, 'Target'),
+    assigned: await amount(tester, name, 'Assigned'),
+    activity: await amount(tester, name, 'Activity'),
+    available: await amount(tester, name, 'Available'),
   );
 
   group('rows', () {
@@ -260,7 +277,7 @@ void main() {
       expect(row('Food'), findsNothing);
       await tester.tap(find.text('Spending'));
       await tester.pumpAndSettle();
-      expect(amount(tester, 'Food', 'Target'), '₱2,000.00');
+      expect(await amount(tester, 'Food', 'Target'), '₱2,000.00');
     });
 
     testWidgets('a section with only Savings categories hides Spending', (
@@ -282,37 +299,128 @@ void main() {
       expect(find.text('Spending'), findsNothing);
     });
 
-    testWidgets('shows target, assigned, activity, available and status', (
-      tester,
-    ) async {
+    testWidgets('a row shows only Assigned and Available', (tester) async {
       await pumpScreen(
         tester,
         plans: [plan(foodId, 500000, assigned: 250000)],
         transactions: [saved(spending(amount: 120000))],
       );
 
-      expect(amounts(tester, 'Food'), (
+      expect(inRow('Food', '₱2,500.00'), findsOneWidget);
+      expect(
+        find.descendant(of: row('Food'), matching: find.byType(AvailablePill)),
+        findsOneWidget,
+      );
+      expect(inRow('Food', '₱1,300.00'), findsOneWidget);
+      for (final hidden in ['Target', '₱5,000.00', 'Activity', '₱1,200.00']) {
+        expect(inRow('Food', hidden), findsNothing, reason: hidden);
+      }
+      expect(inRow('Food', 'Underfunded'), findsNothing);
+    });
+
+    testWidgets('details show target, assigned, activity, available and '
+        'status', (tester) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000, assigned: 250000)],
+        transactions: [saved(spending(amount: 120000))],
+      );
+
+      expect(await amounts(tester, 'Food'), (
         target: '₱5,000.00',
         assigned: '₱2,500.00',
         activity: '₱1,200.00',
         available: '₱1,300.00',
       ));
-      expect(inRow('Food', 'Underfunded'), findsOneWidget);
+      await openDetails(tester, 'Food');
+      expect(inDetails('Underfunded'), findsOneWidget);
+      expect(find.text('November 2026'), findsNWidgets(2));
     });
 
     testWidgets('funded when assigned covers the target', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000)]);
 
-      expect(inRow('Food', 'Funded'), findsOneWidget);
+      await openDetails(tester, 'Food');
+      expect(inDetails('Funded'), findsOneWidget);
     });
 
     testWidgets('no target: displays zero and no status', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, null, assigned: 100000)]);
 
-      expect(amount(tester, 'Food', 'Target'), '₱0.00');
-      expect(amount(tester, 'Food', 'Available'), '₱1,000.00');
-      expect(inRow('Food', 'Funded'), findsNothing);
-      expect(inRow('Food', 'Underfunded'), findsNothing);
+      expect(await amount(tester, 'Food', 'Target'), '₱0.00');
+      expect(await amount(tester, 'Food', 'Available'), '₱1,000.00');
+      await openDetails(tester, 'Food');
+      expect(inDetails('Funded'), findsNothing);
+      expect(inDetails('Underfunded'), findsNothing);
+    });
+
+    group('the Available pill', () {
+      final foodPill = find.descendant(
+        of: row('Food'),
+        matching: find.byType(AvailablePill),
+      );
+
+      Color? pillText(WidgetTester tester, String available) => tester
+          .widget<Text>(
+            find.descendant(of: foodPill, matching: find.text(available)),
+          )
+          .style
+          ?.color;
+
+      Color? pillBackground(WidgetTester tester) =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find.descendant(
+                          of: foodPill,
+                          matching: find.byType(DecoratedBox),
+                        ),
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color;
+
+      AppColors colors(WidgetTester tester) =>
+          AppColors.of(tester.element(row('Food')));
+
+      testWidgets('is green when the Target is funded', (tester) async {
+        await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+        expect(pillText(tester, '₱5,000.00'), colors(tester).positive);
+        expect(
+          pillBackground(tester),
+          colors(tester).positive.withValues(alpha: 0.2),
+        );
+      });
+
+      testWidgets('is green at zero once funded and spent', (tester) async {
+        await pumpScreen(
+          tester,
+          plans: [plan(foodId, 500000)],
+          transactions: [saved(spending(amount: 500000))],
+        );
+
+        expect(pillText(tester, '₱0.00'), colors(tester).positive);
+      });
+
+      testWidgets('is yellow when the Target is underfunded', (tester) async {
+        await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 1000)]);
+
+        expect(pillText(tester, '₱10.00'), colors(tester).warning);
+      });
+
+      testWidgets('is red when overspent', (tester) async {
+        await pumpScreen(tester, transactions: [saved(spending(amount: 8000))]);
+
+        expect(pillText(tester, '-₱80.00'), colors(tester).expense);
+      });
+
+      testWidgets('is grey without a Target', (tester) async {
+        await pumpScreen(tester, plans: [plan(foodId, null, assigned: 1000)]);
+        final scheme = Theme.of(tester.element(row('Food'))).colorScheme;
+
+        expect(pillText(tester, '₱10.00'), scheme.onSurface);
+        expect(pillBackground(tester), scheme.surfaceContainerHighest);
+      });
     });
 
     testWidgets('spending with nothing assigned shows a red available', (
@@ -320,16 +428,17 @@ void main() {
     ) async {
       await pumpScreen(tester, transactions: [saved(spending(amount: 8000))]);
 
-      expect(amounts(tester, 'Food'), (
+      expect(await amounts(tester, 'Food'), (
         target: '₱0.00',
         assigned: '₱0.00',
         activity: '₱80.00',
         available: '-₱80.00',
       ));
-      final available = tester.widget<Text>(inRow('Food', '-₱80.00'));
-      final context = tester.element(row('Food'));
+      await openDetails(tester, 'Food');
+      final available = tester.widget<Text>(inDetails('-₱80.00'));
+      final context = tester.element(find.byType(PlanDetails));
       expect(available.style?.color, AppColors.of(context).expense);
-      expect(inRow('Food', 'Overspent'), findsOneWidget);
+      expect(inDetails('Overspent'), findsOneWidget);
     });
 
     testWidgets('overspent replaces funded, in the error colours', (
@@ -341,27 +450,81 @@ void main() {
         transactions: [saved(spending(amount: 600000))],
       );
 
-      expect(inRow('Food', 'Overspent'), findsOneWidget);
-      expect(inRow('Food', 'Funded'), findsNothing);
-      final colors = Theme.of(tester.element(row('Food'))).colorScheme;
+      await openDetails(tester, 'Food');
+      expect(inDetails('Overspent'), findsOneWidget);
+      expect(inDetails('Funded'), findsNothing);
+      final details = tester.element(find.byType(PlanDetails));
+      final colors = Theme.of(details).colorScheme;
       final chip = tester.widget<DecoratedBox>(
         find
             .ancestor(
-              of: inRow('Food', 'Overspent'),
+              of: inDetails('Overspent'),
               matching: find.byType(DecoratedBox),
             )
             .first,
       );
       expect((chip.decoration as BoxDecoration).color, colors.errorContainer);
       expect(
-        tester.widget<Text>(inRow('Food', 'Overspent')).style?.color,
+        tester.widget<Text>(inDetails('Overspent')).style?.color,
         colors.onErrorContainer,
       );
-      final assigned = tester.widget<Text>(inRow('Food', '₱5,000.00').at(1));
-      expect(
-        assigned.style?.color,
-        AppColors.of(tester.element(row('Food'))).positive,
+      // Target and Assigned are both PHP 5,000; Assigned is the second.
+      final assigned = tester.widget<Text>(inDetails('₱5,000.00').at(1));
+      expect(assigned.style?.color, AppColors.of(details).positive);
+    });
+
+    testWidgets('group headers total Assigned and Available', (tester) async {
+      await pumpScreen(
+        tester,
+        plans: [
+          plan(foodId, 500000, assigned: 300000),
+          plan(transportId, 100000, assigned: 100000),
+        ],
+        transactions: [saved(spending(amount: 450000))],
       );
+
+      final header = find.byType(PlanGroupHeader);
+      expect(
+        find.descendant(of: header, matching: find.text('₱4,000.00')),
+        findsOneWidget,
+      );
+      // Food is PHP 1,500 overspent and Transport has PHP 1,000 left.
+      final available = find.descendant(
+        of: header,
+        matching: find.text('-₱500.00'),
+      );
+      expect(available, findsOneWidget);
+      expect(
+        tester.widget<Text>(available).style?.color,
+        AppColors.of(tester.element(header)).expense,
+      );
+    });
+
+    group('the details sheet', () {
+      testWidgets('See transactions opens the month for the category', (
+        tester,
+      ) async {
+        await pumpScreen(tester);
+
+        await openDetails(tester, 'Food');
+        await tester.tap(find.text('See transactions'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AllTransactionsScreen), findsOneWidget);
+        expect(find.text('Nov 1, 2026 – Nov 30, 2026'), findsOneWidget);
+      });
+
+      testWidgets('dismissing it changes nothing', (tester) async {
+        await pumpScreen(tester);
+
+        await openDetails(tester, 'Food');
+        Navigator.of(tester.element(find.byType(PlanDetails))).pop();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PlanDetails), findsNothing);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(repository.saved, isEmpty);
+      });
     });
 
     testWidgets('transfers and card payments are not activity', (tester) async {
@@ -375,7 +538,7 @@ void main() {
         ],
       );
 
-      expect(amount(tester, 'Food', 'Activity'), '₱1,000.00');
+      expect(await amount(tester, 'Food', 'Activity'), '₱1,000.00');
     });
 
     testWidgets('an archived category with spending moves to the archive', (
@@ -391,7 +554,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Gifts'));
       await tester.pumpAndSettle();
-      expect(row('Gifts (archived)'), findsOneWidget);
+      expect(inDetails('Gifts (archived)'), findsOneWidget);
       await tester.tap(find.text('Gifts (archived)'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
@@ -412,7 +575,9 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      expect(inRow('Food', 'Overspent'), findsOneWidget);
+      await openDetails(tester, 'Food');
+      expect(tester.takeException(), isNull);
+      expect(inDetails('Overspent'), findsOneWidget);
     });
 
     testWidgets('shows an empty state without spending categories', (
@@ -439,13 +604,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('October 2026'), findsOneWidget);
-      expect(amount(tester, 'Food', 'Target'), '₱3,000.00');
+      expect(await amount(tester, 'Food', 'Target'), '₱3,000.00');
 
       await tester.tap(find.text('This month'));
       await tester.pumpAndSettle();
 
       expect(find.text('November 2026'), findsOneWidget);
-      expect(amount(tester, 'Food', 'Target'), '₱5,000.00');
+      expect(await amount(tester, 'Food', 'Target'), '₱5,000.00');
     });
 
     testWidgets('next month crosses the year', (tester) async {
@@ -483,6 +648,7 @@ void main() {
         ],
       );
 
+      await openDetails(tester, 'Food');
       await tester.tap(find.byTooltip('Show Food transactions'));
       await tester.pumpAndSettle();
 
@@ -825,7 +991,8 @@ void main() {
 
   group('editing the plan', () {
     Future<void> openDialog(WidgetTester tester, String name) async {
-      await tester.tap(find.text(name));
+      await openDetails(tester, name);
+      await tester.tap(find.text('Edit plan'));
       await tester.pumpAndSettle();
     }
 
@@ -891,6 +1058,7 @@ void main() {
     ) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 0)]);
 
+      await openDetails(tester, 'Food');
       await tester.tap(find.byTooltip('Edit Food assigned'));
       await tester.pumpAndSettle();
 
@@ -919,6 +1087,7 @@ void main() {
       ) async {
         await pumpScreen(tester, plans: [plan(foodId, 0, assigned: 0)]);
 
+        await openDetails(tester, 'Food');
         await tester.tap(find.byTooltip('Edit Food target'));
         await tester.pumpAndSettle();
         expect(targetField(tester).controller!.text, isEmpty);
@@ -933,6 +1102,7 @@ void main() {
       testWidgets('typing replaces it directly', (tester) async {
         await pumpScreen(tester, plans: [plan(foodId, 0, assigned: 0)]);
 
+        await openDetails(tester, 'Food');
         await tester.tap(find.byTooltip('Edit Food target'));
         await tester.pumpAndSettle();
         await tester.enterText(field('Target'), '1,500');
@@ -974,6 +1144,7 @@ void main() {
     testWidgets('tapping Target edits only the target', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
 
+      await openDetails(tester, 'Food');
       await tester.tap(find.byTooltip('Edit Food target'));
       await tester.pumpAndSettle();
       expect(field('Target'), findsOneWidget);
@@ -997,6 +1168,7 @@ void main() {
     ) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
 
+      await openDetails(tester, 'Food');
       await tester.tap(find.byTooltip('Edit Food assigned'));
       await tester.pumpAndSettle();
       expect(field('Assigned'), findsOneWidget);
@@ -1017,6 +1189,7 @@ void main() {
     testWidgets('editing one amount keeps having no target', (tester) async {
       await pumpScreen(tester);
 
+      await openDetails(tester, 'Food');
       await tester.tap(find.byTooltip('Edit Food assigned'));
       await tester.pumpAndSettle();
       await tester.enterText(field('Assigned'), '100');
@@ -1053,7 +1226,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Gifts'));
       await tester.pumpAndSettle();
-      expect(amount(tester, 'Gifts (archived)', 'Assigned'), '₱2,000.00');
+      expect(await amount(tester, 'Gifts (archived)', 'Assigned'), '₱2,000.00');
       expect(find.byTooltip('Edit Gifts assigned'), findsNothing);
       expect(find.text('Unarchive plan'), findsOneWidget);
     });

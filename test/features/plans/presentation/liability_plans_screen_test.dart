@@ -45,6 +45,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Liability'), findsOneWidget);
       expect(find.widgetWithText(PlanRow, 'RCBC Credit'), findsOneWidget);
+      await tester.tap(find.text('RCBC Credit'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Edit RCBC Credit assigned'));
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -55,6 +57,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(repository.saved.single.categoryId, debt.id);
       expect(repository.saved.single.assigned, php(50000));
+      await tester.tap(find.text('RCBC Credit'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Show RCBC Credit transactions'));
       await tester.pumpAndSettle();
       expect(find.byType(AllTransactionsScreen), findsOneWidget);
