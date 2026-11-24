@@ -323,7 +323,9 @@ them:
     is done: go, 2026-11-24, per
     [docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md).
     C1, the server moving to spaces, is deployed (2026-11-24), per
-    [docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md).)
+    [docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md). C2,
+    private spaces, is released as app 1.3.0, per
+    [docs/SHARED_SPACES_C2_PLAN.md](docs/SHARED_SPACES_C2_PLAN.md).)
 -   Cloud sync and account registration. (Delivered 2026-11-23: Google
     sign-in and cloud sync, released as app 1.2.0 after the S7.2 release
     checklist passed. Deploying, rollback and backups:
@@ -540,9 +542,12 @@ F.1 (refused delete cards name the record) is live as 1.2.1. Shared spaces
 slice C0, the sync prototype, is done with a go
 ([docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md)), and
 C1 is deployed: the server keeps records per space, every user has a Personal
-space, and the app is unchanged
-([docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md)). Approved
-next: planning shared spaces slice C2, only when the product owner asks
+space ([docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md)). C2,
+private spaces, is released as app **1.3.0 (5)** (2026-11-24): users create,
+rename and switch spaces, one device store per space
+([docs/SHARED_SPACES_C2_PLAN.md](docs/SHARED_SPACES_C2_PLAN.md)). The minimum
+supported app version stays 1.2.0. Approved next: planning shared spaces slice
+C3 (sharing), only when the product owner asks
 ([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
 of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the
 product owner must approve any next step before work starts.
@@ -1347,5 +1352,30 @@ suggestions as approved decisions.
                           production; checked on
                           iPhone and Chrome with
                           1.2.1.
+
+  2026-11-24              Shared spaces C2        Confirmed
+                          (private spaces)
+                          released as 1.3.0 (5):
+                          create, rename and
+                          switch spaces from the
+                          Profile card (option
+                          A); one device store
+                          per space; opt-in
+                          streams fundly_spaces
+                          and fundly_space_data,
+                          with fundly_user_data
+                          kept for apps 1.2.x
+                          (owner_id only on
+                          Personal records);
+                          space name on Spending
+                          and Plans with several
+                          spaces; backup, restore
+                          and reset per space;
+                          device copy into
+                          Personal only; at most
+                          10 owned spaces; online
+                          only. Minimum app stays
+                          1.2.0. Deleting spaces
+                          comes with C3.
 
   -----------------------------------------------------------------------

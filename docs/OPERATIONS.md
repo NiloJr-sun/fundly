@@ -38,7 +38,10 @@ CLI v3 targets the **local** stack unless `--remote` is given.
   its own approved plan, a new minimum app version, and every device updated
   first.
 - There is no forced-update check in the app (S7 Decision 3). The version on
-  Profile ("Version 1.2.0 (3)") is how to tell what each device runs.
+  Profile ("Version 1.3.0 (5)") is how to tell what each device runs.
+- Apps 1.2.x keep working on Personal only: the automatic stream
+  `fundly_user_data` stays, and `owner_id` is set only on Personal records
+  (shared spaces C2). Removing either is a breaking change.
 
 ## Releasing a change
 
@@ -52,7 +55,8 @@ When a change touches more than one part, deploy in this order:
    sends writes relying on them; otherwise those writes are refused and land
    in Refused changes.
 3. **PowerSync config**, if `sync-config.yaml` changed.
-4. **Web**, by pushing `main`.
+4. **Web**, by pushing `main`. Every push to `main` deploys the web, so push
+   app changes only once the server and sync steps above are live.
 5. **iOS**, by installing the release build.
 
 A change with no migration skips straight to step 4 or 5.
@@ -129,8 +133,12 @@ npx --yes supabase@3.2.0 db advisors --remote
 2. Do not use **Reconfigure Tables**; it added extra tables to the publication
    in 2026-11. The publication is managed only by `powersync/publication.sql`
    and must list exactly `accounts`, `categories`, `custom_account_types`,
-   `monthly_plans` and `transactions`.
-3. Rerun the isolation checks (below).
+   `monthly_plans`, `transactions`, `spaces` and `space_members` (the last two
+   since shared spaces C2).
+3. Before deploying a sync change, rehearse it with local sync
+   (`tool/sync_probe/cloud/fundly-local/`), which runs this exact file.
+4. Rerun the isolation checks (below), including
+   `tool/sync_probe/test/c2_space_streams_test.dart`.
 
 ### Web (Vercel)
 

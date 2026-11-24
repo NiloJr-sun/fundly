@@ -3,7 +3,8 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C2-1 to C2-10, all as
-recommended). **C2.1–C2.3 done 2026-11-24**; C2.4 (release 1.3.0) next. Slice C2 of
+recommended). **Complete 2026-11-24: released as 1.3.0 (5)**; results in
+[RELEASE_CHECKLIST_1.3.0.md](RELEASE_CHECKLIST_1.3.0.md). Slice C2 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C0 (go) and C1
 (deployed). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner.
@@ -276,7 +277,7 @@ on backup and reset. Widget tests for the sheet, dialogs and headers.
   production store is untouched); reinstall a release build there before
   using it against production again.
 
-### C2.4: Release 1.3.0 (owner and agent)
+### C2.4: Release 1.3.0 (owner and agent) ✅ Done 2026-11-24
 
 Version bump; full local suite; deploy per the runbook (backups, migration,
 publication and grants, PowerSync config, web, iOS); release checklist rows

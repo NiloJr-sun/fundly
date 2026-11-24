@@ -5,7 +5,8 @@ Date: 2026-11-22
 Status: **approved 2026-11-22** (scope change and Decisions 1–10, all as
 recommended). Recorded in CLAUDE.md §6 and §11. **C0 done 2026-11-24: go**
 ([findings](SHARED_SPACES_C0_FINDINGS.md)); **C1 deployed 2026-11-24**
-([plan and results](SHARED_SPACES_C1_PLAN.md)); C2 is next to plan. Each slice is
+([plan and results](SHARED_SPACES_C1_PLAN.md)); **C2 released as 1.3.0
+2026-11-24** ([plan](SHARED_SPACES_C2_PLAN.md)); C3 is next to plan. Each slice is
 planned in detail and approved before implementation.
 
 ## Goal

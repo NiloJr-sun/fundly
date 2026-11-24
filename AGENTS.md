@@ -156,7 +156,12 @@ simulator build for anything that changes app code. macOS has no
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run
   `python3 supabase/tests/client_contract_test.py` (local Supabase).
-- **Approved next:** planning shared spaces C2, when the product owner asks.
+- **Approved next:** planning shared spaces C3 (sharing), when the product
+  owner asks. C2 (private spaces) is released as 1.3.0 (5): one device store
+  per space (`lib/features/spaces/`), opt-in streams `fundly_spaces` and
+  `fundly_space_data`, `owner_id` only on Personal records for apps 1.2.x;
+  local sync for development in `tool/sync_probe/cloud/fundly-local/` and
+  `tool/dev/`.
   F.1 is live as 1.2.1 (4); C0 (sync prototype) is done with a go
   (`docs/SHARED_SPACES_C0_FINDINGS.md`); C1 is deployed: server records are per
   space (`space_id`, Personal space id = user id, `owner_id` kept equal until

@@ -1,7 +1,9 @@
 # Fundly 1.3.0 release checklist (shared spaces C2.4)
 
-Status: **proposed, awaiting the owner's approval.** Nothing in production has
-changed yet. Release of private spaces ([plan](SHARED_SPACES_C2_PLAN.md)):
+Status: **signed off 2026-11-24** after every row passed. Part A and row 8 were carried out outside
+this checklist's order by another session (stopped by the owner at about
+14:10); the agent then verified them read-only and with the hosted checks, and
+drives the rest. See "Results" at the end. Release of private spaces ([plan](SHARED_SPACES_C2_PLAN.md)):
 server migration `20261124030000_private_spaces.sql`, publication with seven
 tables, the two opt-in streams, then app 1.3.0 (5) on the web and the iPhone.
 Follows [OPERATIONS.md](OPERATIONS.md); the agent never commits, pushes or
@@ -70,3 +72,27 @@ publication is seven tables, minimum version stays 1.2.0).
 - iPhone: reinstall 1.2.1 from `~/fundly-releases/1.2.1-4/`. Its local
   database is now synced schema v3, which 1.2.1 cannot open: delete the app,
   install 1.2.1, sign in (signed-in data downloads again).
+
+## Results
+
+| # | Result |
+|---|---|
+| 0 | **No C2 backup was taken before the push.** Instead, read-only comparison (14:10): every Personal record on production (14 accounts, 35 categories, 34 transactions, 14 plans; ids and revisions) is identical to the owner's C1 dump of 10:43 (`~/fundly-backups/2026-11-24-c1/`), so that dump holds the pre-C2 records. The iPhone export comes before Part C |
+| 1–2 | Migration `20261124030000_private_spaces.sql` applied (pushed outside this checklist); dry run "up to date"; `db lint` (3 schemas) clean; advisors: the 3 known warnings plus the 2 intended ones (`fundly_create_space`, `fundly_rename_space`) |
+| 3 | Every pre-existing record still has `owner_id` (Personal); replication role `powersync_…` can read `spaces` |
+| 4 | Publication lists exactly the seven tables |
+| 5 | PowerSync config with `fundly_spaces` and `fundly_space_data` deployed (shown by row 6) |
+| 6 | Hosted, 14:05: `api_isolation.py` 15/15; `fundly_stream_test.dart` (old stream: Personal only) pass; **`c2_space_streams_test.dart` pass: first hosted proof of per-space streams**, including a non-member getting nothing |
+| 8 | Pushed with the release commit; Vercel served 1.3.0 (5) from 13:54 |
+| 9–11 (partly) | Account A has a space "Household" created at 14:04 with its own 9 default categories, so 1.3.0 created a space on production and the new streams delivered it |
+| 7 | Passed on the iPhone and Chrome, but **the iPhone already ran 1.3.0** (installed by the other session), so 1.2.1 was not checked on a device. Old-app behaviour is covered by the hosted `fundly_stream_test.dart` (the automatic stream, as 1.2.x uses it, carries exactly Personal); no device runs 1.2.1 any more |
+| 9 | Chrome (A) on 1.3.0 (5): space row, same data and balances, "Up to date" |
+| 10–11 | Not run with account B: the remaining space rows used A's "Household" instead (owner's choice), since it already existed |
+| 12–13 | iPhone and Chrome (A): an account and a transaction added in Household appear only in Household, never in Personal; Spending and Plans name the space; a rename on the iPhone reached Chrome |
+| 14 | Agent copied the iPhone's data to `~/Downloads/fundly-iphone-backup-1.3.0-2026-11-24/` (mode 700): integrity ok; Personal 7 accounts, 17 transactions, nothing waiting; Household its 9 default categories |
+| 15 | Already installed by the other session: `devicectl` reports 1.3.0 (5); build `~/fundly-releases/1.3.0-5/` made at 13:29 from the release code (after the last app commit, with the version bump) |
+| 16 | iPhone: 1.3.0 (5), Personal · Owner, same accounts, transactions and balances, "Up to date"; a transaction created, edited and deleted, each seen in Chrome |
+
+**Signed off 2026-11-24.** Shared spaces C2 (private spaces) is released as
+1.3.0 (5). Follow-up: a pre-deploy dump is part of the runbook and was missed
+this time; the next release takes it before any `db push`.
