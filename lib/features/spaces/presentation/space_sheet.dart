@@ -5,11 +5,13 @@ import '../../../app/theme/spacing.dart';
 import '../data/active_space.dart';
 import '../data/space_directory.dart';
 import '../domain/space.dart';
+import 'space_actions.dart';
 import 'space_name_dialog.dart';
 import 'space_providers.dart';
 
-/// The user's spaces: tap one to switch, rename it (owners), or create a new
-/// one (shared spaces C2, option A). Opened from the Profile card.
+/// The user's spaces: tap one to switch, or create a new one (shared spaces
+/// C2, option A); each row's ⋮ menu has Members, Invite, Rename, Leave and
+/// Delete as the role allows (C3). Opened from the Profile card.
 Future<void> showSpaceSheet(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
@@ -83,13 +85,7 @@ class SpaceSheet extends ConsumerWidget {
                       : roleLabel(space.role),
                 ),
                 selected: space.id == activeId,
-                trailing: space.canRename
-                    ? IconButton(
-                        tooltip: 'Rename ${space.name}',
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => renameSpace(context, space),
-                      )
-                    : null,
+                trailing: SpaceActionsButton(space: space),
                 onTap: () => choose(space),
               ),
             const Divider(),

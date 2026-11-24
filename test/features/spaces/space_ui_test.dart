@@ -142,8 +142,8 @@ void main() {
       expect(find.text('Business'), findsOneWidget);
       expect(find.text('Editor'), findsOneWidget);
       expect(find.text('Create space'), findsOneWidget);
-      expect(find.byTooltip('Rename Business'), findsOneWidget);
-      expect(find.byTooltip('Rename Household'), findsNothing);
+      expect(find.byTooltip('Actions for Business'), findsOneWidget);
+      expect(find.byTooltip('Actions for Household'), findsOneWidget);
     });
 
     testWidgets('tapping a space switches to it and remembers it', (
@@ -251,7 +251,9 @@ void main() {
       await pump(tester, const ProfileScreen());
       await tester.tap(find.byKey(const Key('space-switcher')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Rename Business'));
+      await tester.tap(find.byTooltip('Actions for Business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
       await tester.pumpAndSettle();
 
       expect(find.text('Rename space'), findsOneWidget);
@@ -268,7 +270,9 @@ void main() {
       await pump(tester, const ProfileScreen());
       await tester.tap(find.byKey(const Key('space-switcher')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Rename Business'));
+      await tester.tap(find.byTooltip('Actions for Business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Shop');
       await tester.tap(find.text('Save'));
