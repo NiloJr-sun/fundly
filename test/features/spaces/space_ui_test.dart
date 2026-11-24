@@ -390,6 +390,16 @@ void main() {
       expect(find.byType(BottomSheet), findsOneWidget);
     });
 
+    testWidgets('sentences name the space without the role', (tester) async {
+      await pumpIn(sharedWithMe, tester, const ProfileScreen());
+      await tester.scrollUntilVisible(find.text('Reset all data'), 100);
+      expect(find.text('Delete every record in Family'), findsOneWidget);
+      expect(
+        find.textContaining('every record in Family · Viewer'),
+        findsNothing,
+      );
+    });
+
     for (final (space, shown) in [
       (sharedWithMe, 'Family · Viewer'),
       (household, 'Household · Editor'),

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'space_providers.dart';
 
 /// A tab's app bar title, with the active space's name under it when the user
-/// has more than one space (shared spaces C2, Decision C2-7).
+/// has more than one space (shared spaces C2, Decision C2-7), and the role in
+/// a space the user does not own (C3).
 class ScreenTitle extends ConsumerWidget {
   const ScreenTitle(this.title, {super.key});
 
@@ -12,7 +13,7 @@ class ScreenTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final space = ref.watch(shownSpaceNameProvider);
+    final space = ref.watch(shownSpaceTitleProvider);
     if (space == null) return Text(title);
     final theme = Theme.of(context);
     return Column(
