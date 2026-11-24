@@ -113,6 +113,14 @@ void main() {
       try {
         final personal = await open(identity.userId);
         final second = await open(spaceId);
+        // A brand-new user's Personal gets its defaults the same way.
+        await _until(
+          () async =>
+              (await local(personal)).length ==
+                  (await server(identity.userId)).length &&
+              (await server(identity.userId)).isNotEmpty,
+          'Personal matches the server',
+        );
         expect(await local(personal), await server(identity.userId));
         // A new space gets its default categories just after its first
         // download (queued by the store, then uploaded), as Personal does on

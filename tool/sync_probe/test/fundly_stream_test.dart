@@ -119,8 +119,15 @@ class _User {
     },
   );
 
+  /// The user's Personal records: what the automatic stream carries. Since
+  /// shared spaces C2 a user can read other spaces' records too, which only
+  /// the opt-in streams deliver.
   Future<Set<String>> serverIds(String table) async => {
-    for (final row in await client.from(table).select('id'))
+    for (final row
+        in await client
+            .from(table)
+            .select('id')
+            .eq('space_id', client.auth.currentUser!.id))
       row['id'] as String,
   };
 }
