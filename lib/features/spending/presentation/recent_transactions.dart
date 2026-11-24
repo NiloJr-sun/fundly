@@ -63,11 +63,25 @@ class RecentTransactions extends ConsumerWidget {
             ),
           ),
           // The repository returns newest first.
-          AsyncData(value: final list) => Column(
-            children: [
-              for (final transaction in list.take(recentTransactionCount))
-                TransactionTile(transaction: transaction),
-            ],
+          AsyncData(value: final list) => Card.outlined(
+            margin: EdgeInsets.zero,
+            color: Theme.of(context).cardTheme.color,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+              child: Column(
+                children: [
+                  for (final transaction in list.take(recentTransactionCount))
+                    TransactionTile(transaction: transaction, boxedIcon: true),
+                ],
+              ),
+            ),
           ),
           AsyncError() => const Padding(
             padding: EdgeInsets.symmetric(vertical: Spacing.sm),

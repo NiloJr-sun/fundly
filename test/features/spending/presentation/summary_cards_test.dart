@@ -13,8 +13,12 @@ import '../../../helpers/provider_overrides.dart';
 import '../../transactions/domain/transaction_fixtures.dart';
 
 /// Finds [text] inside a summary card, ignoring the recent transactions list.
-Finder inCard(String text) =>
-    find.descendant(of: find.byType(Card), matching: find.text(text));
+Finder inCard(String text) => find.descendant(
+  of: find.byWidgetPredicate(
+    (widget) => widget is BalanceSummaryCards || widget is PeriodTotalsCards,
+  ),
+  matching: find.text(text),
+);
 
 void main() {
   Account withOpening(String id, int openingMinor) =>

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/app/theme/app_colors.dart';
+import 'package:fundly/app/theme/app_palette.dart';
 import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/date_range.dart';
 import 'package:fundly/features/spending/presentation/recent_transactions.dart';
 import 'package:fundly/features/spending/presentation/spending_providers.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'package:fundly/features/transactions/presentation/all_transactions_screen.dart';
 import 'package:fundly/features/transactions/presentation/transaction_detail_screen.dart';
 import 'package:fundly/features/transactions/presentation/transaction_tile.dart';
@@ -192,5 +195,36 @@ void main() {
       expect(find.text('Any date'), findsOneWidget);
       expect(shownPayees(tester), hasLength(6));
     });
+  });
+
+  testWidgets('amounts are colour-coded: spending red, inflow green, '
+      'transfers and card payments neutral (rule 5)', (tester) async {
+    await pump(tester, [
+      saved(spending(date: CalendarDate(2026, 11, 4)), id: recordIdOf(1)),
+      saved(inflow(), id: recordIdOf(2)),
+      saved(transfer(), id: recordIdOf(3)),
+      saved(cardPayment(), id: recordIdOf(4)),
+    ]);
+
+    final money = AppColors.fromShade(AppPalette.fallback.light);
+    Color? amountColor(TransactionType type) {
+      final tile = find.byWidgetPredicate(
+        (widget) =>
+            widget is TransactionTile && widget.transaction.type == type,
+      );
+      final listTile = tester.widget<ListTile>(
+        find.descendant(of: tile, matching: find.byType(ListTile)),
+      );
+      return (listTile.trailing! as Text).style?.color;
+    }
+
+    expect(amountColor(TransactionType.spending), money.expense);
+    expect(amountColor(TransactionType.inflow), money.positive);
+    final neutral = Theme.of(tester.element(find.byType(RecentTransactions)))
+        .textTheme
+        .bodyLarge
+        ?.color;
+    expect(amountColor(TransactionType.transfer), neutral);
+    expect(amountColor(TransactionType.creditCardPayment), neutral);
   });
 }

@@ -42,20 +42,26 @@ class PeriodSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedPeriodProvider).preset;
     final notifier = ref.read(selectedPeriodProvider.notifier);
+    // Pill-shaped chips; the selected one keeps its check mark.
+    const shape = StadiumBorder();
     return Wrap(
       spacing: Spacing.sm,
+      runSpacing: Spacing.sm,
       children: [
         ChoiceChip(
+          shape: shape,
           label: Text(periodPresetLabel(PeriodPreset.thisMonth)),
           selected: selected == PeriodPreset.thisMonth,
           onSelected: (_) => notifier.selectThisMonth(),
         ),
         ChoiceChip(
+          shape: shape,
           label: Text(periodPresetLabel(PeriodPreset.lastMonth)),
           selected: selected == PeriodPreset.lastMonth,
           onSelected: (_) => notifier.selectLastMonth(),
         ),
         ChoiceChip(
+          shape: shape,
           label: const Text('Custom'),
           selected: selected == PeriodPreset.custom,
           // Re-tapping Custom lets the user change the range.
