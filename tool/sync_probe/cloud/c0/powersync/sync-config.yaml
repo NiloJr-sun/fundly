@@ -1,0 +1,24 @@
+# Shared spaces C0 Sync Streams (docs/SHARED_SPACES_C0_PLAN.md). Deploy ONLY to
+# the throwaway C0 PowerSync instance, never to Fundly's production instance.
+# Columns are listed explicitly; c0_receipts is backend only.
+config:
+  edition: 3
+streams:
+  # Every store: the spaces the user belongs to and their member lists.
+  c0_my_spaces:
+    auto_subscribe: true
+    queries:
+      - SELECT id, name, created_by, created_at, updated_at
+        FROM c0_spaces
+        WHERE id IN (SELECT space_id FROM c0_space_members WHERE user_id = auth.user_id())
+      - SELECT id, space_id, user_id, role, created_at, updated_at
+        FROM c0_space_members
+        WHERE space_id IN (SELECT space_id FROM c0_space_members WHERE user_id = auth.user_id())
+  # One space's records. Each device store subscribes with its own space_id;
+  # the membership subquery means a non-member's subscription matches nothing.
+  c0_space_entries:
+    query: SELECT id, space_id, label, amount_minor, created_by, updated_by,
+        created_at, updated_at, revision
+      FROM c0_entries
+      WHERE space_id = subscription.parameter('space_id')
+        AND space_id IN (SELECT space_id FROM c0_space_members WHERE user_id = auth.user_id())

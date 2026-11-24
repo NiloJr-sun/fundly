@@ -1,0 +1,21 @@
+# Shared spaces C0, local only. Self-hosted PowerSync service config.
+replication:
+  connections:
+    - type: postgresql
+      uri: postgresql://powersync_role:c0-local-powersync@host.docker.internal:56322/postgres
+      sslmode: disable
+storage:
+  type: postgresql
+  uri: postgresql://postgres:c0-local-storage@storage:5432/powersync_storage
+  sslmode: disable
+port: 8080
+sync_config:
+  path: sync-config.yaml
+client_auth:
+  # The C0 Supabase stack signs sessions with ES256 and serves its keys here.
+  jwks_uri: http://host.docker.internal:56321/auth/v1/.well-known/jwks.json
+  audience:
+    - authenticated
+telemetry:
+  # Nothing from this prototype leaves the Mac.
+  disable_telemetry_sharing: true

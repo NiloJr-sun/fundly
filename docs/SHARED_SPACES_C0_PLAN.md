@@ -2,7 +2,10 @@
 
 Date: 2026-11-24
 
-Status: **proposed, awaiting approval.** Slice C0 of
+Status: **approved 2026-11-24** (Decisions C0-1 to C0-4, all as
+recommended). The PowerSync free plan allows only one instance (Fundly's
+production one), so C0-1 fell back to the **local** option, approved the same
+day (see C0-1). **C0.1 done 2026-11-24**; C0.2 next. Slice C0 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md) (approved 2026-11-22).
 C0 is a throwaway prototype in the style of S1
 ([CLOUD_SYNC_S1_FINDINGS.md](CLOUD_SYNC_S1_FINDINGS.md)). It produces go/no-go
@@ -49,22 +52,26 @@ Chrome:
 - The Fundly app (`lib/`), its schema (v13), backup format 7, `pubspec.yaml`
   and lockfile.
 - The production Supabase project, its publication and migrations, and the
-  production PowerSync sync config (under Decision C0-1's recommendation).
+  production PowerSync instance and its sync config (C0 runs locally).
 - Financial rules. C0 records are minimal stand-ins, not Fundly accounts or
   transactions.
 
 ## Proposed design
 
-### Where it runs (Decision C0-1)
+### Where it runs (Decision C0-1, local fallback)
 
-A **separate, disposable environment**: a new free Supabase project (for
-example `fundly-c0`, same region) and a new PowerSync instance connected to
-it. Production is never touched, so a wrong publication or a stream mistake
-cannot reach real data. It is deleted when C0 is accepted. The free plans
-must allow it: Supabase allows two active free projects (Fundly uses one);
-the PowerSync instance limit is checked in its dashboard first (owner).
+All **on the Mac**, in [tool/sync_probe/cloud/c0](../tool/sync_probe/cloud/c0/README.md):
+a separate local Supabase stack (`fundly-c0`, ports 563xx, beside Fundly's own
+local stack), the PowerSync open edition service
+(`journeyapps/powersync-service:1.29.1`, telemetry off) and its Postgres bucket
+storage in Docker. `up.sh` starts it and creates the test users; `down.sh
+--wipe` removes it. Production is never touched.
 
-### Server objects (disposable, `tool/sync_probe/cloud/c0/schema.sql`)
+Limit: this proves the design on the self-hosted service, which runs the same
+sync engine as PowerSync Cloud. The hosted behaviour is confirmed when C1 is
+deployed (a release-checklist row, after the usual backups).
+
+### Server objects (`tool/sync_probe/cloud/c0/supabase/migrations/`)
 
 | Object | Purpose |
 |---|---|
@@ -79,7 +86,7 @@ RLS: members read their spaces, memberships and entries; no direct writes.
 Only `c0_spaces`, `c0_space_members` and `c0_entries` are published to
 PowerSync.
 
-### Streams (`tool/sync_probe/cloud/c0/sync-config.yaml`)
+### Streams (`tool/sync_probe/cloud/c0/powersync/sync-config.yaml`)
 
 ```yaml
 config:
@@ -99,7 +106,7 @@ streams:
           (SELECT space_id FROM c0_space_members WHERE user_id = auth.user_id())
 ```
 
-The exact syntax is validated in the PowerSync dashboard; if subqueries or
+The service validates the syntax when it loads the config; if subqueries or
 parameters behave differently from the docs, that is a finding, and the
 fallback (a parameter-only stream checked by a membership join) is tried and
 recorded.
@@ -115,21 +122,18 @@ recorded.
 
 ## Sub-slices
 
-### C0.1: Disposable environment (owner, with files from the agent)
+### C0.1: Local environment (agent) ✅ Done 2026-11-24
 
-Agent prepares `tool/sync_probe/cloud/c0/` (schema, sync config, cleanup
-SQL, a README with every step) and `config.c0.local.json` (git-ignored).
-Owner:
+The C0 Supabase stack with the schema and replication migrations, PowerSync
+and its storage in Docker, `up.sh`/`down.sh`, git-ignored generated config and
+test users (A owner, B member, C outsider), and
+`tool/cloud_checks/c0_connection_check.py`.
 
-1. Creates the `fundly-c0` Supabase project and a PowerSync instance for it.
-2. Runs `schema.sql` in that project's SQL editor, creates the publication
-   for the three tables, connects PowerSync, enables Supabase auth, validates
-   and deploys the C0 sync config.
-3. Creates three email/password test users (A owner, B member, C outsider)
-   with Auto Confirm and fills `tool/sync_probe/cloud/c0/.env.local`
-   (git-ignored, chmod 600; never printed or pasted into chat).
-
-Done when the agent's read-only connection check signs in all three users.
+Result: the service accepted the per-space sync config (subquery and
+`subscription.parameter`); the connection check passed 7 of 7 (users sign in,
+PowerSync accepts a session and rejects a tampered token, outsiders cannot see
+a space). The schema had already passed a 21-assertion rehearsal. Details in
+the [C0 README](../tool/sync_probe/cloud/c0/README.md) verification log.
 
 ### C0.2: Server and stream checks (agent, automated, VM)
 
@@ -168,10 +172,9 @@ probe UI, as in S1.
 
 `docs/SHARED_SPACES_C0_FINDINGS.md`: what passed, failed or behaved
 unexpectedly, timings (download after membership change, removal delay),
-free-tier usage observed, the stream syntax that works, and a recommendation
-for C1 (go, go with changes, or no-go with alternatives). Then the owner
-deletes the disposable project and PowerSync instance (or keeps them for
-C1 rehearsals; Decision C0-3).
+the stream syntax that works, and a recommendation for C1 (go, go with
+changes, or no-go with alternatives). Then `down.sh --wipe` removes the local
+environment (Decision C0-3).
 
 ## Verification
 
@@ -185,7 +188,8 @@ C1 rehearsals; Decision C0-3).
 
 ## Decisions for the product owner
 
-- **C0-1. Where the prototype runs.**
+- **C0-1. Where the prototype runs.** *Outcome:* the PowerSync free plan
+  allows one instance, so the owner approved the local option on 2026-11-24.
   - *(Recommended)* A new disposable Supabase project and PowerSync
     instance. No risk to production; costs two dashboard setups.
   - Production project with `c0_` tables and streams added beside
@@ -195,12 +199,11 @@ C1 rehearsals; Decision C0-3).
     Fully automatable, but does not prove the hosted PowerSync behaviour that
     C1 depends on.
 - **C0-2. Test users.** *(Recommended)* Three email/password users in the
-  disposable project (owner, member, outsider). Alternative: two users, with
+  C0 environment (owner, member, outsider). Alternative: two users, with
   B as both member and, after removal, outsider (weaker check 2).
-- **C0-3. After C0.** *(Recommended)* Delete the disposable project once the
+- **C0-3. After C0.** *(Recommended)* Remove the C0 environment once the
   findings are accepted; C1 is rehearsed on the local Supabase stack as S2–S6
-  were. Alternative: keep it as a staging environment for C1 (risk: free
-  projects pause after a week idle).
+  were. Alternative: keep it running as a C1 rehearsal environment.
 - **C0-4. Two tabs on different spaces in Chrome.** *(Recommended)* Only
   observe and record it in C0; decide the app rule in C2.
 
@@ -215,8 +218,8 @@ C1 rehearsals; Decision C0-3).
   queued items or blocks the queue, Decision 8 needs another mechanism
   (for example copying the queue to Refused changes before a checkpoint
   removes access). Check 8 finds out.
-- **Free-tier limits.** A second PowerSync instance may not be allowed on
-  the free plan; then C0-1 falls back to the local option or to production,
-  which the owner chooses.
-- **Secrets.** New test passwords live only in the git-ignored `.env.local`;
-  the project's database password is never written down.
+- **Self-hosted versus hosted.** Resolved for C0 by running locally (the
+  free plan allows one instance). Any hosted-only difference would show when
+  C1 is deployed, which its release checklist covers.
+- **Secrets.** Test passwords are random, local only and live in the
+  git-ignored `.env.local`; nothing for production is written down.

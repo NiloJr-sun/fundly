@@ -1,0 +1,34 @@
+# Shared spaces C0, local only: self-hosted PowerSync (open edition) and its
+# bucket storage, syncing from the C0 Supabase stack (supabase/, ports 563xx).
+# Start the Supabase stack first; see README.md. Passwords are fixed local
+# values; nothing here is exposed beyond the Mac.
+name: fundly-c0-powersync
+services:
+  storage:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_PASSWORD: c0-local-storage
+      POSTGRES_DB: powersync_storage
+    volumes:
+      - storage-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d powersync_storage"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  powersync:
+    image: journeyapps/powersync-service:1.29.1
+    command: ["start", "-r", "unified"]
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+    volumes:
+      - ./powersync:/config:ro
+    ports:
+      - "127.0.0.1:56380:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  storage-data:

@@ -53,3 +53,9 @@ app.*.map.json
 
 # Test users for the hosted isolation checks (S7.2 row 3); never commit
 /tool/cloud_checks/.env.local
+
+# Shared spaces C0 local environment: generated endpoints and test users
+/tool/sync_probe/cloud/c0/config.local.json
+/tool/sync_probe/cloud/c0/.env.local
+/tool/sync_probe/cloud/c0/supabase/.branches/
+/tool/sync_probe/cloud/c0/supabase/.temp/
