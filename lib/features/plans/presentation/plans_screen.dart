@@ -14,6 +14,7 @@ import '../../categories/presentation/categories_screen.dart';
 import '../../categories/presentation/category_display.dart';
 import '../../spaces/presentation/screen_title.dart';
 import '../../spending/presentation/spending_providers.dart';
+import '../../sync/presentation/edit_guard.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
 import 'archive_plan.dart';
@@ -136,6 +137,7 @@ class _PlanList extends ConsumerWidget {
     CategoryPlanSummary summary,
     PlanAmountField? field,
   ) async {
+    if (!canEditOrExplain(context)) return;
     final amounts = await showPlanEditorDialog(
       context,
       categoryName: summary.category.name,

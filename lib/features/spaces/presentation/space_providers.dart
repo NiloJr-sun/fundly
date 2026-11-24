@@ -49,10 +49,17 @@ final canEditProvider = Provider<bool>((ref) {
 /// The active space's name when the user has more than one space, so screens
 /// say which finances they show; null with only Personal (screens then look
 /// exactly as before spaces, Decision C2-7).
+///
+/// In a space the user does not own, the role follows ("Household · Viewer",
+/// shared spaces C3), so editors and viewers see what they can do.
 final shownSpaceNameProvider = Provider<String?>((ref) {
   final spaces = ref.watch(spacesProvider).value ?? const [];
   if (spaces.length < 2) return null;
-  return ref.watch(activeSpaceProvider)?.name;
+  final space = ref.watch(activeSpaceProvider);
+  if (space == null) return null;
+  return space.role == SpaceRole.owner
+      ? space.name
+      : '${space.name} · ${roleLabel(space.role)}';
 });
 
 /// What a space name must be (the server's rule; Decision C2-6): trimmed,
