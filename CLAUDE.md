@@ -546,7 +546,9 @@ space ([docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md)). C2,
 private spaces, is released as app **1.3.0 (5)** (2026-11-24): users create,
 rename and switch spaces, one device store per space
 ([docs/SHARED_SPACES_C2_PLAN.md](docs/SHARED_SPACES_C2_PLAN.md)). The minimum
-supported app version stays 1.2.0. Approved next: planning shared spaces slice
+supported app version stays 1.2.0. F.2 (2026-11-24) fixed spaces mixing on
+the web ([docs/F2_WEB_SPACE_SEPARATION_PLAN.md](docs/F2_WEB_SPACE_SEPARATION_PLAN.md));
+every push to `main` deploys the web. Approved next: planning shared spaces slice
 C3 (sharing), only when the product owner asks
 ([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
 of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the
@@ -1377,5 +1379,26 @@ suggestions as approved decisions.
                           only. Minimum app stays
                           1.2.0. Deleting spaces
                           comes with C3.
+
+  2026-11-24              Spaces mixed on the web Implemented in F.2
+                          fixed (F.2): PowerSync
+                          2.6.2's web worker
+                          ignores
+                          includeDefaultStreams,
+                          so fundly_user_data
+                          (Personal) reached every
+                          space. Apps send the
+                          connection parameter
+                          space_streams; the
+                          sync config sends that
+                          stream nothing for
+                          them, and 1.2.x is
+                          unchanged. The
+                          parameter only narrows
+                          what is sent, never
+                          grants access. No
+                          version bump; iOS was
+                          not affected. No schema
+                          or backup change.
 
   -----------------------------------------------------------------------

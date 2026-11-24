@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../features/accounts/presentation/accounts_screen.dart';
 import '../features/plans/presentation/plans_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/spaces/presentation/space_removal_ui.dart';
 import '../features/spending/presentation/spending_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/spacing.dart';
@@ -52,17 +53,27 @@ class _HomeShellState extends State<HomeShell> {
       decoration: BoxDecoration(gradient: AppColors.of(context).backdrop),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Theme(
-          data: tabTheme,
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: [
-              for (var i = 0; i < _screens.length; i++)
-                // Inactive tabs keep their state but must not contribute FAB
-                // heroes to route transitions from the visible tab.
-                HeroMode(enabled: i == _selectedIndex, child: _screens[i]),
-            ],
-          ),
+        body: Column(
+          children: [
+            const RemovedSpaceBanner(),
+            Expanded(
+              child: Theme(
+                data: tabTheme,
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: [
+                    for (var i = 0; i < _screens.length; i++)
+                      // Inactive tabs keep their state but must not contribute
+                      // FAB heroes to route transitions from the visible tab.
+                      HeroMode(
+                        enabled: i == _selectedIndex,
+                        child: _screens[i],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: SafeArea(
           top: false,

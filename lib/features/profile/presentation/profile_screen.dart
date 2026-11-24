@@ -15,6 +15,7 @@ import '../../backup/presentation/reset_data.dart';
 import '../../backup/presentation/restore_backup.dart';
 import '../../spaces/data/active_space.dart';
 import '../../spaces/presentation/space_providers.dart';
+import '../../sync/presentation/edit_guard.dart';
 import 'profile_greeting_card.dart';
 
 /// The Profile tab: who is using Fundly, their data backups, and signing out.
@@ -73,7 +74,11 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: space == null
                     ? 'Replace all records with a backup file'
                     : 'Replace all records in $space with a backup file',
-                onTap: (origin) => restoreBackup(context, ref, origin: origin),
+                onTap: (origin) {
+                  if (canEditOrExplain(context)) {
+                    restoreBackup(context, ref, origin: origin);
+                  }
+                },
               ),
               _ActionTile(
                 icon: Icons.delete_forever,
@@ -84,7 +89,11 @@ class ProfileScreen extends ConsumerWidget {
                     ? 'Delete every record in your account'
                     : 'Delete every record in $space',
                 destructive: true,
-                onTap: (origin) => resetData(context, ref, origin: origin),
+                onTap: (origin) {
+                  if (canEditOrExplain(context)) {
+                    resetData(context, ref, origin: origin);
+                  }
+                },
               ),
             ],
           ),

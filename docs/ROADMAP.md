@@ -14,7 +14,7 @@ Last updated: 2026-11-17
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**. **Cloud sync released as 1.2.0 (3)** on 2026-11-23 (`docs/CLOUD_SYNC_PLAN.md`, S1–S7). F.1 done (1.2.1). Shared spaces C0 done 2026-11-24: go (`docs/SHARED_SPACES_C0_FINDINGS.md`). Shared spaces C1 deployed and C2 (private spaces) released as 1.3.0 (5), 2026-11-24. Approved next: planning shared spaces C3 |
+| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**. **Cloud sync released as 1.2.0 (3)** on 2026-11-23 (`docs/CLOUD_SYNC_PLAN.md`, S1–S7). F.1 done (1.2.1). Shared spaces C0 done 2026-11-24: go (`docs/SHARED_SPACES_C0_FINDINGS.md`). Shared spaces C1 deployed and C2 (private spaces) released as 1.3.0 (5), 2026-11-24. F.2 (spaces mixed on the web) fixed 2026-11-24. Approved next: planning shared spaces C3 |
 | Platforms | iOS (primary), Android best-effort |
 | Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl, share_plus (share sheet for backups), file_picker (choosing a backup to restore); dev: drift_dev, build_runner, flutter_lints |
 | Database | Schema **v13** on the device; signed in, a synced store per user (Supabase + PowerSync). Tables: accounts (any number of budget accounts), custom_account_types, categories, transactions, monthly_plans; migration tests for every step |
@@ -251,6 +251,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | ID | Task | Status |
 |---|---|---|
 | F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | ✅ Done 2026-11-23: 1.2.1 (4) live on the web (Vercel) and installed on the iPhone with `devicectl` (data copied off first; build kept in `~/fundly-releases/1.2.1-4/`) |
+| F.2 | Spaces mixed on the web: PowerSync's web worker ignored `includeDefaultStreams`, so other spaces also showed Personal (`docs/F2_WEB_SPACE_SEPARATION_PLAN.md`) | ✅ Done 2026-11-24: the app sends `space_streams`, and the hosted sync config sends the old stream nothing for it; confirmed in Chrome. No version bump; iOS unaffected |
 | C0 | Shared spaces sync prototype (`docs/SHARED_SPACES_C0_PLAN.md`) | ✅ Done 2026-11-24: go (`docs/SHARED_SPACES_C0_FINDINGS.md`); local C0 environment removed |
 | C1 | Shared spaces: server moves to spaces, Personal space per user (`docs/SHARED_SPACES_C1_PLAN.md`) | ✅ Done 2026-11-24: deployed after a rehearsal (with rollback) on a copy of production; checked on iPhone and Chrome with the unchanged 1.2.1 |
 | C2 | Shared spaces: private spaces in the app (`docs/SHARED_SPACES_C2_PLAN.md`) | ✅ Done 2026-11-24: released as 1.3.0 (5) on the web and the iPhone (`docs/RELEASE_CHECKLIST_1.3.0.md`) |

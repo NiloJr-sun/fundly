@@ -4,12 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/spacing.dart';
 import '../data/active_space.dart';
 import '../data/space_directory.dart';
+import '../data/space_removals.dart';
 import '../domain/space.dart';
+import 'join_space.dart';
+import 'space_actions.dart';
 import 'space_name_dialog.dart';
 import 'space_providers.dart';
+import 'space_removal_ui.dart';
 
-/// The user's spaces: tap one to switch, rename it (owners), or create a new
-/// one (shared spaces C2, option A). Opened from the Profile card.
+/// The user's spaces: tap one to switch, or create a new one (shared spaces
+/// C2, option A); each row's ⋮ menu has Members, Invite, Rename, Leave and
+/// Delete as the role allows (C3). Opened from the Profile card.
 Future<void> showSpaceSheet(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
@@ -83,21 +88,53 @@ class SpaceSheet extends ConsumerWidget {
                       : roleLabel(space.role),
                 ),
                 selected: space.id == activeId,
-                trailing: space.canRename
-                    ? IconButton(
-                        tooltip: 'Rename ${space.name}',
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => renameSpace(context, space),
-                      )
-                    : null,
+                trailing: SpaceActionsButton(space: space),
                 onTap: () => choose(space),
               ),
+            for (final removed in ref.watch(spaceRemovalsProvider).removed)
+              if (!spaces.any((space) => space.id == removed.spaceId))
+                ListTile(
+                  key: ValueKey('removed-space-${removed.spaceId}'),
+                  leading: Icon(
+                    removed.spaceId == activeId
+                        ? Icons.check_circle
+                        : Icons.remove_circle_outline,
+                    color: theme.colorScheme.error,
+                  ),
+                  title: Text(removed.name),
+                  subtitle: const Text('Removed · read-only on this device'),
+                  selected: removed.spaceId == activeId,
+                  trailing: IconButton(
+                    tooltip: 'Remove ${removed.name} from this device',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () =>
+                        removeSpaceFromDevice(context, ref, removed),
+                  ),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    if (removed.spaceId != activeId) {
+                      await ref
+                          .read(activeSpaceIdProvider.notifier)
+                          .select(removed.spaceId);
+                    }
+                  },
+                ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.add),
               title: const Text('Create space'),
               subtitle: const Text('Needs a connection'),
               onTap: create,
+            ),
+            ListTile(
+              leading: const Icon(Icons.group_add_outlined),
+              title: const Text('Join a space'),
+              subtitle: const Text('Paste an invite link'),
+              onTap: () async {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                await joinSpace(navigator.context);
+              },
             ),
           ],
         ),

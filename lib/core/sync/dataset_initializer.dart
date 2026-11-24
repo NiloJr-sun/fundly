@@ -9,8 +9,26 @@ import 'synced_database.dart';
 /// server inserts the defaults only while the owner has none, so two devices
 /// asking at once still get one set, which then arrives by download.
 ///
+/// A viewer (shared spaces C3) asks nothing: the server would refuse the
+/// write, and the space's owner or an editor gets the defaults instead. Pass
+/// [spaceId] and [userId] so the store's own membership row decides.
+///
 /// Returns whether a request was queued.
-Future<bool> initializeDatasetIfEmpty(SyncedDatabase database) async {
+Future<bool> initializeDatasetIfEmpty(
+  SyncedDatabase database, {
+  String? spaceId,
+  String? userId,
+}) async {
+  if (spaceId != null && userId != null) {
+    final members = database.syncedSpaceMembers;
+    final row =
+        await (database.select(members)..where(
+              (member) =>
+                  member.spaceId.equals(spaceId) & member.userId.equals(userId),
+            ))
+            .getSingleOrNull();
+    if (row?.role == 'viewer') return false;
+  }
   final categories = database.syncedCategories;
   final count = categories.id.count();
   final existing = await (database.selectOnly(

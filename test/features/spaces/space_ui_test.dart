@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
+import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/device_data_copier.dart';
@@ -12,6 +14,7 @@ import 'package:fundly/features/spaces/data/space_service.dart';
 import 'package:fundly/features/spaces/domain/space.dart';
 import 'package:fundly/features/spaces/presentation/space_providers.dart';
 import 'package:fundly/features/spending/presentation/spending_screen.dart';
+import 'package:fundly/features/sync/presentation/edit_guard.dart';
 
 import '../../helpers/fake_auth_repository.dart';
 import '../../helpers/provider_overrides.dart';
@@ -37,6 +40,13 @@ const business = Space(
   isPersonal: false,
   role: SpaceRole.owner,
   revision: 3,
+);
+const sharedWithMe = Space(
+  id: '5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9',
+  name: 'Family',
+  isPersonal: false,
+  role: SpaceRole.viewer,
+  revision: 1,
 );
 const household = Space(
   id: householdId,
@@ -132,8 +142,8 @@ void main() {
       expect(find.text('Business'), findsOneWidget);
       expect(find.text('Editor'), findsOneWidget);
       expect(find.text('Create space'), findsOneWidget);
-      expect(find.byTooltip('Rename Business'), findsOneWidget);
-      expect(find.byTooltip('Rename Household'), findsNothing);
+      expect(find.byTooltip('Actions for Business'), findsOneWidget);
+      expect(find.byTooltip('Actions for Household'), findsOneWidget);
     });
 
     testWidgets('tapping a space switches to it and remembers it', (
@@ -241,7 +251,9 @@ void main() {
       await pump(tester, const ProfileScreen());
       await tester.tap(find.byKey(const Key('space-switcher')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Rename Business'));
+      await tester.tap(find.byTooltip('Actions for Business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
       await tester.pumpAndSettle();
 
       expect(find.text('Rename space'), findsOneWidget);
@@ -258,7 +270,9 @@ void main() {
       await pump(tester, const ProfileScreen());
       await tester.tap(find.byKey(const Key('space-switcher')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Rename Business'));
+      await tester.tap(find.byTooltip('Actions for Business'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Shop');
       await tester.tap(find.text('Save'));
@@ -325,5 +339,85 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  group('view-only gate (C3.3)', () {
+    const spaces = [personal, business, household, sharedWithMe];
+
+    // The app keeps the spaces list live (spaceRemovalsProvider listens to
+    // it), so a screen that does not show it still knows the role.
+    Future<void> pumpIn(Space space, WidgetTester tester, Widget home) async {
+      await remembered.remember(user.userId, space.id);
+      final container = await pump(tester, home, spaces: spaces);
+      container.listen(canEditProvider, (_, _) {});
+      await tester.pump();
+    }
+
+    Future<void> expectViewOnly(WidgetTester tester) async {
+      await tester.pump();
+      expect(find.text(viewOnlyMessage), findsOneWidget);
+    }
+
+    testWidgets('a viewer cannot add a transaction', (tester) async {
+      await pumpIn(sharedWithMe, tester, const SpendingScreen());
+      await tester.tap(find.text('Add transaction'));
+      await expectViewOnly(tester);
+      expect(find.byType(BottomSheet), findsNothing);
+    });
+
+    testWidgets('a viewer cannot add an account', (tester) async {
+      await pumpIn(sharedWithMe, tester, const AccountsScreen());
+      await tester.tap(find.text('Add account'));
+      await expectViewOnly(tester);
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountFormScreen), findsNothing);
+    });
+
+    testWidgets('a viewer cannot restore or reset; export stays', (
+      tester,
+    ) async {
+      await pumpIn(sharedWithMe, tester, const ProfileScreen());
+      for (final action in ['Restore from backup', 'Reset all data']) {
+        await tester.scrollUntilVisible(find.text(action), 100);
+        await tester.tap(find.text(action));
+        await expectViewOnly(tester);
+        await tester.pumpAndSettle();
+        expect(find.byType(Dialog), findsNothing, reason: action);
+      }
+    });
+
+    testWidgets('an editor adds as before', (tester) async {
+      await pumpIn(household, tester, const SpendingScreen());
+      await tester.tap(find.text('Add transaction'));
+      await tester.pumpAndSettle();
+      expect(find.text(viewOnlyMessage), findsNothing);
+      expect(find.byType(BottomSheet), findsOneWidget);
+    });
+
+    testWidgets('sentences name the space without the role', (tester) async {
+      await pumpIn(sharedWithMe, tester, const ProfileScreen());
+      await tester.scrollUntilVisible(find.text('Reset all data'), 100);
+      expect(find.text('Delete every record in Family'), findsOneWidget);
+      expect(
+        find.textContaining('every record in Family · Viewer'),
+        findsNothing,
+      );
+    });
+
+    for (final (space, shown) in [
+      (sharedWithMe, 'Family · Viewer'),
+      (household, 'Household · Editor'),
+      (business, 'Business'),
+    ]) {
+      testWidgets('the title shows the role unless owner: $shown', (
+        tester,
+      ) async {
+        await pumpIn(space, tester, const SpendingScreen());
+        expect(
+          tester.widget<Text>(find.byKey(const Key('screen-title-space'))).data,
+          shown,
+        );
+      });
+    }
   });
 }

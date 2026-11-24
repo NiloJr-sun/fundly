@@ -49,10 +49,22 @@ final canEditProvider = Provider<bool>((ref) {
 /// The active space's name when the user has more than one space, so screens
 /// say which finances they show; null with only Personal (screens then look
 /// exactly as before spaces, Decision C2-7).
+/// Used in sentences ("Delete every record in Household"), so it is the name
+/// alone; [shownSpaceTitleProvider] adds the role for titles.
 final shownSpaceNameProvider = Provider<String?>((ref) {
   final spaces = ref.watch(spacesProvider).value ?? const [];
   if (spaces.length < 2) return null;
   return ref.watch(activeSpaceProvider)?.name;
+});
+
+/// The line under a tab's title: [shownSpaceNameProvider], followed by the
+/// role in a space the user does not own ("Household · Viewer", shared spaces
+/// C3), so editors and viewers see what they can do.
+final shownSpaceTitleProvider = Provider<String?>((ref) {
+  final name = ref.watch(shownSpaceNameProvider);
+  final role = ref.watch(activeSpaceProvider)?.role;
+  if (name == null || role == null || role == SpaceRole.owner) return name;
+  return '$name · ${roleLabel(role)}';
 });
 
 /// What a space name must be (the server's rule; Decision C2-6): trimmed,
