@@ -153,6 +153,8 @@ void main() {
       Future<ps.PowerSyncDatabase> open(
         _User user, {
         String? subscribeTo,
+        bool defaultStreams = false,
+        bool spaceStreams = true,
       }) async {
         final directory = await Directory.systemTemp.createTemp('fundly-c2-');
         final database = ps.PowerSyncDatabase(
@@ -169,14 +171,19 @@ void main() {
           );
           return database;
         }
-        // As app 1.3.0: no automatic stream; the spaces list and one space.
+        // As app 1.3.1: no automatic stream; the spaces list and one space.
+        // On the web the worker drops includeDefaultStreams (F.2), which
+        // [defaultStreams] simulates; [spaceStreams] false is app 1.3.0.
         final spaces = await database.syncStream('fundly_spaces').subscribe();
         final data = await database.syncStream('fundly_space_data', {
           'space_id': subscribeTo,
         }).subscribe();
         await database.connect(
           connector: _Connector(endpoint, user.client),
-          options: const ps.SyncOptions(includeDefaultStreams: false),
+          options: ps.SyncOptions(
+            includeDefaultStreams: defaultStreams,
+            params: spaceStreams ? const {'space_streams': true} : null,
+          ),
         );
         await spaces.waitForFirstSync().timeout(const Duration(seconds: 60));
         await data.waitForFirstSync().timeout(const Duration(seconds: 60));
@@ -213,6 +220,34 @@ void main() {
             {'role': 'owner'},
           ],
         );
+
+        // F.2: the web worker keeps the automatic stream on; the parameter
+        // still keeps Personal out of the second space.
+        final web = await open(a, subscribeTo: space, defaultStreams: true);
+        expect(await _ids(web, 'accounts'), await a.serverAccounts(space));
+        expect(await _ids(web, 'accounts'), isNot(contains(personalAccount)));
+
+        // A 1.3.0 web store that leaked Personal loses it on reconnecting
+        // with the parameter, without clearing the store.
+        final leaked = await open(
+          a,
+          subscribeTo: space,
+          defaultStreams: true,
+          spaceStreams: false,
+        );
+        expect(await _ids(leaked, 'accounts'), contains(personalAccount));
+        await leaked.disconnect();
+        await leaked.connect(
+          connector: _Connector(endpoint, a.client),
+          options: const ps.SyncOptions(params: {'space_streams': true}),
+        );
+        for (var i = 0; i < 40; i++) {
+          if (!(await _ids(leaked, 'accounts')).contains(personalAccount)) {
+            break;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+        expect(await _ids(leaked, 'accounts'), await a.serverAccounts(space));
 
         final outsider = await open(b, subscribeTo: space);
         expect(await _ids(outsider, 'accounts'), isEmpty);

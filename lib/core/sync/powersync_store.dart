@@ -34,6 +34,18 @@ final syncedRawSchema = ps.Schema(
   ],
 );
 
+/// How every store connects (public for tests): without the automatic stream
+/// (fundly_user_data, for apps 1.2.x), which carries Personal's records.
+///
+/// On the web, PowerSync 2.6.2 syncs in a shared worker that never receives
+/// `includeDefaultStreams`, so the `space_streams` parameter tells the sync
+/// config itself to send that stream nothing (F.2). Both are kept, so each
+/// still works without the other.
+const syncConnectOptions = ps.SyncOptions(
+  includeDefaultStreams: false,
+  params: {'space_streams': true},
+);
+
 /// Maps PowerSync's status to the status line's [SyncState] (public for
 /// tests).
 ///
@@ -190,7 +202,8 @@ class PowerSyncStore implements SyncedStore {
       });
       _statusSubscription = sync.statusStream.listen(_onStatus);
       // The spaces list, and this space's records. The automatic stream
-      // (fundly_user_data) is for apps 1.2.x and stays off.
+      // (fundly_user_data) is for apps 1.2.x and stays off
+      // ([syncConnectOptions]).
       _subscriptions
         ..add(await sync.syncStream('fundly_spaces').subscribe())
         ..add(
@@ -199,10 +212,7 @@ class PowerSyncStore implements SyncedStore {
           }).subscribe(),
         );
       if (_closed) return;
-      await sync.connect(
-        connector: connector,
-        options: const ps.SyncOptions(includeDefaultStreams: false),
-      );
+      await sync.connect(connector: connector, options: syncConnectOptions);
       if (firstDownload) {
         for (final subscription in _subscriptions) {
           await subscription.waitForFirstSync();
