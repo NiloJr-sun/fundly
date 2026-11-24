@@ -328,7 +328,7 @@ void main() {
       ));
       final available = tester.widget<Text>(inRow('Food', '-₱80.00'));
       final context = tester.element(row('Food'));
-      expect(available.style?.color, Theme.of(context).colorScheme.error);
+      expect(available.style?.color, AppColors.of(context).expense);
       expect(inRow('Food', 'Overspent'), findsOneWidget);
     });
 
@@ -631,7 +631,7 @@ void main() {
       // Nothing is available, so there is no percentage.
       expect(find.textContaining('% assigned'), findsNothing);
       final context = tester.element(card());
-      expect(amount.style?.color, Theme.of(context).colorScheme.error);
+      expect(amount.style?.color, AppColors.of(context).expense);
     });
 
     testWidgets('shows the share assigned when over by a little', (

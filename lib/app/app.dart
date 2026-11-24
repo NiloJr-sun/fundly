@@ -13,10 +13,12 @@ import '../features/spaces/presentation/join_space.dart';
 import '../features/spaces/presentation/space_removal_ui.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
+import 'theme/appearance_settings.dart';
 
 /// Root widget of the Fundly app.
 ///
-/// Follows the device's light or dark setting. While signed out in a build
+/// Uses the palette and light/dark mode chosen on the Profile tab (the
+/// device's setting by default). While signed out in a build
 /// that can sign in, the login page comes first unless the user chose to use
 /// Fundly without an account.
 class FundlyApp extends ConsumerWidget {
@@ -39,14 +41,16 @@ class FundlyApp extends ConsumerWidget {
         ref.watch(authRepositoryProvider).canSignIn &&
         ref.watch(authIdentityProvider) is SignedOut &&
         !localUseChosen;
+    final appearance = ref.watch(appearanceProvider);
     return MaterialApp(
       // A new database or space means new data: rebuild navigation from the
       // home tabs so no open screen or dialog keeps showing the previous
       // user's or space's records.
       key: ValueKey((databaseName, activeSpace)),
       title: 'Fundly',
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(appearance.palette),
+      darkTheme: AppTheme.dark(appearance.palette),
+      themeMode: appearance.mode,
       home: showLogin
           ? const LoginScreen()
           : const DeviceDataPrompt(

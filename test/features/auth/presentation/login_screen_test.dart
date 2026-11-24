@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/app.dart';
+import 'package:fundly/app/app_version.dart';
 import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/data/local_use_choice.dart';
@@ -64,8 +65,10 @@ Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
 
 Future<void> signOutFromProfileTab(WidgetTester tester) async {
   await tapAndSettle(tester, profileTab);
+  // To the version line, below Sign out, so the row is clear of the
+  // navigation bar.
   await tester.scrollUntilVisible(
-    find.text('Sign out'),
+    find.text(appVersionText),
     200,
     scrollable: find
         .descendant(

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
+import 'app/theme/appearance_settings.dart';
 import 'core/config/cloud_config.dart';
 import 'core/sync/dataset_import.dart';
 import 'core/sync/powersync_store.dart';
@@ -31,14 +32,18 @@ Future<void> main() async {
   final authRepository = supabase == null
       ? null
       : SupabaseAuthRepository(supabase, config);
-  final preferences = authRepository == null ? null : await _loadPreferences();
+  final preferences = await _loadPreferences();
   runApp(
     ProviderScope(
       overrides: [
         initialInviteSecretProvider.overrideWithValue(inviteSecret),
         if (authRepository != null)
           authRepositoryProvider.overrideWithValue(authRepository),
-        if (preferences != null) ...[
+        if (preferences != null)
+          appearanceStoreProvider.overrideWithValue(
+            SharedPreferencesAppearanceStore(preferences),
+          ),
+        if (authRepository != null && preferences != null) ...[
           localUseChoiceStoreProvider.overrideWithValue(
             SharedPreferencesLocalUseChoiceStore(preferences),
           ),
@@ -98,9 +103,10 @@ Future<SupabaseClient?> _startSupabase(CloudConfig config) async {
   }
 }
 
-/// Loads the device's preferences, which keep the "Explore as a guest"
+/// Loads the device's preferences, which keep the colour palette and
+/// light/dark mode and, in builds that can sign in, the "Explore as a guest"
 /// choice and what this device's data was copied to (cloud sync S6.2). If
-/// they are unavailable, both last for this run only.
+/// they are unavailable, these last for this run only.
 Future<SharedPreferences?> _loadPreferences() async {
   try {
     return await SharedPreferences.getInstance();

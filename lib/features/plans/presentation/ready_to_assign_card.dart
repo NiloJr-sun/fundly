@@ -158,11 +158,11 @@ class _ReadyToAssignDetails extends StatelessWidget {
         : _Balance.left;
     final colors = theme.colorScheme;
     // Amounts follow the signed balance colours: positive green, zero
-    // default, negative error.
+    // default, negative the palette's expense red.
     final amountColor = switch (balance) {
       _Balance.left => AppColors.of(context).positive,
       _Balance.balanced => colors.onSurface,
-      _Balance.over => colors.error,
+      _Balance.over => AppColors.of(context).expense,
     };
     final available = value.carryOver + value.moneyIn - value.movedOut;
     final percent = assignedPercentLabel(
@@ -204,7 +204,9 @@ class _ReadyToAssignDetails extends StatelessWidget {
           value: progress,
           minHeight: 6,
           borderRadius: BorderRadius.circular(3),
-          color: balance == _Balance.over ? colors.error : colors.primary,
+          color: balance == _Balance.over
+              ? AppColors.of(context).expense
+              : colors.primary,
           backgroundColor: colors.surfaceContainerHighest,
         ),
         const SizedBox(height: Spacing.xs),
@@ -382,8 +384,8 @@ class _ActionButton extends StatelessWidget {
       _Balance.over => OutlinedButton(
         onPressed: onAssign,
         style: OutlinedButton.styleFrom(
-          foregroundColor: colors.error,
-          side: BorderSide(color: colors.error),
+          foregroundColor: AppColors.of(context).expense,
+          side: BorderSide(color: AppColors.of(context).expense),
         ),
         child: const Text('Fix over-assignment'),
       ),

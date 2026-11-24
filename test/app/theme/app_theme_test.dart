@@ -4,9 +4,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/app.dart';
 import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/app/theme/app_colors.dart';
+import 'package:fundly/app/theme/app_palette.dart';
 import 'package:fundly/app/theme/app_theme.dart';
+import 'package:fundly/app/theme/appearance_settings.dart';
 
 import '../../helpers/provider_overrides.dart';
+
+double contrast(Color foreground, Color background) {
+  final a = foreground.computeLuminance();
+  final b = background.computeLuminance();
+  final lighter = a > b ? a : b;
+  final darker = a > b ? b : a;
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 void main() {
   group('AppTheme', () {
@@ -17,7 +27,7 @@ void main() {
       expect(theme.useMaterial3, isTrue);
       expect(
         theme.colorScheme.primary,
-        ColorScheme.fromSeed(seedColor: AppTheme.seedColor).primary,
+        ColorScheme.fromSeed(seedColor: AppPalette.classicTeal.seed).primary,
       );
     });
 
@@ -29,40 +39,47 @@ void main() {
       expect(
         theme.colorScheme.primary,
         ColorScheme.fromSeed(
-          seedColor: AppTheme.seedColor,
+          seedColor: AppPalette.classicTeal.seed,
           brightness: Brightness.dark,
         ).primary,
       );
     });
   });
 
-  for (final brightness in Brightness.values) {
-    test(
-      '${brightness.name} theme keeps readable text on teal and neutral surfaces',
-      () {
-        final theme = brightness == Brightness.light
-            ? AppTheme.light()
-            : AppTheme.dark();
+  // Classic Teal light and every dark shade must keep body text readable
+  // (4.5:1). The other palettes' light colours are the product owner's
+  // values; only their main text is checked here (see app_palette_test.dart
+  // for their money colours).
+  for (final palette in AppPalette.values) {
+    for (final brightness in Brightness.values) {
+      final full =
+          brightness == Brightness.dark || palette == AppPalette.classicTeal;
+      test('${palette.label} ${brightness.name} keeps readable text on its '
+          'surfaces', () {
+        final theme = AppTheme.build(palette, brightness);
         final colors = theme.colorScheme;
+        final backgrounds = [
+          colors.surface,
+          theme.cardTheme.color!,
+          ...theme.extension<AppColors>()!.backdrop.colors,
+        ];
         for (final (foreground, background) in [
-          (colors.onSurface, colors.surface),
-          (colors.onSurface, theme.cardTheme.color!),
+          for (final background in backgrounds) ...[
+            (colors.onSurface, background),
+            if (full) (colors.onSurfaceVariant, background),
+          ],
           (colors.onPrimary, colors.primary),
           (colors.onPrimaryContainer, colors.primaryContainer),
-          for (final background
-              in theme.extension<AppColors>()!.backdrop.colors) ...[
-            (colors.onSurface, background),
-            (colors.onSurfaceVariant, background),
-          ],
+          (colors.onTertiaryContainer, colors.tertiaryContainer),
         ]) {
-          final a = foreground.computeLuminance();
-          final b = background.computeLuminance();
-          final lighter = a > b ? a : b;
-          final darker = a > b ? b : a;
-          expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(4.5));
+          expect(
+            contrast(foreground, background),
+            greaterThanOrEqualTo(4.5),
+            reason: '$foreground on $background',
+          );
         }
-      },
-    );
+      });
+    }
   }
 
   group('FundlyApp follows the device brightness', () {
@@ -93,5 +110,33 @@ void main() {
         Brightness.dark,
       );
     });
+  });
+
+  testWidgets('FundlyApp uses the saved palette and mode over the device', (
+    tester,
+  ) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...noAccounts(),
+          appearanceStoreProvider.overrideWithValue(
+            InMemoryAppearanceStore(
+              const AppearanceSettings(
+                palette: AppPalette.oceanCalm,
+                mode: ThemeMode.dark,
+              ),
+            ),
+          ),
+        ],
+        child: const FundlyApp(),
+      ),
+    );
+
+    final theme = Theme.of(tester.element(find.byType(HomeShell)));
+    expect(theme.brightness, Brightness.dark);
+    expect(theme.colorScheme.surface, AppPalette.oceanCalm.dark.surface);
   });
 }

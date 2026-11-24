@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fundly/app/theme/app_colors.dart';
+import 'package:fundly/app/theme/app_palette.dart';
 import 'package:fundly/app/theme/app_theme.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
@@ -103,14 +103,14 @@ void main() {
       final text = await pump(tester, php(150000), AppTheme.light());
 
       expect(text.data, '₱1,500.00');
-      expect(text.style?.color, AppColors.light.positive);
+      expect(text.style?.color, AppPalette.classicTeal.light.positive);
       expect(text.style?.fontSize, 20);
     });
 
     testWidgets('a lighter green in the dark theme', (tester) async {
       final text = await pump(tester, php(1), AppTheme.dark());
 
-      expect(text.style?.color, AppColors.dark.positive);
+      expect(text.style?.color, AppPalette.classicTeal.dark.positive);
     });
 
     testWidgets('negative and zero keep the default colour', (tester) async {

@@ -87,7 +87,7 @@ class PlanRow extends StatelessWidget {
                   label: 'Assigned',
                   value: MoneyFormatter.format(summary.assigned),
                   color: summary.assigned.isZero
-                      ? theme.colorScheme.error
+                      ? AppColors.of(context).expense
                       : switch (summary.isFunded) {
                           false => AppColors.of(context).warning,
                           true => AppColors.of(context).positive,
@@ -108,7 +108,9 @@ class PlanRow extends StatelessWidget {
                 _Amount(
                   label: 'Available',
                   value: MoneyFormatter.format(summary.available),
-                  color: _availableColor(theme.colorScheme, summary.available),
+                  color: summary.available.isNegative
+                      ? AppColors.of(context).expense
+                      : null,
                 ),
               ],
             ),
@@ -117,9 +119,6 @@ class PlanRow extends StatelessWidget {
       ),
     );
   }
-
-  static Color? _availableColor(ColorScheme colors, Money available) =>
-      available.isNegative ? colors.error : null;
 }
 
 /// "Funded", "Underfunded" or "Overspent".

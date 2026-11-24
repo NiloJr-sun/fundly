@@ -16,7 +16,9 @@ import '../../backup/presentation/restore_backup.dart';
 import '../../spaces/data/active_space.dart';
 import '../../spaces/presentation/space_providers.dart';
 import '../../sync/presentation/edit_guard.dart';
+import 'appearance_section.dart';
 import 'profile_greeting_card.dart';
+import 'profile_tiles.dart';
 
 /// The Account & Spaces tab (labelled Profile in the navigation bar): who is
 /// using Fundly, their spaces, their data backups, and signing out.
@@ -49,19 +51,19 @@ class ProfileScreen extends ConsumerWidget {
         children: [
           const ProfileGreetingCard(),
           const SizedBox(height: Spacing.lg),
-          const _SectionLabel('Your data'),
+          const ProfileSectionLabel('Your data'),
           if (lastCopy != null) _CopiedNote(lastCopy),
-          _ActionGroup(
+          ProfileActionGroup(
             children: [
               // Device data only ever goes into Personal (Decision C2-8).
               if (deviceHasData && (!signedIn || personalShown))
-                _ActionTile(
+                ProfileActionTile(
                   icon: Icons.drive_folder_upload,
                   title: "Copy this device's data",
                   subtitle: 'Into your account, checked record by record',
                   onTap: (_) => openCopyDeviceData(context),
                 ),
-              _ActionTile(
+              ProfileActionTile(
                 icon: Icons.ios_share,
                 title: 'Export backup',
                 subtitle: space == null
@@ -69,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                     : 'Save all records in $space to a file',
                 onTap: (origin) => exportBackup(context, ref, origin: origin),
               ),
-              _ActionTile(
+              ProfileActionTile(
                 icon: Icons.restore,
                 title: 'Restore from backup',
                 subtitle: space == null
@@ -81,7 +83,7 @@ class ProfileScreen extends ConsumerWidget {
                   }
                 },
               ),
-              _ActionTile(
+              ProfileActionTile(
                 icon: Icons.delete_forever,
                 title: 'Reset all data',
                 subtitle: !signedIn
@@ -98,11 +100,13 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: Spacing.lg),
+          const AppearanceSection(),
           if (signedIn) ...[
             const SizedBox(height: Spacing.lg),
-            _ActionGroup(
+            ProfileActionGroup(
               children: [
-                _ActionTile(
+                ProfileActionTile(
                   icon: Icons.logout,
                   title: 'Sign out',
                   onTap: (_) => signOut(context, ref),
@@ -113,28 +117,6 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: Spacing.lg),
           const _VersionLine(),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(Spacing.xs, 0, 0, Spacing.sm),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
-        ),
       ),
     );
   }
@@ -178,92 +160,5 @@ class _VersionLine extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// A rounded panel of actions with dividers between them.
-class _ActionGroup extends StatelessWidget {
-  const _ActionGroup({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).dialogTheme.backgroundColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const Divider(height: 1, indent: 72),
-            children[i],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-    this.destructive = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-
-  /// Shows the icon and title in the error colour, for actions that delete.
-  final bool destructive;
-
-  /// Receives where the tile is on screen, for the iPad share sheet.
-  final void Function(Rect? origin) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = this.subtitle;
-    final colorScheme = Theme.of(context).colorScheme;
-    final accent = destructive ? colorScheme.error : colorScheme.primary;
-    // Same row shape as the spaces list: a soft icon tile, then the text.
-    return ListTile(
-      minTileHeight: 64,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: destructive
-              ? colorScheme.error.withValues(alpha: 0.10)
-              : colorScheme.onSurface.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: accent),
-      ),
-      title: Text(
-        title,
-        style: destructive ? TextStyle(color: colorScheme.error) : null,
-      ),
-      subtitle: subtitle == null
-          ? null
-          : Text(
-              subtitle,
-              style: TextStyle(color: colorScheme.onSurfaceVariant),
-            ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-      ),
-      onTap: () => onTap(_originOf(context)),
-    );
-  }
-
-  static Rect? _originOf(BuildContext context) {
-    final box = context.findRenderObject();
-    if (box is! RenderBox || !box.hasSize) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
   }
 }
