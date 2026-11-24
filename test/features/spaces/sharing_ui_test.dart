@@ -7,14 +7,19 @@ import 'package:fundly/features/backup/data/device_data_copier.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
 import 'package:fundly/features/spaces/data/active_space.dart';
 import 'package:fundly/features/spaces/data/active_space_store.dart';
+import 'package:fundly/features/spaces/data/device_space_stores.dart';
 import 'package:fundly/features/spaces/data/sharing_service.dart';
 import 'package:fundly/features/spaces/data/space_directory.dart';
+import 'package:fundly/features/spaces/data/space_removals.dart';
 import 'package:fundly/features/spaces/data/space_service.dart';
 import 'package:fundly/features/spaces/domain/space.dart';
 import 'package:fundly/features/spaces/domain/space_invite.dart';
 import 'package:fundly/features/spaces/domain/space_member.dart';
 import 'package:fundly/features/spaces/presentation/join_space.dart';
 import 'package:fundly/features/spaces/presentation/members_screen.dart';
+import 'package:fundly/features/spaces/presentation/space_removal_ui.dart';
+import 'package:fundly/features/spending/presentation/spending_screen.dart';
+import 'package:fundly/features/sync/presentation/edit_guard.dart';
 
 import '../../helpers/fake_auth_repository.dart';
 import '../../helpers/fake_sharing_service.dart';
@@ -44,15 +49,22 @@ const you = SpaceMember(
 
 void main() {
   late FakeSharingService sharing;
+  _FakeRemovals? removals;
 
-  setUp(() => sharing = FakeSharingService());
+  setUp(() {
+    sharing = FakeSharingService();
+    removals = null;
+  });
 
   Future<void> pump(
     WidgetTester tester,
     Widget home, {
     AuthIdentity identity = user,
     String? pageInvite,
+    String? active,
   }) async {
+    final remembered = InMemoryActiveSpaceStore();
+    if (active != null) await remembered.remember(user.userId, active);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -64,9 +76,9 @@ void main() {
             FakeAuthRepository(initial: identity),
           ),
           initialInviteSecretProvider.overrideWithValue(pageInvite),
-          activeSpaceStoreProvider.overrideWithValue(
-            InMemoryActiveSpaceStore(),
-          ),
+          activeSpaceStoreProvider.overrideWithValue(remembered),
+          if (removals case final removals?)
+            spaceRemovalsProvider.overrideWith(() => removals),
           spaceServiceProvider.overrideWithValue(FakeSpaceService()),
           sharingServiceProvider.overrideWithValue(sharing),
           deviceHasDataProvider.overrideWith((ref) async => false),
@@ -421,6 +433,101 @@ void main() {
       expect(sharing.calls, isEmpty);
     });
   });
+  group('spaces that leave a device (C3.3 part D)', () {
+    const gone = DeviceSpace(
+      spaceId: '6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d',
+      name: 'Old club',
+      removed: true,
+    );
+
+    testWidgets('the notice is shown once, then cleared', (tester) async {
+      removals = _FakeRemovals(const SpaceRemovalState(notice: 'Garden'));
+      await pump(
+        tester,
+        const SpaceNoticeHandler(child: Scaffold(body: Text('home'))),
+      );
+      await tester.pump();
+      expect(find.text(spaceLeftNotice('Garden')), findsOneWidget);
+      expect(removals!.dismissed, 1);
+    });
+
+    testWidgets('a Removed space is listed and removed after confirming', (
+      tester,
+    ) async {
+      removals = _FakeRemovals(const SpaceRemovalState(removed: [gone]));
+      await pump(tester, const ProfileScreen());
+      await tester.tap(find.byKey(const Key('space-switcher')));
+      await tester.pumpAndSettle();
+      expect(find.text('Old club'), findsOneWidget);
+      expect(find.text('Removed · read-only on this device'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Remove Old club from this device'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove Old club from this device?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.pumpAndSettle();
+      expect(removals!.removedFromDevice, [gone.spaceId]);
+    });
+
+    testWidgets('the active Removed space shows the banner and is read-only', (
+      tester,
+    ) async {
+      removals = _FakeRemovals(const SpaceRemovalState(removed: [gone]));
+      await pump(
+        tester,
+        const Scaffold(body: Column(children: [RemovedSpaceBanner()])),
+        active: gone.spaceId,
+      );
+      expect(find.byKey(const Key('removed-space-banner')), findsOneWidget);
+      expect(
+        find.textContaining("You're no longer a member of Old club"),
+        findsOne,
+      );
+      expect(find.text('Refused changes'), findsOneWidget);
+
+      await tester.tap(find.text('Remove from this device'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.pumpAndSettle();
+      expect(removals!.removedFromDevice, [gone.spaceId]);
+    });
+
+    testWidgets('editing in a Removed space says why not', (tester) async {
+      removals = _FakeRemovals(const SpaceRemovalState(removed: [gone]));
+      await pump(tester, const SpendingScreen(), active: gone.spaceId);
+      await tester.tap(find.text('Add transaction'));
+      await tester.pump();
+      expect(find.text(removedSpaceMessage), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
+    });
+
+    testWidgets('no banner in a space that is still a member', (tester) async {
+      removals = _FakeRemovals(const SpaceRemovalState(removed: [gone]));
+      await pump(
+        tester,
+        const Scaffold(body: Column(children: [RemovedSpaceBanner()])),
+        active: businessId,
+      );
+      expect(find.byKey(const Key('removed-space-banner')), findsNothing);
+    });
+
+    testWidgets('a failed removal is explained', (tester) async {
+      removals = _FakeRemovals(
+        const SpaceRemovalState(removed: [gone]),
+        fail: true,
+      );
+      await pump(
+        tester,
+        const Scaffold(body: Column(children: [RemovedSpaceBanner()])),
+        active: gone.spaceId,
+      );
+      await tester.tap(find.text('Remove from this device'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('could not be removed'), findsOneWidget);
+    });
+  });
 }
 
 extension on SpaceMember {
@@ -430,4 +537,28 @@ extension on SpaceMember {
     email: email,
     displayName: displayName,
   );
+}
+
+class _FakeRemovals extends SpaceRemovals {
+  _FakeRemovals(this.initial, {this.fail = false});
+
+  final SpaceRemovalState initial;
+  final bool fail;
+  final removedFromDevice = <String>[];
+  var dismissed = 0;
+
+  @override
+  SpaceRemovalState build() => initial;
+
+  @override
+  Future<void> removeFromDevice(String spaceId) async {
+    if (fail) throw StateError('store busy');
+    removedFromDevice.add(spaceId);
+  }
+
+  @override
+  void dismissNotice() {
+    dismissed++;
+    super.dismissNotice();
+  }
 }
