@@ -15,11 +15,16 @@ import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/backup/data/device_copy_store.dart';
 import 'features/spaces/data/active_space_store.dart';
 import 'features/spaces/data/device_space_stores.dart';
+import 'features/spaces/data/invite_page.dart';
 import 'features/spaces/data/sharing_service.dart';
 import 'features/spaces/data/space_removals.dart';
 import 'features/spaces/data/space_service.dart';
+import 'features/spaces/presentation/join_space.dart';
 
 Future<void> main() async {
+  // First, before anything reads the address: an invite link's secret moves
+  // out of the address bar (web only; shared spaces C3).
+  final inviteSecret = takeInviteSecretFromPage();
   WidgetsFlutterBinding.ensureInitialized();
   const config = CloudConfig.fromEnvironment;
   final supabase = await _startSupabase(config);
@@ -30,6 +35,7 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
+        initialInviteSecretProvider.overrideWithValue(inviteSecret),
         if (authRepository != null)
           authRepositoryProvider.overrideWithValue(authRepository),
         if (preferences != null) ...[

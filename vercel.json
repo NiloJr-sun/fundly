@@ -2,13 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "bash tool/vercel_build.sh",
   "outputDirectory": "build/web",
+  "rewrites": [{ "source": "/join", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)\\.wasm",
       "headers": [{ "key": "Content-Type", "value": "application/wasm" }]
     },
     {
-      "source": "/",
+      "source": "/(join)?",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     },
     {

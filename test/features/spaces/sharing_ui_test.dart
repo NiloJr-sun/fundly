@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
+import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/device_data_copier.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
+import 'package:fundly/features/spaces/data/active_space.dart';
 import 'package:fundly/features/spaces/data/active_space_store.dart';
 import 'package:fundly/features/spaces/data/sharing_service.dart';
 import 'package:fundly/features/spaces/data/space_directory.dart';
@@ -11,6 +13,7 @@ import 'package:fundly/features/spaces/data/space_service.dart';
 import 'package:fundly/features/spaces/domain/space.dart';
 import 'package:fundly/features/spaces/domain/space_invite.dart';
 import 'package:fundly/features/spaces/domain/space_member.dart';
+import 'package:fundly/features/spaces/presentation/join_space.dart';
 import 'package:fundly/features/spaces/presentation/members_screen.dart';
 
 import '../../helpers/fake_auth_repository.dart';
@@ -44,7 +47,12 @@ void main() {
 
   setUp(() => sharing = FakeSharingService());
 
-  Future<void> pump(WidgetTester tester, Widget home) async {
+  Future<void> pump(
+    WidgetTester tester,
+    Widget home, {
+    AuthIdentity identity = user,
+    String? pageInvite,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -53,8 +61,9 @@ void main() {
             spaces: const [personal, business, household],
           ),
           authRepositoryProvider.overrideWithValue(
-            FakeAuthRepository(initial: user),
+            FakeAuthRepository(initial: identity),
           ),
+          initialInviteSecretProvider.overrideWithValue(pageInvite),
           activeSpaceStoreProvider.overrideWithValue(
             InMemoryActiveSpaceStore(),
           ),
@@ -289,6 +298,126 @@ void main() {
       expect(find.byType(PopupMenuButton<Object>), findsNothing);
       expect(find.text('Invite'), findsNothing);
       expect(find.text('Pending invites'), findsNothing);
+      expect(sharing.calls, isEmpty);
+    });
+  });
+  group('join (C3.3 part C)', () {
+    const gardenId = '1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f5a';
+    final secret = 'cd' * 32;
+    InvitePreview preview({bool alreadyMember = false}) => InvitePreview(
+      spaceId: gardenId,
+      spaceName: 'Garden',
+      role: SpaceRole.viewer,
+      expiresAt: DateTime.utc(2026, 12, 1),
+      alreadyMember: alreadyMember,
+      inviterName: 'Bea',
+    );
+
+    Future<void> pasteLink(WidgetTester tester, String text) async {
+      await pump(tester, const ProfileScreen());
+      await tester.tap(find.byKey(const Key('space-switcher')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Join a space'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join a space'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), text);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+    }
+
+    String? activeSpace(WidgetTester tester) =>
+        ProviderScope.containerOf(tester.element(find.byType(ProfileScreen)))
+            .read(activeSpaceIdProvider);
+
+    testWidgets('a paste without a link is explained', (tester) async {
+      await pasteLink(tester, 'join my budget please');
+      expect(find.text('Paste the invite link you were sent'), findsOneWidget);
+      expect(sharing.calls, isEmpty);
+    });
+
+    testWidgets('the link inside a message opens the invite; accepting '
+        'switches to the space', (tester) async {
+      sharing.preview = preview();
+      await pasteLink(
+        tester,
+        'Join Garden on Fundly: https://fundly-budget.vercel.app/join#$secret',
+      );
+      expect(find.text('Join Garden?'), findsOneWidget);
+      expect(find.text('Bea invited you to Garden as Viewer.'), findsOneWidget);
+      expect(find.textContaining('and can change them'), findsNothing);
+
+      await tester.tap(find.text('Accept'));
+      await tester.pumpAndSettle();
+      expect(sharing.calls, ['preview $secret', 'accept $secret']);
+      expect(find.text('Join Garden?'), findsNothing);
+      expect(activeSpace(tester), gardenId);
+    });
+
+    testWidgets('declining says so and stays put', (tester) async {
+      sharing.preview = preview();
+      await pasteLink(tester, secret.toUpperCase());
+      await tester.tap(find.text('Decline'));
+      await tester.pumpAndSettle();
+      expect(sharing.calls.last, 'decline $secret');
+      expect(find.text('Invite declined.'), findsOneWidget);
+      expect(activeSpace(tester), user.userId);
+    });
+
+    testWidgets('an invite for another email reveals nothing', (tester) async {
+      sharing.failures.add(
+        const SharingException(SharingProblem.inviteOtherEmail),
+      );
+      await pasteLink(tester, secret);
+      expect(find.textContaining('This invite is for another email'), findsOne);
+      expect(find.text('Accept'), findsNothing);
+      expect(find.textContaining('Garden'), findsNothing);
+    });
+
+    testWidgets('already a member: Open switches without accepting', (
+      tester,
+    ) async {
+      sharing.preview = preview(alreadyMember: true);
+      await pasteLink(tester, secret);
+      expect(find.text("You're already a member of Garden."), findsOneWidget);
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(sharing.calls, ['preview $secret']);
+      expect(activeSpace(tester), gardenId);
+    });
+
+    testWidgets('a web page opened with an invite shows it once', (
+      tester,
+    ) async {
+      sharing.preview = preview(alreadyMember: true);
+      await pump(
+        tester,
+        const PendingInviteHandler(child: ProfileScreen()),
+        pageInvite: secret,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text("You're already a member of Garden."), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text("You're already a member of Garden."), findsNothing);
+      expect(sharing.calls, ['preview $secret']);
+    });
+
+    testWidgets('signed out, the page invite waits for sign-in', (
+      tester,
+    ) async {
+      sharing.preview = preview();
+      await pump(
+        tester,
+        const PendingInviteHandler(child: Scaffold(body: Text('home'))),
+        identity: const SignedOut(),
+        pageInvite: secret,
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('You have an invite to a space'), findsOne);
+      expect(find.text('Join Garden?'), findsNothing);
       expect(sharing.calls, isEmpty);
     });
   });

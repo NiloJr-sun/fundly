@@ -9,6 +9,7 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/backup/presentation/device_data_prompt.dart';
 import '../features/spaces/data/active_space.dart';
 import '../features/spaces/data/space_removals.dart';
+import '../features/spaces/presentation/join_space.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -47,7 +48,9 @@ class FundlyApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       home: showLogin
           ? const LoginScreen()
-          : const DeviceDataPrompt(child: HomeShell()),
+          : const DeviceDataPrompt(
+              child: PendingInviteHandler(child: HomeShell()),
+            ),
     );
   }
 }

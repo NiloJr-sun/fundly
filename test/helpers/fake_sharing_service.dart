@@ -42,15 +42,27 @@ class FakeSharingService implements SharingService {
   Future<void> revokeInvite(String inviteId) async =>
       _record('revoke $inviteId');
 
-  @override
-  Future<InvitePreview> previewInvite(String secret) =>
-      throw UnimplementedError();
+  /// What [previewInvite] returns; set by tests that open invites.
+  InvitePreview? preview;
 
   @override
-  Future<JoinedSpace> acceptInvite(String secret) => throw UnimplementedError();
+  Future<InvitePreview> previewInvite(String secret) async {
+    _record('preview $secret');
+    return preview!;
+  }
 
   @override
-  Future<void> declineInvite(String secret) => throw UnimplementedError();
+  Future<JoinedSpace> acceptInvite(String secret) async {
+    _record('accept $secret');
+    return JoinedSpace(
+      spaceId: preview!.spaceId,
+      spaceName: preview!.spaceName,
+      role: preview!.role,
+    );
+  }
+
+  @override
+  Future<void> declineInvite(String secret) async => _record('decline $secret');
 
   @override
   Future<void> setMemberRole({

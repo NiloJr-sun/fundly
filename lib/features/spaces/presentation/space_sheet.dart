@@ -5,6 +5,7 @@ import '../../../app/theme/spacing.dart';
 import '../data/active_space.dart';
 import '../data/space_directory.dart';
 import '../domain/space.dart';
+import 'join_space.dart';
 import 'space_actions.dart';
 import 'space_name_dialog.dart';
 import 'space_providers.dart';
@@ -94,6 +95,16 @@ class SpaceSheet extends ConsumerWidget {
               title: const Text('Create space'),
               subtitle: const Text('Needs a connection'),
               onTap: create,
+            ),
+            ListTile(
+              leading: const Icon(Icons.group_add_outlined),
+              title: const Text('Join a space'),
+              subtitle: const Text('Paste an invite link'),
+              onTap: () async {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                await joinSpace(navigator.context);
+              },
             ),
           ],
         ),

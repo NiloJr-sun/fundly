@@ -205,7 +205,13 @@ class PowerSyncStore implements SyncedStore {
           await subscription.waitForFirstSync();
         }
         await listed.future;
-        if (!_closed) await initializeDatasetIfEmpty(database);
+        if (!_closed) {
+          await initializeDatasetIfEmpty(
+            database,
+            spaceId: spaceId,
+            userId: _identity.userId,
+          );
+        }
       }
     } on Object catch (error) {
       _emit(SyncState(connection: SyncConnection.failed, error: '$error'));

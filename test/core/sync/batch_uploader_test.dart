@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
@@ -597,6 +598,41 @@ void main() {
       expect(item.keys, unorderedEquals(['operation', 'id']));
       await addCategory('Gifts');
       expect(await initializeDatasetIfEmpty(database), isFalse);
+    });
+
+    test('a viewer never asks for the defaults (C3)', () async {
+      Future<void> member(String user, String role) => database.customInsert(
+        'INSERT INTO space_members (id, space_id, user_id, role, created_at, '
+        "updated_at) VALUES (?, 's1', ?, ?, '2026-11-24', '2026-11-24')",
+        variables: [
+          Variable.withString('s1:$user'),
+          Variable.withString(user),
+          Variable.withString(role),
+        ],
+      );
+      await member('viewer-user', 'viewer');
+      await member('editor-user', 'editor');
+
+      expect(
+        await initializeDatasetIfEmpty(
+          database,
+          spaceId: 's1',
+          userId: 'viewer-user',
+        ),
+        isFalse,
+      );
+      expect(
+        await database.customSelect('SELECT * FROM ps_crud').get(),
+        isEmpty,
+      );
+      expect(
+        await initializeDatasetIfEmpty(
+          database,
+          spaceId: 's1',
+          userId: 'editor-user',
+        ),
+        isTrue,
+      );
     });
   });
 
