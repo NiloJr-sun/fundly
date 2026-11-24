@@ -46,6 +46,8 @@ own `postgres:postgres`.
 | `powersync/sync-config.yaml` | `c0_my_spaces` (auto) and `c0_space_entries` (per space, `space_id` parameter, membership subquery) |
 | `up.sh`, `down.sh`, `local_env.py` | Start and stop; write the git-ignored config and test users |
 | `../../../cloud_checks/c0_connection_check.py` | C0.1 done check |
+| `../../../cloud_checks/c0_space_isolation.py` | C0.2 API checks 3, 9, 10 |
+| `../../test/c0_space_stream_test.dart` | C0.2 stream checks 1-2, 4-8 and 8b (`set -a; . cloud/c0/.env.local; set +a; flutter test test/c0_space_stream_test.dart` from `tool/sync_probe`) |
 
 ## Verification log
 
@@ -55,3 +57,6 @@ own `postgres:postgres`.
 | 2026-11-24 | `up.sh` from scratch, then again | Both migrations applied; `wal_level` logical; publication lists exactly the three c0 tables; Auth signs with ES256 and serves JWKS. PowerSync 1.29.1 accepted the sync config (subquery and `subscription.parameter`), created its replication slot and replicates the three tables. Second run reused the users |
 | 2026-11-24 | `c0_connection_check.py` | 7 of 7 passed: three users sign in; PowerSync ready, accepts a session, rejects a tampered token with `401 PSYNC_S2101`; anonymous read denied; receipts unreadable; A's new space invisible to B and C; check space deleted. Also refuses configs pointing at production |
 | 2026-11-24 | `down.sh` then `up.sh`, check rerun | Data and users kept; check passed; Fundly's local database kept running throughout |
+| 2026-11-24 | C0.2 `c0_space_stream_test.dart`, three runs | 6 of 6 tests passed each run (checks 1-2, 4-8, 8b). One earlier run failed test 6 because a new member's first sync finished before the membership reached PowerSync; the store now waits for its space to appear (finding 2 in the plan) |
+| 2026-11-24 | C0.2 `c0_space_isolation.py`, two runs | 7 of 7 passed: outsider reads and writes nothing; same batch applied once; 20 concurrent batches from two members all applied; concurrent edits of one revision: one applied, one `40001` |
+| 2026-11-24 | After C0.2 | No c0 spaces, members or entries left; probe `flutter test` 19 passed, 7 skipped (live checks without credentials); probe analyze clean; Fundly root format, analyze and 1156 tests pass |

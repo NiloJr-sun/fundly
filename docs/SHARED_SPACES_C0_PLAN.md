@@ -5,7 +5,7 @@ Date: 2026-11-24
 Status: **approved 2026-11-24** (Decisions C0-1 to C0-4, all as
 recommended). The PowerSync free plan allows only one instance (Fundly's
 production one), so C0-1 fell back to the **local** option, approved the same
-day (see C0-1). **C0.1 done 2026-11-24**; C0.2 next. Slice C0 of
+day (see C0-1). **C0.1 and C0.2 done 2026-11-24**; C0.3 next. Slice C0 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md) (approved 2026-11-22).
 C0 is a throwaway prototype in the style of S1
 ([CLOUD_SYNC_S1_FINDINGS.md](CLOUD_SYNC_S1_FINDINGS.md)). It produces go/no-go
@@ -135,7 +135,7 @@ PowerSync accepts a session and rejects a tampered token, outsiders cannot see
 a space). The schema had already passed a 21-assertion rehearsal. Details in
 the [C0 README](../tool/sync_probe/cloud/c0/README.md) verification log.
 
-### C0.2: Server and stream checks (agent, automated, VM)
+### C0.2: Server and stream checks (agent, automated, VM) ✅ Done 2026-11-24
 
 `tool/cloud_checks/c0_space_isolation.py` (API, publishable key only) and
 `tool/sync_probe/test/c0_space_stream_test.dart` (live PowerSync, skipped
@@ -153,6 +153,45 @@ without credentials). Each run creates its own spaces and removes them.
 | 8 | B queues a write offline, is removed, reconnects: the upload is refused; the queued item is still readable on the device (so C3 can log it) and the local rows are removed |
 | 9 | Same write batch sent twice: applied once (receipt) |
 | 10 | Two members writing to one space at once: both applied in order, revisions consistent |
+
+**Result: all 10 checks pass**, against the local environment:
+`c0_space_stream_test.dart` 6 of 6 tests (checks 1-2, 4-8, plus 8b below),
+three runs in a row; `c0_space_isolation.py` 7 of 7 (checks 3, 9, 10), two
+runs. No spaces left behind. Fundly's own suite unchanged (format and analyze
+clean, 1156 tests pass). Every change below reached the device within one
+250 ms poll of the test, locally:
+
+| Event | Seen on the device |
+|---|---|
+| New entry, editor write, role change | ~0.25 s |
+| Member removed while connected | entries ~0.25 s, space and members right after |
+| Member removed while offline | on reconnect, ~0.25 s |
+| Queued write of a removed member | refused and logged ~0.25 s; space removed right after |
+| Viewer's refused local write | reverted right after the refusal is logged |
+
+Findings for C0.4 and C1-C3:
+
+1. **The design works as proposed.** A subscription parameter combined with a
+   membership subquery scopes each store to one space; an outsider who
+   subscribes with another space's ID gets nothing; membership and role
+   changes re-evaluate the streams; removal clears the space from the device,
+   also after being offline.
+2. **A new member's first sync can finish empty.** Once (test 6, second run)
+   the store's first sync completed before the just-granted membership had
+   reached PowerSync, and the data arrived a moment later. The app should
+   treat a space as ready only when it appears in the member's own spaces
+   stream, not when the first sync finishes. The tests now wait for that.
+3. **Refused uploads must be logged and completed, not retried** (check 8b).
+   If a removed member's queued write is retried, PowerSync keeps the queue
+   and will not apply checkpoints ("Could not apply checkpoint due to local
+   data"), so the removed space **stays on the device**. Logging the refusal
+   and completing the transaction, as Fundly's uploader already does with
+   Refused changes, lets removal take effect and keeps the change for the
+   member (Decision 8).
+4. **Refused local writes revert by themselves** once the queue is empty, as
+   in Fundly today.
+5. **Stream subscriptions must be unsubscribed** when a store closes; the SDK
+   warns about leaked subscriptions otherwise.
 
 ### C0.3: Switching on iOS and Chrome (agent, with owner observing)
 
