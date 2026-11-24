@@ -225,6 +225,55 @@ enum AppPalette {
         stops: [0, 0.42, 1],
       ),
     ),
+  ),
+
+  /// Mint, Sage, Emerald and Rose (#8EE7B7, #A7F3D0, #34D399, #F67165) on
+  /// near-black surfaces; designed dark first. The light shade uses deeper
+  /// greens and rose so money colours stay readable on pale surfaces.
+  midnightMint(
+    'Midnight Mint',
+    seed: Color(0xFF34D399),
+    light: PaletteShade(
+      surface: Color(0xFFF3FAF6),
+      surfaceContainerLowest: Color(0xFFFFFFFF),
+      surfaceContainerLow: Color(0xFFEDF6F1),
+      surfaceContainer: Color(0xFFE6F0EA),
+      surfaceContainerHigh: Color(0xFFDEEAE3),
+      surfaceContainerHighest: Color(0xFFD5E3DB),
+      outlineVariant: Color(0xFFC4D6CC),
+      onSurface: Color(0xFF13201A),
+      onSurfaceVariant: Color(0xFF4F6158),
+      accent: Color(0xFFA7F3D0),
+      positive: Color(0xFF17734B),
+      expense: Color(0xFFB33A31),
+      warning: Color(0xFF8D6E00),
+      backdrop: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFCDF5E2), Color(0xFFF3FAF6)],
+      ),
+    ),
+    dark: PaletteShade(
+      surface: Color(0xFF0F1412),
+      surfaceContainerLowest: Color(0xFF0A0E0C),
+      surfaceContainerLow: Color(0xFF161C19),
+      surfaceContainer: Color(0xFF1B221F),
+      surfaceContainerHigh: Color(0xFF222A26),
+      surfaceContainerHighest: Color(0xFF2B3430),
+      outlineVariant: Color(0xFF34403A),
+      onSurface: Color(0xFFE8F0EC),
+      onSurfaceVariant: Color(0xFFA9B7B0),
+      accent: Color(0xFFA7F3D0),
+      positive: Color(0xFF8EE7B7),
+      expense: Color(0xFFF67165),
+      warning: Color(0xFFFFD54F),
+      backdrop: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF12352A), Color(0xFF132520), Color(0xFF0F1412)],
+        stops: [0, 0.42, 1],
+      ),
+    ),
   );
 
   const AppPalette(

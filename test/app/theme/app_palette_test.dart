@@ -47,6 +47,35 @@ void main() {
     }
   });
 
+  // Midnight Mint's light shade was derived (not supplied by the product
+  // owner), so its money and secondary text colours are held to 4.5:1 too.
+  test('Midnight Mint light: money and secondary text read at 4.5:1', () {
+    final theme = AppTheme.build(AppPalette.midnightMint, Brightness.light);
+    final money = theme.extension<AppColors>()!;
+    for (final foreground in [
+      money.positive,
+      money.expense,
+      theme.colorScheme.onSurfaceVariant,
+    ]) {
+      for (final background in [
+        theme.colorScheme.surface,
+        theme.cardTheme.color!,
+        theme.colorScheme.surfaceContainerHigh,
+        ...money.backdrop.colors,
+      ]) {
+        expect(
+          contrast(foreground, background),
+          greaterThanOrEqualTo(4.5),
+          reason: '$foreground on $background',
+        );
+      }
+    }
+  });
+
+  test('Midnight Mint is saved and read back by name', () {
+    expect(AppPalette.fromName('midnightMint'), AppPalette.midnightMint);
+  });
+
   for (final brightness in Brightness.values) {
     test(
       '${brightness.name}: destructive red is the same in every palette',
