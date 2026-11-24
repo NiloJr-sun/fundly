@@ -17,8 +17,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:powersync/powersync.dart' as ps;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fundly_sync_probe/c0/c0_spaces.dart';
 import 'package:uuid/uuid.dart';
 
 final _environment = Platform.environment;
@@ -30,229 +29,9 @@ const _credentialNames = [
   'C0_TEST_C_EMAIL',
   'C0_TEST_C_PASSWORD',
 ];
-const _productionRef = 'jiiuukimazvcxautvmya';
 
-/// Mirrors cloud/c0/powersync/sync-config.yaml, plus a local-only log of
-/// refused uploads (what Fundly keeps in `sync_rejections`).
-const _schema = ps.Schema([
-  ps.Table('c0_spaces', [
-    ps.Column.text('name'),
-    ps.Column.text('created_by'),
-    ps.Column.text('created_at'),
-    ps.Column.text('updated_at'),
-  ]),
-  ps.Table('c0_space_members', [
-    ps.Column.text('space_id'),
-    ps.Column.text('user_id'),
-    ps.Column.text('role'),
-    ps.Column.text('created_at'),
-    ps.Column.text('updated_at'),
-  ]),
-  ps.Table('c0_entries', [
-    ps.Column.text('space_id'),
-    ps.Column.text('label'),
-    ps.Column.integer('amount_minor'),
-    ps.Column.text('created_by'),
-    ps.Column.text('updated_by'),
-    ps.Column.text('created_at'),
-    ps.Column.text('updated_at'),
-    ps.Column.integer('revision'),
-  ]),
-  ps.Table.localOnly('c0_refused', [
-    ps.Column.text('batch_id'),
-    ps.Column.text('code'),
-    ps.Column.text('operations'),
-  ]),
-]);
-
-/// Server error codes that mean "never going to apply": log and move on.
-const _refusalCodes = {'42501', '40001', '23505', '23514', '22023'};
-
-class _User {
-  _User(this.name, this.client);
-  final String name;
-  final SupabaseClient client;
-
-  String get id => client.auth.currentUser!.id;
-  String get token => client.auth.currentSession!.accessToken;
-
-  Future<void> createSpace(String space, String name) =>
-      client.rpc('c0_create_space', params: {'p_id': space, 'p_name': name});
-
-  Future<void> setMember(String space, _User user, String role) => client.rpc(
-    'c0_set_member',
-    params: {'p_space': space, 'p_user': user.id, 'p_role': role},
-  );
-
-  Future<void> removeMember(String space, _User user) => client.rpc(
-    'c0_remove_member',
-    params: {'p_space': space, 'p_user': user.id},
-  );
-
-  Future<void> deleteSpace(String space) =>
-      client.rpc('c0_delete_space', params: {'p_space': space});
-
-  Future<void> put(String space, String entry, String label) => client.rpc(
-    'c0_apply_batch',
-    params: {
-      'p_batch_id': const Uuid().v4(),
-      'p_space_id': space,
-      'p_ops': [
-        {
-          'op': 'PUT',
-          'id': entry,
-          'data': {'label': label, 'amount_minor': '100'},
-        },
-      ],
-    },
-  );
-}
-
-/// Uploads each local transaction as one `c0_apply_batch` into the store's
-/// space. With [logRefusals], a refused batch is logged in `c0_refused` and
-/// completed, as Fundly's uploader does; without it the error propagates and
-/// PowerSync keeps retrying (the queue stays stuck).
-class _Connector extends ps.PowerSyncBackendConnector {
-  _Connector(
-    this.endpoint,
-    this.user,
-    this.space,
-    this.storeName, {
-    required this.logRefusals,
-  });
-  final String endpoint;
-  final _User user;
-  final String space;
-  final String storeName;
-  final bool logRefusals;
-
-  @override
-  Future<ps.PowerSyncCredentials?> fetchCredentials() async =>
-      ps.PowerSyncCredentials(endpoint: endpoint, token: user.token);
-
-  @override
-  Future<void> uploadData(ps.PowerSyncDatabase database) async {
-    final transaction = await database.getNextCrudTransaction();
-    if (transaction == null) return;
-    final operations = [
-      for (final entry in transaction.crud)
-        if (entry.table == 'c0_entries')
-          {
-            'op': entry.op.json,
-            'id': entry.id,
-            'data': entry.opData,
-            if (entry.previousValues != null) 'old': entry.previousValues,
-          },
-    ];
-    final batchId = const Uuid().v5(
-      Namespace.url.value,
-      '$storeName:${transaction.transactionId}',
-    );
-    try {
-      await user.client.rpc(
-        'c0_apply_batch',
-        params: {
-          'p_batch_id': batchId,
-          'p_space_id': space,
-          'p_ops': operations,
-        },
-      );
-    } on PostgrestException catch (error) {
-      if (!logRefusals || !_refusalCodes.contains(error.code)) rethrow;
-      await database.execute(
-        'INSERT INTO c0_refused (id, batch_id, code, operations) '
-        'VALUES (uuid(), ?, ?, ?)',
-        [batchId, error.code, jsonEncode(operations)],
-      );
-    }
-    await transaction.complete();
-  }
-}
-
-/// One device store for one user's view of one space.
-class _Store {
-  _Store._(this.database, this.directory, this.connector);
-  late final ps.SyncStreamSubscription subscription;
-  final ps.PowerSyncDatabase database;
-  final Directory directory;
-  final _Connector connector;
-
-  static Future<_Store> open(
-    String endpoint,
-    _User user,
-    String space, {
-    bool logRefusals = true,
-    bool member = true,
-  }) async {
-    final storeName = 'c0_${user.id}_$space';
-    final directory = await Directory.systemTemp.createTemp('fundly-c0-');
-    final database = ps.PowerSyncDatabase(
-      schema: _schema,
-      path: '${directory.path}/$storeName.sqlite',
-    );
-    await database.initialize();
-    final connector = _Connector(
-      endpoint,
-      user,
-      space,
-      storeName,
-      logRefusals: logRefusals,
-    );
-    final store = _Store._(database, directory, connector);
-    final subscription = store.subscription = await database.syncStream(
-      'c0_space_entries',
-      {'space_id': space},
-    ).subscribe();
-    await store.connect();
-    await subscription.waitForFirstSync().timeout(const Duration(seconds: 60));
-    // Finding: the first sync can finish before a membership granted moments
-    // earlier has reached PowerSync, so it starts empty. A member's store is
-    // ready once its own space appears in c0_my_spaces.
-    if (member) {
-      await _until(
-        () async => (await store.ids('c0_spaces')).contains(space),
-        'space visible to a new member\'s store',
-      );
-    }
-    return store;
-  }
-
-  Future<void> connect() => database.connect(connector: connector);
-  Future<void> disconnect() => database.disconnect();
-
-  Future<Set<String>> ids(String table, [String where = '1']) async => {
-    for (final row in await database.getAll(
-      'SELECT id FROM $table WHERE $where',
-    ))
-      row['id'] as String,
-  };
-
-  Future<void> close() async {
-    subscription.unsubscribe();
-    await database.disconnectAndClear();
-    await database.close();
-    await directory.delete(recursive: true);
-  }
-}
-
-Future<Duration> _until(
-  Future<bool> Function() condition,
-  String label, {
-  Duration timeout = const Duration(seconds: 60),
-}) async {
-  final started = DateTime.now();
-  while (!await condition()) {
-    if (DateTime.now().difference(started) > timeout) {
-      fail('Timed out: $label');
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-  }
-  final took = DateTime.now().difference(started);
-  // Timings feed the C0 findings.
-  // ignore: avoid_print
-  print('  $label: ${took.inMilliseconds} ms');
-  return took;
-}
+Future<Duration> _until(Future<bool> Function() condition, String label) =>
+    waitUntil(condition, label);
 
 /// Checks that [condition] stays true for [period].
 Future<void> _staysFor(
@@ -275,10 +54,11 @@ void main() {
       ? null
       : 'Live C0 check: set ${_credentialNames.join(', ')}';
 
-  late String endpoint;
-  late _User a, b, c;
+  late C0Config config;
+  late C0User a, b, c;
   final spaces = <String>[];
-  final stores = <_Store>[];
+  final stores = <C0Store>[];
+  final directories = <Directory>[];
 
   Future<String> newSpace(String name) async {
     final space = const Uuid().v4();
@@ -287,45 +67,43 @@ void main() {
     return space;
   }
 
-  Future<_Store> open(
-    _User user,
+  Future<C0Store> open(
+    C0User user,
     String space, {
     bool logRefusals = true,
     bool member = true,
   }) async {
-    final store = await _Store.open(
-      endpoint,
+    final directory = await Directory.systemTemp.createTemp('fundly-c0-');
+    directories.add(directory);
+    final store = await C0Store.open(
+      '${directory.path}/${c0StoreName(user, space)}.sqlite',
+      config,
       user,
       space,
       logRefusals: logRefusals,
-      member: member,
     );
     stores.add(store);
+    await store.sync(member: member);
     return store;
   }
 
   setUpAll(() async {
     if (skip != null) return;
-    final config = jsonDecode(
+    final values = jsonDecode(
       File(_environment['C0_CHECK_CONFIG'] ?? 'cloud/c0/config.local.json')
           .readAsStringSync(),
     ) as Map<String, Object?>;
-    final url = config['SUPABASE_URL']! as String;
-    endpoint = config['POWERSYNC_URL']! as String;
-    if (url.contains(_productionRef) || !url.startsWith('http://127.0.0.1:')) {
-      fail('Refusing: C0 checks run only against the local C0 environment');
-    }
-    Future<_User> signIn(String letter) async {
-      final client = SupabaseClient(
-        url,
-        config['SUPABASE_PUBLISHABLE_KEY']! as String,
-      );
-      await client.auth.signInWithPassword(
-        email: _environment['C0_TEST_${letter}_EMAIL']!,
-        password: _environment['C0_TEST_${letter}_PASSWORD']!,
-      );
-      return _User(letter, client);
-    }
+    config = C0Config(
+      supabaseUrl: values['SUPABASE_URL']! as String,
+      publishableKey: values['SUPABASE_PUBLISHABLE_KEY']! as String,
+      powerSyncUrl: values['POWERSYNC_URL']! as String,
+    );
+    Future<C0User> signIn(String letter) => C0User.signIn(
+      config,
+      letter,
+      _environment['C0_TEST_${letter}_EMAIL']!,
+      _environment['C0_TEST_${letter}_PASSWORD']!,
+    );
 
     a = await signIn('A');
     b = await signIn('B');
@@ -335,9 +113,13 @@ void main() {
 
   tearDown(() async {
     for (final store in stores) {
-      await store.close();
+      await store.close(clear: true);
     }
     stores.clear();
+    for (final directory in directories) {
+      await directory.delete(recursive: true);
+    }
+    directories.clear();
     for (final space in spaces) {
       await a.deleteSpace(space);
     }

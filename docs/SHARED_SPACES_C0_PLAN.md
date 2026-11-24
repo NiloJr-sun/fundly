@@ -5,7 +5,7 @@ Date: 2026-11-24
 Status: **approved 2026-11-24** (Decisions C0-1 to C0-4, all as
 recommended). The PowerSync free plan allows only one instance (Fundly's
 production one), so C0-1 fell back to the **local** option, approved the same
-day (see C0-1). **C0.1 and C0.2 done 2026-11-24**; C0.3 next. Slice C0 of
+day (see C0-1). **C0.1, C0.2 and C0.3 done 2026-11-24**; C0.4 next. Slice C0 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md) (approved 2026-11-22).
 C0 is a throwaway prototype in the style of S1
 ([CLOUD_SYNC_S1_FINDINGS.md](CLOUD_SYNC_S1_FINDINGS.md)). It produces go/no-go
@@ -193,7 +193,7 @@ Findings for C0.4 and C1-C3:
 5. **Stream subscriptions must be unsubscribed** when a store closes; the SDK
    warns about leaked subscriptions otherwise.
 
-### C0.3: Switching on iOS and Chrome (agent, with owner observing)
+### C0.3: Switching on iOS and Chrome (agent, with owner observing) ✅ Done 2026-11-24
 
 Integration test in the probe, run on the iPhone 16 Plus simulator and in
 Chrome (`flutter test --platform chrome` with the probe's asset prefix):
@@ -206,6 +206,36 @@ Chrome (`flutter test --platform chrome` with the probe's asset prefix):
 
 The owner watches one manual round on the simulator and Chrome with the
 probe UI, as in S1.
+
+**Result: passed on every platform.** `test/c0_switching_test.dart` (2 tests,
+also run on the simulator through `integration_test/c0_switching_test.dart`)
+passed on the VM, the iPhone 16 Plus simulator and Chrome:
+
+- Switching S1 → S2 → S1 keeps each store's data on the device: on switching
+  back, S1's entries are there before connecting, a change made while switched
+  away arrives (~0.25 s), and S2 stays intact.
+- Four stores open at once (A's S1 and S2, B's S2 and S1) stay apart: B's
+  store of S1, where B is not a member, stays empty; B's write in S2 reaches
+  A's S2 store only.
+
+Manual round, observed by the owner with the probe screen (`lib/c0_main.dart`,
+two seeded spaces): every step passed. On the simulator, switching back to a
+space showed its entries "already on this device"; in Chrome, B saw only the
+shared space, edits crossed between the simulator and Chrome, and after a
+reload the space's entries were still on the device. **Two tabs on different
+spaces (C0-4) stayed separate**, each showing and editing only its own space.
+
+Findings:
+
+6. **One browser, one signed-in user.** Supabase web auth shares the session
+   between every client of the same server in a page and across tabs (a
+   broadcast channel), so signing in as another user replaces the session
+   everywhere. That suits the app (one user per browser); the two-user test
+   uses B's client under `localhost` to keep them apart.
+7. **Per-space stores work in Chrome too**: several PowerSync databases in one
+   tab, a reload keeping each, and two tabs on different spaces, with the
+   shared sync worker. C2 can allow different spaces in different tabs
+   (Decision C0-4).
 
 ### C0.4: Findings and go/no-go (agent; owner reviews)
 

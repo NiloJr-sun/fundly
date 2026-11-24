@@ -47,6 +47,9 @@ own `postgres:postgres`.
 | `up.sh`, `down.sh`, `local_env.py` | Start and stop; write the git-ignored config and test users |
 | `../../../cloud_checks/c0_connection_check.py` | C0.1 done check |
 | `../../../cloud_checks/c0_space_isolation.py` | C0.2 API checks 3, 9, 10 |
+| `defines.sh` | Prints the test users as JSON for `--dart-define-from-file` (simulator and Chrome cannot read the environment); redirect to a chmod 600 file outside the repository |
+| `../../test/c0_switching_test.dart`, `../../integration_test/c0_switching_test.dart` | C0.3 switching checks (VM, Chrome, iOS simulator) |
+| `../../lib/c0/c0_spaces.dart`, `../../lib/c0_main.dart` | Shared C0 store code; the probe screen for the manual round (`flutter run -t lib/c0_main.dart`) |
 | `../../test/c0_space_stream_test.dart` | C0.2 stream checks 1-2, 4-8 and 8b (`set -a; . cloud/c0/.env.local; set +a; flutter test test/c0_space_stream_test.dart` from `tool/sync_probe`) |
 
 ## Verification log
@@ -60,3 +63,5 @@ own `postgres:postgres`.
 | 2026-11-24 | C0.2 `c0_space_stream_test.dart`, three runs | 6 of 6 tests passed each run (checks 1-2, 4-8, 8b). One earlier run failed test 6 because a new member's first sync finished before the membership reached PowerSync; the store now waits for its space to appear (finding 2 in the plan) |
 | 2026-11-24 | C0.2 `c0_space_isolation.py`, two runs | 7 of 7 passed: outsider reads and writes nothing; same batch applied once; 20 concurrent batches from two members all applied; concurrent edits of one revision: one applied, one `40001` |
 | 2026-11-24 | After C0.2 | No c0 spaces, members or entries left; probe `flutter test` 19 passed, 7 skipped (live checks without credentials); probe analyze clean; Fundly root format, analyze and 1156 tests pass |
+| 2026-11-24 | C0.3 `c0_switching_test.dart` on the VM, the iPhone 16 Plus simulator and Chrome (`--platform chrome`, probe asset prefix) | 2 of 2 passed on each. Chrome first failed because two users in one page share one Supabase session; B now signs in under `localhost`. C0.2 checks rerun after the shared-code refactor: 6 of 6 |
+| 2026-11-24 | C0.3 manual round with `lib/c0_main.dart` on the simulator and in Chrome (owner) | All steps passed: stored copy reused on switching back; B sees only the shared space; edits cross devices; data kept after a reload; two tabs on different spaces stay separate |
