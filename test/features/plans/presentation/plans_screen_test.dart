@@ -8,6 +8,7 @@ import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
+import 'package:fundly/features/plans/presentation/assign_panel.dart';
 import 'package:fundly/features/plans/presentation/plan_details.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
@@ -1229,6 +1230,255 @@ void main() {
       expect(await amount(tester, 'Gifts (archived)', 'Assigned'), '₱2,000.00');
       expect(find.byTooltip('Edit Gifts assigned'), findsNothing);
       expect(find.text('Unarchive plan'), findsOneWidget);
+    });
+  });
+
+  group('editing Assigned in place', () {
+    Finder panel() => find.byType(AssignPanel);
+
+    Finder key(String face) =>
+        find.descendant(of: panel(), matching: find.text(face));
+
+    Future<void> startAssign(WidgetTester tester, String name) async {
+      // Scrolled in code: a drag would be a tap outside the panel.
+      await tester.ensureVisible(find.byTooltip('Assign to $name'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Assign to $name'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> type(WidgetTester tester, String faces) async {
+      for (final face in faces.split('')) {
+        await tester.tap(key(face == '-' ? '−' : face));
+        await tester.pump();
+      }
+    }
+
+    Future<void> tapPanel(WidgetTester tester, String label) async {
+      await tester.tap(
+        find.descendant(of: panel(), matching: find.text(label)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('tapping Assigned opens the keypad on that row', (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
+
+      await startAssign(tester, 'Food');
+
+      expect(panel(), findsOneWidget);
+      expect(inRow('Food', '₱2500.00'), findsOneWidget);
+      for (final label in ['Activity', 'Details', 'Cancel', 'Done']) {
+        expect(
+          find.descendant(of: panel(), matching: find.text(label)),
+          findsOneWidget,
+          reason: label,
+        );
+      }
+      expect(find.byType(PlanDetails), findsNothing);
+    });
+
+    testWidgets('typing replaces the amount; Done saves it', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '3000');
+      expect(inRow('Food', '₱3000'), findsOneWidget);
+      await tapPanel(tester, 'Done');
+
+      expect(panel(), findsNothing);
+      expect(repository.saved.single, (
+        month: november,
+        categoryId: foodId,
+        target: php(500000),
+        assigned: php(300000),
+      ));
+    });
+
+    testWidgets('the keypad adds and subtracts', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '+500-0.5=');
+      expect(inRow('Food', '₱2999.50'), findsOneWidget);
+      await tapPanel(tester, 'Done');
+
+      expect(repository.saved.single.assigned, php(299950));
+    });
+
+    testWidgets('delete removes the last character', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, null, assigned: 0)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '125');
+      await tester.tap(
+        find.descendant(
+          of: panel(),
+          matching: find.byIcon(Icons.backspace_outlined),
+        ),
+      );
+      await tester.pump();
+      await tapPanel(tester, 'Done');
+
+      expect(repository.saved.single.assigned, php(1200));
+      expect(repository.saved.single.target, isNull);
+    });
+
+    testWidgets('Cancel saves nothing', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '9');
+      await tapPanel(tester, 'Cancel');
+
+      expect(panel(), findsNothing);
+      expect(repository.saved, isEmpty);
+      expect(inRow('Food', '₱5,000.00'), findsNWidgets(2));
+    });
+
+    testWidgets('an unchanged amount is not saved', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await tapPanel(tester, 'Done');
+
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('tapping outside saves and closes', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '42');
+      await tester.tap(find.text('Plans'));
+      await tester.pumpAndSettle();
+
+      expect(panel(), findsNothing);
+      expect(repository.saved.single.assigned, php(4200));
+    });
+
+    testWidgets("another row's Assigned saves this one and edits that one", (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '42');
+      await startAssign(tester, 'Transport');
+
+      expect(repository.saved.single.categoryId, foodId);
+      expect(panel(), findsOneWidget);
+      await type(tester, '7');
+      await tapPanel(tester, 'Done');
+      expect(repository.saved.last.categoryId, transportId);
+      expect(repository.saved.last.assigned, php(700));
+    });
+
+    testWidgets('a sum below zero is refused and kept open', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 10000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '-200');
+      await tapPanel(tester, 'Done');
+
+      expect(find.text("Assigned can't be below zero."), findsOneWidget);
+      expect(panel(), findsOneWidget);
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('an unfinished sum asks to be finished', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '+');
+      await tapPanel(tester, 'Done');
+
+      expect(
+        find.text('Finish the sum, for example 1,000+500.'),
+        findsOneWidget,
+      );
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('the hint fills in the amount that reaches the Target', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 2400000, assigned: 1000000)],
+      );
+
+      await startAssign(tester, 'Food');
+      await tapPanel(tester, 'Assign ₱14,000.00 more to reach your target');
+      expect(repository.saved, isEmpty, reason: 'filling does not save');
+      await tapPanel(tester, 'Done');
+
+      expect(repository.saved.single.assigned, php(2400000));
+    });
+
+    testWidgets('no hint once the Target is reached or without one', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000), plan(transportId, null, assigned: 0)],
+      );
+
+      await startAssign(tester, 'Food');
+      expect(find.textContaining('to reach your target'), findsNothing);
+      await startAssign(tester, 'Transport');
+      expect(find.textContaining('to reach your target'), findsNothing);
+    });
+
+    testWidgets('Activity saves, then opens the category transactions', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000)],
+        transactions: [saved(spending(amount: 8000, payee: 'Jollibee'))],
+      );
+
+      await startAssign(tester, 'Food');
+      await type(tester, '42');
+      await tapPanel(tester, 'Activity');
+
+      expect(repository.saved.single.assigned, php(4200));
+      expect(find.byType(AllTransactionsScreen), findsOneWidget);
+      expect(
+        tester
+            .widgetList<TransactionTile>(find.byType(TransactionTile))
+            .map((tile) => tile.transaction.payee),
+        ['Jollibee'],
+      );
+    });
+
+    testWidgets('Details closes the keypad and opens the details', (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await tapPanel(tester, 'Details');
+
+      expect(panel(), findsNothing);
+      expect(find.byType(PlanDetails), findsOneWidget);
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('fits a small phone without overflow', (tester) async {
+      tester.view
+        ..physicalSize = const Size(320, 568)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 1000)]);
+
+      await startAssign(tester, 'Food');
+
+      expect(tester.takeException(), isNull);
+      expect(panel(), findsOneWidget);
     });
   });
 }

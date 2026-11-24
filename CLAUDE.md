@@ -884,19 +884,26 @@ suggestions as approved decisions.
                           overspent, grey without
                           a Target. Group headers
                           total Assigned and
-                          Available. Tap a row
-                          for its details sheet:
-                          status, Target,
-                          Assigned, Activity and
-                          Available; tap Target
-                          or Assigned to edit
-                          just that amount, Edit
-                          plan for both, Activity
-                          or See transactions for
-                          that month's
-                          transactions, and
-                          Archive plan. Display
-                          only.
+                          Available. Tap Assigned
+                          to edit it in place:
+                          keypad with + − =
+                          (whole centavos, not
+                          below zero), Activity,
+                          Details, Cancel, and
+                          a hint that fills the
+                          amount reaching the
+                          Target. Done, another
+                          row or a tap outside
+                          saves; Cancel discards.
+                          Tap the row for its
+                          details sheet: status,
+                          Target, Assigned,
+                          Activity, Available;
+                          edit Target or
+                          Assigned alone, Edit
+                          plan for both, See
+                          transactions, Archive
+                          plan. Display only.
 
   2026-11-17              JSON backup export      Confirmed
                           (Phase 5 task 5.1):     
