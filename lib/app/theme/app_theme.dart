@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -95,6 +96,13 @@ abstract final class AppTheme {
           minimumSize: const Size(64, 48),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: controlShape,
+          minimumSize: const Size(64, 48),
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+        ),
+      ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           shape: controlShape,
@@ -110,10 +118,42 @@ abstract final class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: panel,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        iconColor: colors.primary,
+        titleTextStyle: _textTheme(brightness).titleLarge
+            ?.copyWith(color: colors.onSurface, fontWeight: FontWeight.w600),
+        contentTextStyle: _textTheme(brightness).bodyMedium
+            ?.copyWith(color: colors.onSurfaceVariant, height: 1.45),
+        actionsPadding: const EdgeInsets.fromLTRB(
+          Spacing.lg,
+          0,
+          Spacing.lg,
+          Spacing.lg - Spacing.xs,
+        ),
+      ),
+      // ⋮ menus: a soft rounded panel just below the button.
+      popupMenuTheme: PopupMenuThemeData(
+        color: isDark
+            ? colors.surfaceContainerHigh
+            : colors.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        position: PopupMenuPosition.under,
+        menuPadding: const EdgeInsets.symmetric(vertical: 6),
       ),
       dividerTheme: DividerThemeData(color: colors.outlineVariant),
       extensions: [isDark ? AppColors.dark : AppColors.light],
     );
+  }
+
+  /// The M3 default text styles for this platform, with their sizes, so
+  /// component themes can build on them (ThemeData adds sizes only later).
+  static TextTheme _textTheme(Brightness brightness) {
+    final typography = Typography.material2021(platform: defaultTargetPlatform);
+    final colored = brightness == Brightness.dark
+        ? typography.white
+        : typography.black;
+    return typography.englishLike.merge(colored);
   }
 }

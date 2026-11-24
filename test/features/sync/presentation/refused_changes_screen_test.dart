@@ -130,13 +130,13 @@ void main() {
     'the status line opens the list only when something was refused',
     (tester) async {
       await pump(tester, const SyncStatusLine());
-      expect(find.text('Up to date'), findsOneWidget);
+      expect(find.text('All changes synced'), findsOneWidget);
       expect(find.byType(InkWell), findsNothing);
 
       await tester.runAsync(() => refuse(store, '1', 'Gifts'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Up to date · 1 change refused · Review'),
+        find.text('All changes synced · 1 change refused · Review'),
         findsOneWidget,
       );
 

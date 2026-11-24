@@ -25,7 +25,7 @@ List<_SpaceAction> _actionsFor(Space space) {
   ];
 }
 
-/// The ⋮ button on a space's row in the space sheet.
+/// The ⋮ button on a space's row in the space list.
 class SpaceActionsButton extends StatelessWidget {
   const SpaceActionsButton({super.key, required this.space});
 
@@ -35,29 +35,48 @@ class SpaceActionsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final actions = _actionsFor(space);
     if (actions.isEmpty) return const SizedBox.shrink();
-    final errorColor = Theme.of(context).colorScheme.error;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return PopupMenuButton<_SpaceAction>(
       tooltip: 'Actions for ${space.name}',
-      icon: const Icon(Icons.more_vert),
+      icon: Icon(Icons.more_vert, color: colors.onSurfaceVariant),
+      offset: const Offset(0, 4),
+      constraints: const BoxConstraints(minWidth: 200),
       onSelected: (action) => _run(context, action),
       itemBuilder: (_) => [
-        for (final action in actions)
+        for (final action in actions) ...[
+          // Keeps the destructive action apart from the others.
+          if (action == _SpaceAction.delete && actions.length > 1)
+            const PopupMenuDivider(height: 9),
           PopupMenuItem(
             value: action,
-            child: switch (action) {
-              _SpaceAction.members => const Text('Members'),
-              _SpaceAction.invite => const Text('Invite'),
-              _SpaceAction.rename => const Text('Rename'),
-              _SpaceAction.leave => const Text('Leave space'),
-              _SpaceAction.delete => Text(
-                'Delete space',
-                style: TextStyle(color: errorColor),
-              ),
-            },
+            height: 44,
+            child: _MenuRow(
+              icon: _iconFor(action),
+              label: _labelFor(action),
+              color: action == _SpaceAction.delete ? colors.error : null,
+            ),
           ),
+        ],
       ],
     );
   }
+
+  static IconData _iconFor(_SpaceAction action) => switch (action) {
+    _SpaceAction.members => Icons.group_outlined,
+    _SpaceAction.invite => Icons.person_add_alt_outlined,
+    _SpaceAction.rename => Icons.edit_outlined,
+    _SpaceAction.leave => Icons.logout,
+    _SpaceAction.delete => Icons.delete_outline,
+  };
+
+  static String _labelFor(_SpaceAction action) => switch (action) {
+    _SpaceAction.members => 'Members',
+    _SpaceAction.invite => 'Invite',
+    _SpaceAction.rename => 'Rename',
+    _SpaceAction.leave => 'Leave space',
+    _SpaceAction.delete => 'Delete space',
+  };
 
   Future<void> _run(BuildContext context, _SpaceAction action) async {
     switch (action) {
@@ -72,24 +91,47 @@ class SpaceActionsButton extends StatelessWidget {
       case _SpaceAction.rename:
         await renameSpace(context, space);
       case _SpaceAction.leave:
-        await _confirmAndClose(context, _LeaveSpaceDialog(space: space));
+        await _confirmAndReport(context, _LeaveSpaceDialog(space: space));
       case _SpaceAction.delete:
-        await _confirmAndClose(context, _DeleteSpaceDialog(space: space));
+        await _confirmAndReport(context, _DeleteSpaceDialog(space: space));
     }
   }
 
   /// Leaving or deleting takes the space off this device (SpaceRemovals does
-  /// that once the server's list no longer has it), so the sheet closes.
-  Future<void> _confirmAndClose(BuildContext context, Widget dialog) async {
-    final navigator = Navigator.of(context);
+  /// that once the server's list no longer has it), so its row goes away.
+  Future<void> _confirmAndReport(BuildContext context, Widget dialog) async {
     final messenger = ScaffoldMessenger.of(context);
     final done = await showDialog<String>(
       context: context,
       builder: (_) => dialog,
     );
     if (done == null) return;
-    navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(done)));
+  }
+}
+
+/// An icon and label in the space menu; [color] tints both (Delete).
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.icon, required this.label, this.color});
+
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: color ?? theme.colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 12),
+        Text(label, style: theme.textTheme.bodyLarge?.copyWith(color: color)),
+      ],
+    );
   }
 }
 

@@ -15,7 +15,7 @@ void main() {
   );
 
   test('every state has its own text', () {
-    expect(text(SyncConnection.connected), 'Up to date');
+    expect(text(SyncConnection.connected), 'All changes synced');
     expect(
       text(SyncConnection.connected, synced: false),
       'Downloading your data…',
@@ -70,7 +70,10 @@ void main() {
       retrying(SyncConnection.connected),
       'Uploading · 3 changes waiting to upload (retrying: PGRST301)',
     );
-    expect(retrying(SyncConnection.connected, pending: 0), 'Up to date');
+    expect(
+      retrying(SyncConnection.connected, pending: 0),
+      'All changes synced',
+    );
     expect(
       retrying(SyncConnection.failed),
       'Sync problem, retrying: timeout · 3 changes waiting to upload',
@@ -85,7 +88,7 @@ void main() {
       refusedChanges: count,
     );
 
-    expect(refused(1), 'Up to date · 1 change refused · Review');
+    expect(refused(1), 'All changes synced · 1 change refused · Review');
     expect(
       refused(2, pending: 1),
       'Uploading · 1 change waiting to upload · 2 changes refused · Review',
@@ -121,7 +124,7 @@ void main() {
   test('hidden rows are reported', () {
     expect(
       text(SyncConnection.connected, hidden: 1),
-      'Up to date · 1 record hidden: its amount is too large to show',
+      'All changes synced · 1 record hidden: its amount is too large to show',
     );
     expect(
       text(SyncConnection.connected, hidden: 3),

@@ -91,6 +91,12 @@ class FakeSpaceService implements SpaceService {
   Future<Set<String>> memberSpaceIds() async => {personal.id, businessId};
 }
 
+/// Opens the collapsible Your spaces section on the Account & Spaces card.
+Future<void> expandSpaces(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('space-switcher')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late FakeSpaceService service;
   late InMemoryActiveSpaceStore remembered;
@@ -127,21 +133,56 @@ void main() {
     );
   }
 
-  group('Profile card', () {
-    testWidgets('shows the active space and role, and opens the sheet', (
+  group('Your spaces', () {
+    testWidgets('starts collapsed, naming the active space, and toggles', (
       tester,
     ) async {
       await pump(tester, const ProfileScreen());
 
+      expect(find.text('YOUR SPACES'), findsOneWidget);
       expect(find.text('Personal · Owner'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('space-switcher')));
-      await tester.pumpAndSettle();
+      expect(find.text('Business'), findsNothing);
+      expect(find.text('Create a new space'), findsNothing);
 
-      expect(find.text('Your spaces'), findsOneWidget);
+      await expandSpaces(tester);
+      expect(find.text('Business'), findsOneWidget);
+      expect(find.text('Create a new space'), findsOneWidget);
+
+      await expandSpaces(tester);
+      expect(find.text('Business'), findsNothing);
+    });
+
+    testWidgets('collapsed before the list downloads, it says so', (
+      tester,
+    ) async {
+      await pump(tester, const ProfileScreen(), spaces: const []);
+      expect(find.text('Loading space…'), findsOneWidget);
+    });
+
+    testWidgets('lists every space with its role and marks the active one', (
+      tester,
+    ) async {
+      await pump(tester, const ProfileScreen());
+      await expandSpaces(tester);
+
+      expect(find.text('YOUR SPACES'), findsOneWidget);
       expect(find.text('Owner · Personal'), findsOneWidget);
       expect(find.text('Business'), findsOneWidget);
       expect(find.text('Editor'), findsOneWidget);
-      expect(find.text('Create space'), findsOneWidget);
+      expect(find.text('Create a new space'), findsOneWidget);
+      // Only the shown space (Personal, by default) is marked.
+      expect(find.text('Active'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(ValueKey('space-${personal.id}')),
+          matching: find.text('Active'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSemantics(find.byKey(ValueKey('space-${personal.id}'))),
+        isSemantics(isSelected: true),
+      );
       expect(find.byTooltip('Actions for Business'), findsOneWidget);
       expect(find.byTooltip('Actions for Household'), findsOneWidget);
     });
@@ -150,38 +191,33 @@ void main() {
       tester,
     ) async {
       final container = await pump(tester, const ProfileScreen());
-      await tester.tap(find.byKey(const Key('space-switcher')));
+      await expandSpaces(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Business'));
       await tester.pumpAndSettle();
 
       expect(container.read(activeSpaceIdProvider), businessId);
       expect(remembered.remembered(user.userId), businessId);
-      expect(find.text('Your spaces'), findsNothing);
     });
 
-    testWidgets('the sheet says when the list has not downloaded yet', (
-      tester,
-    ) async {
+    testWidgets('the list says when it has not downloaded yet', (tester) async {
       await pump(tester, const ProfileScreen(), spaces: const []);
-      expect(find.text('Loading space…'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('space-switcher')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
+      await expandSpaces(tester);
       expect(find.text('Loading your spaces…'), findsOneWidget);
     });
   });
 
   group('Create space', () {
     Future<void> openCreate(WidgetTester tester) async {
-      await tester.tap(find.byKey(const Key('space-switcher')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Create space'));
+      await tester.ensureVisible(find.text('Create a new space'));
+      await tester.pump();
+      await tester.tap(find.text('Create a new space'));
       await tester.pumpAndSettle();
     }
 
     testWidgets('checks the name before asking the server', (tester) async {
       await pump(tester, const ProfileScreen());
+      await expandSpaces(tester);
       await openCreate(tester);
 
       await tester.tap(find.text('Create'));
@@ -203,6 +239,7 @@ void main() {
 
     testWidgets('creates the space, switches to it and closes', (tester) async {
       final container = await pump(tester, const ProfileScreen());
+      await expandSpaces(tester);
       await openCreate(tester);
       await tester.enterText(find.byType(TextField), '  Side job ');
       await tester.tap(find.text('Create'));
@@ -212,12 +249,12 @@ void main() {
       expect(created.name, 'Side job');
       expect(container.read(activeSpaceIdProvider), created.spaceId);
       expect(find.text('New space'), findsNothing);
-      expect(find.text('Your spaces'), findsNothing);
     });
 
     testWidgets('offline says so; a retry reuses the same id', (tester) async {
       service.failures.add(const SpaceException(SpaceProblem.offline));
       await pump(tester, const ProfileScreen());
+      await expandSpaces(tester);
       await openCreate(tester);
       await tester.enterText(find.byType(TextField), 'Side job');
       await tester.tap(find.text('Create'));
@@ -238,6 +275,7 @@ void main() {
     testWidgets('the limit is explained', (tester) async {
       service.failures.add(const SpaceException(SpaceProblem.limitReached));
       await pump(tester, const ProfileScreen());
+      await expandSpaces(tester);
       await openCreate(tester);
       await tester.enterText(find.byType(TextField), 'Eleventh');
       await tester.tap(find.text('Create'));
@@ -249,7 +287,7 @@ void main() {
   group('Rename space', () {
     testWidgets('renames with the revision the device has', (tester) async {
       await pump(tester, const ProfileScreen());
-      await tester.tap(find.byKey(const Key('space-switcher')));
+      await expandSpaces(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Actions for Business'));
       await tester.pumpAndSettle();
@@ -268,7 +306,7 @@ void main() {
     testWidgets('a change elsewhere is explained', (tester) async {
       service.failures.add(const SpaceException(SpaceProblem.changed));
       await pump(tester, const ProfileScreen());
-      await tester.tap(find.byKey(const Key('space-switcher')));
+      await expandSpaces(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Actions for Business'));
       await tester.pumpAndSettle();
@@ -379,6 +417,8 @@ void main() {
       await pumpIn(sharedWithMe, tester, const ProfileScreen());
       for (final action in ['Restore from backup', 'Reset all data']) {
         await tester.scrollUntilVisible(find.text(action), 100);
+        await tester.ensureVisible(find.text(action));
+        await tester.pump();
         await tester.tap(find.text(action));
         await expectViewOnly(tester);
         await tester.pumpAndSettle();

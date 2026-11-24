@@ -8,6 +8,7 @@ import 'package:fundly/features/auth/data/local_use_choice.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/auth/presentation/animated_wallet.dart';
 import 'package:fundly/features/auth/presentation/login_screen.dart';
+import 'package:fundly/features/profile/presentation/profile_screen.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/provider_overrides.dart';
@@ -63,6 +64,16 @@ Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
 
 Future<void> signOutFromProfileTab(WidgetTester tester) async {
   await tapAndSettle(tester, profileTab);
+  await tester.scrollUntilVisible(
+    find.text('Sign out'),
+    200,
+    scrollable: find
+        .descendant(
+          of: find.byType(ProfileScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
   await tapAndSettle(tester, find.text('Sign out'));
   await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Sign out'));
 }
@@ -205,7 +216,7 @@ void main() {
     expect(choice.chosen, isFalse);
     // Signing in rebuilds the app from the first tab.
     await tapAndSettle(tester, profileTab);
-    expect(find.text('Signed in as a@test.com'), findsOne);
+    expect(find.text('a@test.com'), findsOne);
 
     await signOutFromProfileTab(tester);
     expect(login, findsOneWidget);

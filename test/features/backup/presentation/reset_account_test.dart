@@ -126,6 +126,7 @@ void main() {
 
   Future<void> tapReset(WidgetTester tester) async {
     await tester.ensureVisible(find.text('Reset all data'));
+    await tester.pump();
     await tester.tap(find.text('Reset all data'));
     await tester.pumpAndSettle();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme/app_colors.dart';
 import '../../../core/sync/synced_store.dart';
 import 'refused_changes_screen.dart';
 
@@ -33,7 +34,7 @@ String syncStatusText(
     SyncState(connection: SyncConnection.connecting) =>
       'Reconnecting · showing data saved on this device',
     SyncState(connection: SyncConnection.connected) =>
-      pendingUploads == 0 ? 'Up to date' : 'Uploading',
+      pendingUploads == 0 ? 'All changes synced' : 'Uploading',
   };
   final hidden = switch (hiddenRows) {
     0 => '',
@@ -64,8 +65,10 @@ String syncStatusText(
   return '$status$pending$retry$browserOnly$refused$hidden';
 }
 
-/// The signed-in sync status under the Profile greeting. While the server has
-/// refused changes, tapping it opens the Refused changes screen.
+/// The signed-in sync status under the Account & Spaces greeting, after a
+/// small dot: green when everything is synced, the error colour on a problem,
+/// muted otherwise. While the server has refused changes, tapping it opens
+/// the Refused changes screen.
 class SyncStatusLine extends ConsumerWidget {
   const SyncStatusLine({super.key});
 
@@ -81,6 +84,16 @@ class SyncStatusLine extends ConsumerWidget {
         state?.connection == SyncConnection.stuck ||
         hidden > 0 ||
         refused > 0;
+    final synced =
+        !failed &&
+        pending == 0 &&
+        state?.connection == SyncConnection.connected &&
+        state!.hasSynced;
+    final dotColor = failed
+        ? theme.colorScheme.error
+        : synced
+        ? AppColors.of(context).positive
+        : theme.colorScheme.onSurfaceVariant;
     final text = Text(
       syncStatusText(
         state,
@@ -95,12 +108,28 @@ class SyncStatusLine extends ConsumerWidget {
             : theme.colorScheme.onSurfaceVariant,
       ),
     );
-    if (refused == 0) return text;
+    final line = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          // Centres the dot on the first line of bodySmall text.
+          padding: const EdgeInsets.only(top: 5, right: 6),
+          child: Container(
+            key: const Key('sync-status-dot'),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+        ),
+        Expanded(child: text),
+      ],
+    );
+    if (refused == 0) return line;
     return InkWell(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const RefusedChangesScreen()),
       ),
-      child: text,
+      child: line,
     );
   }
 }

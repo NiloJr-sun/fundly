@@ -47,7 +47,7 @@ void main() {
     expect(find.text('Restore from backup'), findsOneWidget);
     expect(find.text('Continue with Google'), findsNothing);
     expect(find.text('Sign out'), findsNothing);
-    expect(find.textContaining('Signed in as'), findsNothing);
+    expect(find.text('YOUR SPACES'), findsNothing);
   });
 
   testWidgets(
@@ -70,8 +70,12 @@ void main() {
   testWidgets('signed in shows who and offers Sign out', (tester) async {
     await pumpProfile(tester, auth: FakeAuthRepository(initial: userA));
 
-    expect(find.text('Signed in as a@test.com'), findsOneWidget);
-    expect(find.text('Up to date'), findsOneWidget);
+    expect(find.text('Account & Spaces'), findsOneWidget);
+    expect(find.text('a@test.com'), findsOneWidget);
+    expect(find.text('All changes synced'), findsOneWidget);
+    expect(find.byKey(const Key('sync-status-dot')), findsOneWidget);
+    expect(find.text('YOUR SPACES'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Sign out'), 200);
     expect(find.text('Sign out'), findsOneWidget);
     expect(find.text('Continue with Google'), findsNothing);
   });
@@ -106,7 +110,7 @@ void main() {
 
     expect(find.text('Good evening, Nilo'), findsOneWidget);
     expect(find.text('N'), findsOneWidget);
-    expect(find.text('Signed in as nilo@test.com'), findsOneWidget);
+    expect(find.text('nilo@test.com'), findsOneWidget);
   });
 
   testWidgets('without a profile name the greeting stands alone', (
@@ -135,7 +139,7 @@ void main() {
       find.text('Could not sign in. Google did not answer.'),
       findsOneWidget,
     );
-    expect(find.textContaining('Signed in as'), findsNothing);
+    expect(find.text('Using Fundly as a guest'), findsOneWidget);
   });
 
   testWidgets('a cancelled sign-in says nothing', (tester) async {
@@ -145,7 +149,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SnackBar), findsNothing);
-    expect(find.textContaining('Signed in as'), findsNothing);
+    expect(find.text('Using Fundly as a guest'), findsOneWidget);
   });
 
   testWidgets('sign-out asks first, and Cancel keeps the user signed in', (
@@ -153,6 +157,7 @@ void main() {
   ) async {
     final auth = FakeAuthRepository(initial: userA);
     await pumpProfile(tester, auth: auth);
+    await tester.scrollUntilVisible(find.text('Sign out'), 200);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
@@ -166,7 +171,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
     await tester.pumpAndSettle();
     expect(auth.signOutCalls, 1);
-    expect(find.textContaining('Signed in as'), findsNothing);
+    expect(find.text('Using Fundly as a guest'), findsOneWidget);
   });
 
   testWidgets('signed in, restore opens the file picker (S6.3)', (

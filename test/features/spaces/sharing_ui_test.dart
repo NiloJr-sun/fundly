@@ -47,6 +47,12 @@ const you = SpaceMember(
   displayName: 'Nilo',
 );
 
+/// Opens the collapsible Your spaces section on the Account & Spaces card.
+Future<void> expandSpaces(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('space-switcher')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late FakeSharingService sharing;
   _FakeRemovals? removals;
@@ -102,7 +108,7 @@ void main() {
 
   Future<void> openMenu(WidgetTester tester, String space) async {
     await pump(tester, const ProfileScreen());
-    await tester.tap(find.byKey(const Key('space-switcher')));
+    await expandSpaces(tester);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Actions for $space'));
     await tester.pumpAndSettle();
@@ -191,7 +197,7 @@ void main() {
   });
 
   group('leave and delete', () {
-    testWidgets('leaving asks first, then closes the sheet', (tester) async {
+    testWidgets('leaving asks first, then says so', (tester) async {
       await openMenu(tester, 'Household');
       await tester.tap(find.text('Leave space'));
       await tester.pumpAndSettle();
@@ -200,7 +206,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(sharing.calls, ['leave $householdId']);
-      expect(find.text('Your spaces'), findsNothing);
       expect(find.text('You left Household.'), findsOneWidget);
     });
 
@@ -327,7 +332,7 @@ void main() {
 
     Future<void> pasteLink(WidgetTester tester, String text) async {
       await pump(tester, const ProfileScreen());
-      await tester.tap(find.byKey(const Key('space-switcher')));
+      await expandSpaces(tester);
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Join a space'));
       await tester.pumpAndSettle();
@@ -456,7 +461,7 @@ void main() {
     ) async {
       removals = _FakeRemovals(const SpaceRemovalState(removed: [gone]));
       await pump(tester, const ProfileScreen());
-      await tester.tap(find.byKey(const Key('space-switcher')));
+      await expandSpaces(tester);
       await tester.pumpAndSettle();
       expect(find.text('Old club'), findsOneWidget);
       expect(find.text('Removed · read-only on this device'), findsOneWidget);

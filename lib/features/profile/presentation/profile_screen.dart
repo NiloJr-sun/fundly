@@ -18,7 +18,8 @@ import '../../spaces/presentation/space_providers.dart';
 import '../../sync/presentation/edit_guard.dart';
 import 'profile_greeting_card.dart';
 
-/// The Profile tab: who is using Fundly, their data backups, and signing out.
+/// The Account & Spaces tab (labelled Profile in the navigation bar): who is
+/// using Fundly, their spaces, their data backups, and signing out.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -37,7 +38,7 @@ class ProfileScreen extends ConsumerWidget {
         ? null
         : ref.watch(deviceCopyStateProvider).lastCopy;
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: const Text('Account & Spaces')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
@@ -128,9 +129,11 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(Spacing.xs, 0, 0, Spacing.sm),
       child: Text(
-        text,
-        style: theme.textTheme.titleSmall?.copyWith(
+        text.toUpperCase(),
+        style: theme.textTheme.labelMedium?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
         ),
       ),
     );
@@ -193,7 +196,7 @@ class _ActionGroup extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const Divider(height: 1, indent: 56),
+            if (i > 0) const Divider(height: 1, indent: 72),
             children[i],
           ],
         ],
@@ -225,15 +228,35 @@ class _ActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final subtitle = this.subtitle;
     final colorScheme = Theme.of(context).colorScheme;
+    final accent = destructive ? colorScheme.error : colorScheme.primary;
+    // Same row shape as the spaces list: a soft icon tile, then the text.
     return ListTile(
-      leading: Icon(icon),
-      iconColor: destructive ? colorScheme.error : colorScheme.primary,
+      minTileHeight: 64,
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: destructive
+              ? colorScheme.error.withValues(alpha: 0.10)
+              : colorScheme.onSurface.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: accent),
+      ),
       title: Text(
         title,
         style: destructive ? TextStyle(color: colorScheme.error) : null,
       ),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+      ),
       onTap: () => onTap(_originOf(context)),
     );
   }

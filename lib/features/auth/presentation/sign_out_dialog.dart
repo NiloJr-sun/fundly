@@ -25,6 +25,7 @@ class SignOutDialog extends ConsumerWidget {
     final theme = Theme.of(context);
     if (pending == 0) {
       return AlertDialog(
+        icon: const Icon(Icons.logout),
         title: const Text('Sign out?'),
         content: const Text(
           'You will return to the login page. Your signed-in data stays on '
@@ -43,6 +44,7 @@ class SignOutDialog extends ConsumerWidget {
       );
     }
     return AlertDialog(
+      icon: Icon(Icons.cloud_upload_outlined, color: theme.colorScheme.error),
       title: Text(
         pending == 1
             ? "1 change hasn't uploaded yet"

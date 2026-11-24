@@ -8,13 +8,13 @@ import '../../auth/domain/auth_identity.dart';
 import '../../auth/domain/greeting.dart';
 import '../../auth/presentation/google_sign_in_button.dart';
 import '../../auth/presentation/sign_in_actions.dart';
-import '../../spaces/presentation/space_sheet.dart';
+import '../../spaces/presentation/space_list.dart';
 import '../../sync/presentation/sync_status_line.dart';
 
-/// The top of the Profile tab: a time-of-day greeting.
+/// The top of the Account & Spaces tab: a time-of-day greeting.
 ///
-/// Signed in: "Good evening, Nilo", "Signed in as …", the sync status and the
-/// active space, which opens the spaces sheet (shared spaces C2).
+/// Signed in: "Good evening, Nilo", the account's email and the sync status
+/// with its status dot, then the collapsible Your spaces section.
 /// As a guest: "Good evening", "Using Fundly as a guest" and, in builds that
 /// can sign in, Continue with Google.
 class ProfileGreetingCard extends ConsumerStatefulWidget {
@@ -47,9 +47,8 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
     final Widget avatar;
     if (identity is SignedIn) {
       final firstName = identity.firstName;
-      final who = identity.email.isEmpty ? 'your account' : identity.email;
       title = firstName.isEmpty ? greeting : '$greeting, $firstName';
-      subtitle = 'Signed in as $who';
+      subtitle = identity.email.isEmpty ? 'Signed in' : identity.email;
       avatar = _Avatar(child: Text(_initial(firstName, identity.email)));
     } else {
       title = greeting;
@@ -83,6 +82,7 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
                     const SizedBox(height: Spacing.xs),
                     Text(
                       subtitle,
+                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -99,7 +99,8 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
           if (identity is SignedIn) ...[
             const SizedBox(height: Spacing.sm),
             const Divider(height: 1),
-            const SpaceSwitcherRow(),
+            const SizedBox(height: Spacing.xs),
+            const SpaceSection(),
           ],
           if (identity is! SignedIn && canSignIn) ...[
             const SizedBox(height: Spacing.md),
@@ -128,15 +129,32 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return CircleAvatar(
-      radius: 24,
-      backgroundColor: theme.colorScheme.primaryContainer,
-      foregroundColor: theme.colorScheme.onPrimaryContainer,
-      child: DefaultTextStyle.merge(
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
+    final colors = theme.colorScheme;
+    // A soft teal gradient: the container colour leaning into the primary.
+    return Container(
+      width: 52,
+      height: 52,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primaryContainer,
+            Color.lerp(colors.primaryContainer, colors.primary, 0.45)!,
+          ],
         ),
-        child: child,
+      ),
+      child: IconTheme.merge(
+        data: IconThemeData(color: colors.onPrimaryContainer),
+        child: DefaultTextStyle.merge(
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colors.onPrimaryContainer,
+          ),
+          child: child,
+        ),
       ),
     );
   }

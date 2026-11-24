@@ -498,6 +498,7 @@ void main() {
 
     Future<void> tapRestore(WidgetTester tester) async {
       await tester.ensureVisible(find.text('Restore from backup'));
+      await tester.pump();
       await tester.tap(find.text('Restore from backup'));
       await settle(tester);
     }
