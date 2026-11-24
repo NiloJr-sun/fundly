@@ -69,14 +69,19 @@ flutter analyze
 flutter test
 npx --yes supabase@3.2.0 db start
 npx --yes supabase@3.2.0 test db
-npx --yes supabase@3.2.0 db lint --schema public,fundly_private --fail-on warning
+npx --yes supabase@3.2.0 db lint --schema public,fundly_private,fundly_access --fail-on warning
 python3 supabase/tests/concurrency/write_api_test.py
 python3 supabase/tests/concurrency/account_write_api_test.py
 python3 supabase/tests/concurrency/category_plan_write_api_test.py
 python3 supabase/tests/concurrency/sync_protocol_test.py
 python3 supabase/tests/concurrency/dataset_import_test.py
+python3 supabase/tests/concurrency/dataset_initialize_test.py
+python3 supabase/tests/concurrency/space_write_api_test.py
 python3 supabase/tests/client_contract_test.py
 python3 supabase/tests/performance/dataset_import_timing.py
+# These two reset the local database (and leave it reset, fully migrated):
+python3 supabase/tests/migration/spaces_backfill_test.py
+python3 supabase/tests/migration/c1_rollback_test.py
 ```
 
 Everything must pass. A local schema change also needs its migration test
@@ -95,7 +100,7 @@ npx --yes supabase@3.2.0 db dump --remote -f <backup folder>/YYYY-MM-DD_schema.s
 npx --yes supabase@3.2.0 db dump --remote --data-only --use-copy -f <backup folder>/YYYY-MM-DD_data.sql
 npx --yes supabase@3.2.0 db push --remote
 npx --yes supabase@3.2.0 db push --remote --dry-run     # must say "Remote database is up to date"
-npx --yes supabase@3.2.0 db lint --remote --schema public,fundly_private --fail-on warning
+npx --yes supabase@3.2.0 db lint --remote --schema public,fundly_private,fundly_access --fail-on warning
 npx --yes supabase@3.2.0 db advisors --remote
 ```
 
@@ -188,7 +193,7 @@ update the file.
 |---|---|---|
 | Web | Vercel dashboard → Deployments → the previous good deployment → **Instant Rollback** | If the release changed the local schema, a browser that already opened the new version may not open its data with the old one; signed-in data downloads again after clearing site data, signed-out browser data needs a restore |
 | iOS | Install the previous build from `~/fundly-releases/` with `devicectl` | Same schema rule: an older build cannot open a database a newer build already upgraded. Then delete the app, install the older build and restore the export taken before the release |
-| Server | Forward only: write and deploy a new migration that undoes the problem | Never edit or delete a deployed migration. A rolled-back app must still work with the server, which the compatibility policy guarantees for supported versions |
+| Server | Forward only: write and deploy a new migration that undoes the problem. For shared spaces C1 a rehearsed rollback is ready: `supabase/rollback/20261124_c1_rollback.sql` (not a migration; run as one transaction after backups, on the owner's decision) | Never edit or delete a deployed migration. A rolled-back app must still work with the server, which the compatibility policy guarantees for supported versions |
 | Data | Restore a format 7 export: Profile → Restore from backup (signed in it replaces the account's data on every device, after a checkpoint export) | See [Backups and recovery](#backups-and-recovery) |
 
 ## Outages

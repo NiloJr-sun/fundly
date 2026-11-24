@@ -3,7 +3,9 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C1-1 to C1-6, all as
-recommended). **C1.1–C1.3 done 2026-11-24**; C1.4 (deploy) next. Slice C1 of
+recommended). **Complete 2026-11-24**: deployed to production after the
+rehearsal; the owner's round with the unchanged 1.2.1 passed on the iPhone and
+in Chrome. Slice C1 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after the C0 go
 ([findings](SHARED_SPACES_C0_FINDINGS.md)). The agent stops after each
 sub-slice and never commits or pushes. Production writes (`db push --remote`)
@@ -314,7 +316,7 @@ Findings for C1.4:
    (one user's stream as id/revision pairs); `fundly_stream_test.dart`'s schema
    constant is now public for it.
 
-### C1.4: Deploy and verify (owner runs the push; agent checks)
+### C1.4: Deploy and verify (owner runs the push; agent checks) ✅ Done 2026-11-24
 
 Following [OPERATIONS.md](OPERATIONS.md): backups (app export and
 `db dump`), `db push --remote --dry-run` listing exactly the C1 migrations,
@@ -324,6 +326,18 @@ in Chrome: "Up to date", the real data and balances as before, create, edit
 and delete of each record type, one refused change, Plans, and a new test
 user's first sign-in getting a Personal space and default categories.
 Results go into powersync/README.md's log; docs updated; C1 marked done.
+
+**Result** (details in powersync/README.md's log): the C1.3 dump was
+confirmed current by read-only aggregates; the dry run listed exactly the two
+C1 migrations; the owner pushed; then a second dry run reported up to date,
+lint was clean, advisors showed only the 3 accepted warnings, ids and
+revisions matched the pre-deploy dump in every record table, each of the 7
+users has one Personal space with owner membership and every record is in its
+owner's space, 6 key function definitions match the migrations,
+`api_isolation.py` (15) and `fundly_stream_test.dart` passed, and the owner's
+round with 1.2.1 passed on the iPhone and in Chrome (sync, data and balances,
+transaction create, edit and delete, a Plans edit both ways). The runbook's
+local suite and lint commands now include the C1 checks.
 
 ## Rollback plan
 

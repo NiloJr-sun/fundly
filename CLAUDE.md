@@ -321,7 +321,9 @@ them:
     Work starts after cloud sync S6 and S7, one slice at a time, each
     planned and approved before implementation. C0, the sync prototype,
     is done: go, 2026-11-24, per
-    [docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md).)
+    [docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md).
+    C1, the server moving to spaces, is deployed (2026-11-24), per
+    [docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md).)
 -   Cloud sync and account registration. (Delivered 2026-11-23: Google
     sign-in and cloud sync, released as app 1.2.0 after the S7.2 release
     checklist passed. Deploying, rollback and backups:
@@ -536,9 +538,12 @@ and pitfalls for any coding agent.
 
 F.1 (refused delete cards name the record) is live as 1.2.1. Shared spaces
 slice C0, the sync prototype, is done with a go
-([docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md)).
-Approved next: planning shared spaces slice C1, only when the product owner
-asks ([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
+([docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md)), and
+C1 is deployed: the server keeps records per space, every user has a Personal
+space, and the app is unchanged
+([docs/SHARED_SPACES_C1_PLAN.md](docs/SHARED_SPACES_C1_PLAN.md)). Approved
+next: planning shared spaces slice C2, only when the product owner asks
+([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
 of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the
 product owner must approve any next step before work starts.
 
@@ -1315,5 +1320,32 @@ suggestions as approved decisions.
                           environment removed;
                           files kept as the
                           record.
+
+  2026-11-24              Shared spaces C1        Confirmed
+                          (server moves to
+                          spaces): deployed, no
+                          app change. Each user's
+                          Personal space has
+                          their user id; every
+                          record has a space,
+                          created_by and
+                          updated_by; per-space
+                          rules and membership
+                          reads. Writes and
+                          imports take an
+                          optional space_id
+                          (default Personal) and
+                          refuse with P0001
+                          not_space_member,
+                          space_read_only or
+                          space_owner_only, never
+                          42501. owner_id stays
+                          equal to space_id until
+                          C2 switches the stream.
+                          Rehearsed with its
+                          rollback on a copy of
+                          production; checked on
+                          iPhone and Chrome with
+                          1.2.1.
 
   -----------------------------------------------------------------------

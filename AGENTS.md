@@ -156,9 +156,11 @@ simulator build for anything that changes app code. macOS has no
   unavailable while signed in. Builds need `FUNDLY_POWERSYNC_URL` in
   `config/cloud.json` to sync. After changing a synced write, run
   `python3 supabase/tests/client_contract_test.py` (local Supabase).
-- **Approved next:** planning shared spaces C1, when the product owner asks.
+- **Approved next:** planning shared spaces C2, when the product owner asks.
   F.1 is live as 1.2.1 (4); C0 (sync prototype) is done with a go
-  (`docs/SHARED_SPACES_C0_FINDINGS.md`). The minimum supported app version is 1.2.0; bump the version for every
+  (`docs/SHARED_SPACES_C0_FINDINGS.md`); C1 is deployed: server records are per
+  space (`space_id`, Personal space id = user id, `owner_id` kept equal until
+  C2), with an optional `space_id` in writes (`supabase/WRITE_API.md`, Spaces). The minimum supported app version is 1.2.0; bump the version for every
   release and follow `docs/OPERATIONS.md` to deploy. The remaining Phase 5
   proposal is CSV export of transactions (5.3).
 
