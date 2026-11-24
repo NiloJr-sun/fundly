@@ -3,7 +3,7 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C1-1 to C1-6, all as
-recommended). **C1.1 and C1.2 done 2026-11-24**; C1.3 next. Slice C1 of
+recommended). **C1.1–C1.3 done 2026-11-24**; C1.4 (deploy) next. Slice C1 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after the C0 go
 ([findings](SHARED_SPACES_C0_FINDINGS.md)). The agent stops after each
 sub-slice and never commits or pushes. Production writes (`db push --remote`)
@@ -264,7 +264,7 @@ Adjustments made while building:
 6. The backfill check now resets the local database when it finishes (other
    tests count whole tables).
 
-### C1.3: Rehearsal on a copy of production (owner and agent)
+### C1.3: Rehearsal on a copy of production (owner and agent) ✅ Done 2026-11-24
 
 1. Owner: app export from the iPhone, then `db dump --remote` (schema and
    data) into a private folder outside the repository (Decision C1-6).
@@ -282,6 +282,37 @@ Adjustments made while building:
 4. **Rollback rehearsal:** apply the prepared rollback migration (below) and
    repeat the checks: data intact, old functions and rules back, tests pass.
 5. Delete the production copy and wipe the rehearsal stack.
+
+**Result.** The owner exported a backup from the iPhone and dumped
+production (schema and data) into a private folder outside the repository
+(`~/fundly-backups/2026-11-24-c1/`, mode 700, files 600). The agent restored
+it into a separate local stack in that folder and deleted the copy at the end;
+the two dump files stay as the owner's pre-deploy backup. Results, all pass:
+
+| Check | Result |
+|---|---|
+| Drift: production schema vs the nine migrations | Identical except the expected: the `powersync` publication and its replication role's grants (dashboard and `publication.sql`, not migrations) and the known missing comment line in the hand-applied S5.3 function |
+| Data loaded | `auth.users` and Fundly's eight tables only (7 users; 14 accounts, 35 categories, 34 transactions, 14 plans, 202 tombstones, 193 receipts), triggers off as the dump intends |
+| C1 migrations on the copy | Applied in about 2 s |
+| Every existing value, revisions included, all 8 tables | Identical before and after |
+| What each of the 7 users can read through the read rules | Identical before and after |
+| Personal space with owner membership per user; constraints validated; `db lint`; local advisors | Pass; no issues |
+| Production sync config (self-hosted PowerSync, as in C0) on the migrated copy, each of the 7 users' streams via a throwaway signing key on the copy only | Exactly that user's rows and revisions (account A: 44) |
+| `api_isolation.py` (15) and `fundly_stream_test.dart` with two users created on the copy | Pass, including the forged-token refusal |
+| **Migrating with sync running** (fresh copy, PowerSync replicating first) | Every row passes through sync once more (97 → 194 operations; 44 extra for account A), identical data; afterwards every user's stream is exact with unchanged revisions |
+| An edit queued before the migration (old revision) | Accepted after it |
+| **Rollback on the copy** (one transaction) | 514 existing rows unchanged; each user reads the same rows (`read_own` back); `api_isolation.py`, `fundly_stream_test.dart` and account A's stream all pass afterwards |
+
+Findings for C1.4:
+
+1. **Devices re-download every row once** during the deploy (identical data,
+   unchanged revisions). Expected and harmless at this size; a device that is
+   offline catches up on reconnect.
+2. **No production drift** beyond what the runbook already documents.
+3. The rehearsal added a `--snapshot` mode and per-user read checks to
+   `spaces_backfill_test.py`, and `tool/sync_probe/test/c1_rehearsal_stream_test.dart`
+   (one user's stream as id/revision pairs); `fundly_stream_test.dart`'s schema
+   constant is now public for it.
 
 ### C1.4: Deploy and verify (owner runs the push; agent checks)
 

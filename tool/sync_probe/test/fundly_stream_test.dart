@@ -43,7 +43,7 @@ const _audit = [
 ];
 
 /// Mirrors powersync/sync-config.yaml column for column.
-const _schema = ps.Schema([
+const fundlyStreamSchema = ps.Schema([
   ps.Table('custom_account_types', [
     ps.Column.text('name'),
     ps.Column.text('base_type'),
@@ -139,7 +139,7 @@ Future<(ps.PowerSyncDatabase, Directory)> _open(
 ) async {
   final directory = await Directory.systemTemp.createTemp('fundly-s3-stream-');
   final database = ps.PowerSyncDatabase(
-    schema: _schema,
+    schema: fundlyStreamSchema,
     path: '${directory.path}/stream.sqlite',
   );
   await database.initialize();

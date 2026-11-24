@@ -8,8 +8,13 @@ Run from the repository root against the LOCAL stack only:
 It RESETS the local database to the migration before C1.1, writes data through
 the current write API (several users, edits, a delete, receipts), snapshots
 every row, applies the remaining migrations, and compares. The local database
-is then reset (empty, fully migrated). With --verify-only it skips the reset and seed and
-checks an already migrated copy against a snapshot file (C1.3 rehearsal).
+is then reset (empty, fully migrated).
+
+C1.3 rehearsal on a copy of production (set FUNDLY_MIGRATION_DB_CONTAINER):
+  --snapshot FILE      before migrating: write every row and what each user
+                       can read to FILE (private data: keep it outside the
+                       repository and delete it afterwards)
+  --verify-only FILE   after migrating: check the copy against FILE
 """
 
 import json
@@ -116,7 +121,21 @@ def snapshot(strip_new):
         rows[table] = json.loads(execute(
             f"SELECT coalesce(jsonb_agg({value} ORDER BY {key}), '[]') FROM public.{table} t;"))
     rows['auth.users'] = json.loads(execute("SELECT coalesce(jsonb_agg(id ORDER BY id), '[]') FROM auth.users;"))
+    rows['visible'] = visible(rows['auth.users'])
     return rows
+
+
+def visible(users):
+    """Rows each user can read through the read rules, per record table."""
+    counts = {}
+    for user in users:
+        claims = json.dumps({'sub': user, 'role': 'authenticated'})
+        query = ' UNION ALL '.join(f"SELECT '{table}', count(*) FROM public.{table}" for table in RECORD_TABLES)
+        output = execute(f"BEGIN; SET LOCAL ROLE authenticated; "
+                         f"SELECT set_config('request.jwt.claims', {literal(claims)}, true) \\g /dev/null\n"
+                         f"{query}; ROLLBACK;")
+        counts[user] = dict(line.split('|') for line in output.splitlines() if '|' in line)
+    return counts
 
 
 def verify(before):
@@ -124,6 +143,9 @@ def verify(before):
     for table in TABLES:
         assert after[table] == before[table], f'{table}: existing values changed'
         print(f'PASS: {table}: {len(before[table])} rows, every existing value identical (revisions included)')
+    if 'visible' in before:
+        assert after['visible'] == before['visible'], 'what users can read changed'
+        print(f'PASS: each of {len(before["visible"])} users reads exactly the same rows as before')
     for table in RECORD_TABLES:
         mismatched = execute(f"SELECT count(*) FROM public.{table} WHERE space_id <> owner_id "
                              f"OR created_by <> owner_id OR updated_by <> owner_id;")
@@ -147,6 +169,14 @@ def verify(before):
 
 
 def main():
+    if '--snapshot' in sys.argv:
+        target = sys.argv[sys.argv.index('--snapshot') + 1]
+        old = os.umask(0o077)
+        with open(target, 'w') as handle:
+            json.dump(snapshot(strip_new=False), handle)
+        os.umask(old)
+        print('Snapshot written (private data; delete it after the rehearsal).')
+        return
     if '--verify-only' in sys.argv:
         before = json.loads(open(sys.argv[sys.argv.index('--verify-only') + 1]).read())
         verify(before)
