@@ -36,43 +36,53 @@ class AssignPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final error = this.error;
     final hint = this.hint;
+    // Docked like the phone's keyboard: edge to edge from the bottom of the
+    // screen, a toolbar on top, then the keys on a flat tray.
     return Material(
-      color: theme.colorScheme.surfaceContainerLow,
-      elevation: 8,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(Spacing.lg)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.sm,
-            Spacing.sm,
-            Spacing.sm,
-            Spacing.xs,
+      color: theme.colorScheme.surfaceContainerHigh,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.outlineVariant),
           ),
+        ),
+        child: SafeArea(
+          top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  _Action(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Activity',
-                    onTap: onActivity,
-                  ),
-                  _Action(
-                    icon: Icons.more_horiz,
-                    label: 'Details',
-                    onTap: onDetails,
-                  ),
-                  _Action(icon: Icons.close, label: 'Cancel', onTap: onCancel),
-                ],
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    _ToolbarButton(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'Activity',
+                      onTap: onActivity,
+                    ),
+                    _ToolbarButton(
+                      icon: Icons.more_horiz,
+                      label: 'Details',
+                      onTap: onDetails,
+                    ),
+                    _ToolbarButton(
+                      icon: Icons.close,
+                      label: 'Cancel',
+                      onTap: onCancel,
+                    ),
+                  ],
+                ),
               ),
+              Divider(height: 1, color: theme.colorScheme.outlineVariant),
               if (error != null)
                 Padding(
-                  padding: const EdgeInsets.all(Spacing.sm),
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.sm,
+                    Spacing.md,
+                    0,
+                  ),
                   child: Text(
                     error,
                     textAlign: TextAlign.center,
@@ -83,17 +93,26 @@ class AssignPanel extends StatelessWidget {
                 )
               else if (hint != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Spacing.xs,
-                    vertical: Spacing.xs,
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.sm,
+                    Spacing.sm,
+                    Spacing.sm,
+                    0,
                   ),
                   child: FilledButton.tonal(
                     onPressed: onHintTap,
                     child: Text(hint, textAlign: TextAlign.center),
                   ),
                 ),
-              const SizedBox(height: Spacing.xs),
-              _Keys(onKey: onKey, onDone: onDone),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Spacing.xs,
+                  Spacing.sm,
+                  Spacing.xs,
+                  Spacing.xs,
+                ),
+                child: _Keys(onKey: onKey, onDone: onDone),
+              ),
             ],
           ),
         ),
@@ -102,48 +121,27 @@ class AssignPanel extends StatelessWidget {
   }
 }
 
-class _Action extends StatelessWidget {
-  const _Action({required this.icon, required this.label, required this.onTap});
+/// An icon and label in the toolbar above the keys, like a keyboard's
+/// accessory bar.
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Spacing.md),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-            child: Column(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(Spacing.lg),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Spacing.lg,
-                      vertical: Spacing.sm,
-                    ),
-                    child: Icon(icon),
-                  ),
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text(label, style: theme.textTheme.labelMedium),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Expanded(
+    child: TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+    ),
+  );
 }
 
 /// Digits, the decimal point, + − =, delete and Done, four by four.
@@ -169,17 +167,25 @@ class _Keys extends StatelessWidget {
             children: [
               for (final key in row)
                 Expanded(
-                  child: SizedBox(
-                    height: 52,
-                    child: key == null
-                        ? Padding(
-                            padding: const EdgeInsets.all(Spacing.xs),
-                            child: FilledButton(
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: SizedBox(
+                      height: 46,
+                      child: key == null
+                          ? FilledButton(
+                              style: FilledButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    Spacing.sm,
+                                  ),
+                                ),
+                              ),
                               onPressed: onDone,
                               child: const Text('Done'),
-                            ),
-                          )
-                        : _Key(assignKey: key, onTap: () => onKey(key)),
+                            )
+                          : _Key(assignKey: key, onTap: () => onKey(key)),
+                    ),
                   ),
                 ),
             ],
@@ -214,17 +220,26 @@ class _Key extends StatelessWidget {
       button: true,
       label: label,
       excludeSemantics: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Spacing.md),
-        onTap: onTap,
-        child: Center(
-          child: DefaultTextStyle.merge(
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: isOperator ? theme.colorScheme.primary : null,
-            ),
-            child: IconTheme.merge(
-              data: IconThemeData(color: theme.colorScheme.primary),
-              child: face,
+      child: Material(
+        // Key caps stand out from the tray, as on the phone's keyboard;
+        // operators are tinted.
+        color: isOperator
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.surfaceBright,
+        borderRadius: BorderRadius.circular(Spacing.sm),
+        elevation: 0.5,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Spacing.sm),
+          onTap: onTap,
+          child: Center(
+            child: DefaultTextStyle.merge(
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: isOperator ? theme.colorScheme.primary : null,
+              ),
+              child: IconTheme.merge(
+                data: IconThemeData(color: theme.colorScheme.primary),
+                child: face,
+              ),
             ),
           ),
         ),

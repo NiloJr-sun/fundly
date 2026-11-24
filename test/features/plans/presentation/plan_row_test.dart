@@ -88,7 +88,11 @@ void main() {
             MaterialApp(
               theme: dark ? AppTheme.dark() : AppTheme.light(),
               home: Scaffold(
-                body: PlanRow(summary: summary, onTap: () => tapped = true),
+                body: PlanRow(
+                  summary: summary,
+                  onTap: () => tapped = true,
+                  onActivityTap: () {},
+                ),
               ),
             ),
           );

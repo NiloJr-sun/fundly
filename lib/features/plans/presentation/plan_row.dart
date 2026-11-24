@@ -12,30 +12,34 @@ import 'assign_draft.dart';
 /// group header so the amounts line up. Narrower on small phones, where
 /// amounts shrink to fit.
 double planAmountColumnWidth(BuildContext context) =>
-    MediaQuery.sizeOf(context).width < 360 ? 88 : 112;
+    MediaQuery.sizeOf(context).width < 360 ? 80 : 104;
 
-/// Groups the Assigned panel with the Assigned amount being edited, so a tap
-/// on either is not a tap outside (which saves and closes the panel).
+/// Groups the Assigned panel with the row being edited, so a tap on either
+/// is not a tap outside (which saves and closes the panel).
 const Object assignEditTapGroup = #assignEdit;
 
-/// One category's month in the compact Plans layout: its name, Assigned, and
-/// Available in a pill coloured by its status. Target and Activity are in the
-/// details opened by [onTap].
+/// Width of the Activity button at the end of each row; the group header
+/// leaves the same space so the totals line up.
+const double planActivityButtonWidth = 40;
+
+/// One category's month in the compact Plans layout: its name, Assigned,
+/// Available in a pill coloured by its status, and an Activity button.
 ///
-/// [onAssignedTap] edits Assigned in place; while [draft] is set, the row is
-/// highlighted and shows what is being typed.
+/// Tapping the row ([onTap]) edits Assigned in place; while [draft] is set,
+/// the row is highlighted and shows what is being typed. [onActivityTap]
+/// shows the transactions behind the row's Activity.
 class PlanRow extends StatelessWidget {
   const PlanRow({
     super.key,
     required this.summary,
     required this.onTap,
-    this.onAssignedTap,
+    required this.onActivityTap,
     this.draft,
   });
 
   final CategoryPlanSummary summary;
   final VoidCallback onTap;
-  final VoidCallback? onAssignedTap;
+  final VoidCallback onActivityTap;
   final AssignDraft? draft;
 
   @override
@@ -43,27 +47,18 @@ class PlanRow extends StatelessWidget {
     final theme = Theme.of(context);
     final category = summary.category;
     final draft = this.draft;
-    final onAssignedTap = this.onAssignedTap;
-    final assigned = draft == null
-        ? _RightAligned(
-            Text(
-              MoneyFormatter.format(summary.assigned),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          )
-        : TapRegion(groupId: assignEditTapGroup, child: _DraftText(draft));
-    return Material(
+    final row = Material(
       color: draft == null
           ? Colors.transparent
           : theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.md,
-            vertical: Spacing.sm + Spacing.xs,
+          padding: const EdgeInsets.only(
+            left: Spacing.md,
+            right: Spacing.xs,
+            top: Spacing.sm + Spacing.xs,
+            bottom: Spacing.sm + Spacing.xs,
           ),
           child: Row(
             children: [
@@ -77,27 +72,44 @@ class PlanRow extends StatelessWidget {
               ),
               SizedBox(
                 width: planAmountColumnWidth(context),
-                child: onAssignedTap == null || draft != null
-                    ? assigned
-                    : Tooltip(
-                        message: 'Assign to ${category.name}',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(Spacing.sm),
-                          onTap: onAssignedTap,
-                          child: assigned,
+                child: draft == null
+                    ? _RightAligned(
+                        Text(
+                          MoneyFormatter.format(summary.assigned),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                      )
+                    : _DraftText(draft),
               ),
               const SizedBox(width: Spacing.sm),
               SizedBox(
                 width: planAmountColumnWidth(context),
                 child: _RightAligned(AvailablePill(summary: summary)),
               ),
+              SizedBox(
+                width: planActivityButtonWidth,
+                child: IconButton(
+                  tooltip: '${category.name} activity',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  iconSize: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  onPressed: onActivityTap,
+                  icon: const Icon(Icons.receipt_long_outlined),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+    // While editing, the whole row belongs with the panel: tapping it again
+    // keeps editing instead of saving.
+    return draft == null
+        ? row
+        : TapRegion(groupId: assignEditTapGroup, child: row);
   }
 }
 
@@ -256,6 +268,7 @@ class PlanGroupHeader extends StatelessWidget {
         total('Assigned', assigned),
         const SizedBox(width: Spacing.sm),
         total('Available', available),
+        const SizedBox(width: planActivityButtonWidth),
       ],
     );
   }

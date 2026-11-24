@@ -75,7 +75,7 @@ browser profile), the iPhone 16 Plus simulator (B, release build).
 | 10 | Chrome (A): reload | "Version 1.4.0 (6)"; same data and balances; "Up to date"; Plans shows compact rows (Assigned and an Available pill) with group totals; Categories → edit a spending category shows a **Target** field |
 | 11 | Chrome (A), default Target: set Target ₱1,000 on a spending category with no plan next month; Plans → next month | The row's details show Target ₱1,000 and the pill is yellow (or green once assigned). A month with its own Target keeps it |
 | 12 | Older apps keep it: on the iPhone (1.3.0), rename that category, then reload Chrome | Chrome still shows Target ₱1,000 on the category form |
-| 13 | Chrome (A), editing in place: tap the row's Assigned, type `500+500`, `=`, Done | Assigned ₱1,000.00 saved; the hint "Assign … more to reach your target" filled the Target when tapped; Cancel discards; Activity opens the month's transactions |
+| 13 | Chrome (A), editing in place: tap the row, type `500+500`, `=`, Done | The keypad covers the tab bar; Assigned ₱1,000.00 saved; the hint "Assign … more to reach your target" filled the Target when tapped; Cancel discards; the row's Activity button and the keypad's Activity open the month's transactions; the keypad's Details opens the details sheet |
 | 14 | Chrome (A): Profile → Export backup | The file says `"formatVersion": 8` and the category has `defaultTargetMinor` 100000 |
 | 15 | Agent installs the 1.4.0 release build on the simulator; owner signs in as **B** there and in a second Chrome profile | Both show B's spaces |
 | 16 | Simulator (B): create "Sharing check", ⋮ → Invite A's email as **Editor**, share the link | Link dialog shows once; Members lists the pending invite |

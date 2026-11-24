@@ -878,25 +878,28 @@ suggestions as approved decisions.
 
   2026-11-17              Plans rows (compact,    Confirmed
                           2026-11-25): name,
-                          Assigned and Available
-                          in a pill: green funded,
+                          Assigned, Available in
+                          a pill (green funded,
                           yellow underfunded, red
                           overspent, grey without
-                          a Target. Group headers
-                          total Assigned and
-                          Available. Tap Assigned
-                          to edit it in place:
-                          keypad with + − =
+                          a Target) and an
+                          Activity button for the
+                          month's transactions.
+                          Group headers total
+                          Assigned and Available.
+                          Tap a row to edit
+                          Assigned on a keypad
+                          docked over the tab bar
+                          like the phone's: + − =
                           (whole centavos, not
                           below zero), Activity,
-                          Details, Cancel, and
-                          a hint that fills the
+                          Details, Cancel and a
+                          hint that fills the
                           amount reaching the
                           Target. Done, another
                           row or a tap outside
                           saves; Cancel discards.
-                          Tap the row for its
-                          details sheet: status,
+                          Details opens status,
                           Target, Assigned,
                           Activity, Available;
                           edit Target or

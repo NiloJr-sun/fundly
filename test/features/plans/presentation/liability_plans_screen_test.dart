@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/categories/domain/category.dart';
+import 'package:fundly/features/plans/presentation/assign_panel.dart';
 import 'package:fundly/features/plans/presentation/plan_row.dart';
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
 import 'package:fundly/features/spending/presentation/spending_providers.dart';
@@ -45,21 +46,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Liability'), findsOneWidget);
       expect(find.widgetWithText(PlanRow, 'RCBC Credit'), findsOneWidget);
+      // Tapping the row edits Assigned on the keypad.
       await tester.tap(find.text('RCBC Credit'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Edit RCBC Credit assigned'));
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'Assigned'),
-        '500',
-      );
-      await tester.tap(find.text('Save'));
+      for (final digit in ['5', '0', '0']) {
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AssignPanel),
+            matching: find.text(digit),
+          ),
+        );
+        await tester.pump();
+      }
+      await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       expect(repository.saved.single.categoryId, debt.id);
       expect(repository.saved.single.assigned, php(50000));
-      await tester.tap(find.text('RCBC Credit'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Show RCBC Credit transactions'));
+      await tester.tap(find.byTooltip('RCBC Credit activity'));
       await tester.pumpAndSettle();
       expect(find.byType(AllTransactionsScreen), findsOneWidget);
       expect(find.text('Debt payments'), findsOneWidget);

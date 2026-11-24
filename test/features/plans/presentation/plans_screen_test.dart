@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/core/time/calendar_date.dart';
@@ -65,6 +66,7 @@ void main() {
     bool bdoIsBudgetAccount = false,
     bool walletIsBudgetAccount = false,
     int? budgetOpeningBalance,
+    bool inShell = false,
   }) async {
     final bdo = accounts[bdoId]!;
     final withBudget = [
@@ -104,10 +106,21 @@ void main() {
             planRepository: repository,
           ),
         ],
-        child: const MaterialApp(home: PlansScreen()),
+        child: MaterialApp(
+          home: inShell ? const HomeShell() : const PlansScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
+    if (inShell) {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Plans'),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
   }
 
   Finder row(String name) => find.widgetWithText(PlanRow, name);
@@ -118,9 +131,19 @@ void main() {
   Finder inDetails(String text) =>
       find.descendant(of: find.byType(PlanDetails), matching: find.text(text));
 
-  /// Taps [name]'s row, opening its details sheet.
+  /// Opens [name]'s details sheet: tapping the row opens the keypad, whose
+  /// Details button opens the sheet.
   Future<void> openDetails(WidgetTester tester, String name) async {
+    await tester.ensureVisible(inRow(name, name));
+    await tester.pumpAndSettle();
     await tester.tap(inRow(name, name));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AssignPanel),
+        matching: find.text('Details'),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -1241,9 +1264,9 @@ void main() {
 
     Future<void> startAssign(WidgetTester tester, String name) async {
       // Scrolled in code: a drag would be a tap outside the panel.
-      await tester.ensureVisible(find.byTooltip('Assign to $name'));
+      await tester.ensureVisible(inRow(name, name));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Assign to $name'));
+      await tester.tap(inRow(name, name));
       await tester.pumpAndSettle();
     }
 
@@ -1261,9 +1284,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('tapping Assigned opens the keypad on that row', (
-      tester,
-    ) async {
+    testWidgets('tapping a row opens the keypad on that row', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000, assigned: 250000)]);
 
       await startAssign(tester, 'Food');
@@ -1278,6 +1299,74 @@ void main() {
         );
       }
       expect(find.byType(PlanDetails), findsNothing);
+    });
+
+    testWidgets('tapping the row being edited keeps editing', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '42');
+      await tester.tap(inRow('Food', 'Food'));
+      await tester.pumpAndSettle();
+
+      expect(panel(), findsOneWidget);
+      expect(inRow('Food', '₱42'), findsOneWidget);
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets("the row's Activity button opens the transactions", (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        plans: [plan(foodId, 500000)],
+        transactions: [saved(spending(amount: 8000, payee: 'Jollibee'))],
+      );
+
+      await tester.tap(find.byTooltip('Food activity'));
+      await tester.pumpAndSettle();
+
+      expect(panel(), findsNothing);
+      expect(find.byType(AllTransactionsScreen), findsOneWidget);
+      expect(
+        tester
+            .widgetList<TransactionTile>(find.byType(TransactionTile))
+            .map((tile) => tile.transaction.payee),
+        ['Jollibee'],
+      );
+    });
+
+    testWidgets("the edited row's Activity button saves first", (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await startAssign(tester, 'Food');
+      await type(tester, '42');
+      await tester.tap(find.byTooltip('Food activity'));
+      await tester.pumpAndSettle();
+
+      expect(repository.saved.single.assigned, php(4200));
+      expect(find.byType(AllTransactionsScreen), findsOneWidget);
+    });
+
+    testWidgets('group totals line up with the row columns', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      final header = find.byType(PlanGroupHeader).first;
+      final availableLabel = find.descendant(
+        of: header,
+        matching: find.text('Available'),
+      );
+      final pill = find.descendant(
+        of: find.descendant(
+          of: row('Food'),
+          matching: find.byType(AvailablePill),
+        ),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(
+        tester.getRect(availableLabel).right,
+        moreOrLessEquals(tester.getRect(pill).right, epsilon: 1),
+      );
     });
 
     testWidgets('typing replaces the amount; Done saves it', (tester) async {
@@ -1466,6 +1555,62 @@ void main() {
       expect(panel(), findsNothing);
       expect(find.byType(PlanDetails), findsOneWidget);
       expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('docks edge to edge at the bottom, over the tab bar', (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)], inShell: true);
+
+      await startAssign(tester, 'Food');
+
+      final screen = tester.getRect(find.byType(HomeShell));
+      final keypad = tester.getRect(panel());
+      expect(keypad.left, screen.left);
+      expect(keypad.right, screen.right);
+      expect(keypad.bottom, screen.bottom);
+      final tabs = tester.getRect(find.byType(NavigationBar));
+      expect(keypad.top, lessThanOrEqualTo(tabs.top));
+      // The tab bar is covered, so tapping there is a tap on the keypad.
+      expect(
+        tester
+            .hitTestOnBinding(tabs.center)
+            .path
+            .any((entry) => entry.target == tester.renderObject(panel())),
+        isTrue,
+      );
+    });
+
+    testWidgets('keeps the edited row above the keypad', (tester) async {
+      tester.view
+        ..physicalSize = const Size(390, 700)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, plans: [plan(transportId, 500000)]);
+
+      await startAssign(tester, 'Transport');
+
+      final keypadTop = tester.getRect(panel()).top;
+      expect(tester.getRect(row('Transport')).bottom, lessThan(keypadTop));
+    });
+
+    testWidgets('closing the keypad removes it from the screen', (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)], inShell: true);
+
+      await startAssign(tester, 'Food');
+      await tapPanel(tester, 'Cancel');
+
+      expect(panel(), findsNothing);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Accounts'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PlansScreen), findsNothing);
     });
 
     testWidgets('fits a small phone without overflow', (tester) async {

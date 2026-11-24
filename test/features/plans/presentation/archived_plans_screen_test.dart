@@ -66,7 +66,10 @@ void main() {
   }
 
   Future<void> openArchive(WidgetTester tester) async {
+    // The row opens the keypad; its Details button opens the sheet.
     await tester.tap(find.text('Food'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Details'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Archive plan'));
     await tester.pumpAndSettle();

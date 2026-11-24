@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
@@ -34,10 +35,10 @@ import 'plans_providers.dart';
 import 'ready_to_assign_card.dart';
 
 /// The Plans tab: one month's Ready to assign, then a compact row per spending
-/// category (Assigned, and Available in a pill coloured by status) in
-/// collapsible Spending, Savings and Liability sections with their totals.
-/// Tap a row for its details: Target, Activity and status, editing, its
-/// transactions and archiving.
+/// category (Assigned, Available in a pill coloured by status, and an
+/// Activity button) in collapsible Spending, Savings and Liability sections
+/// with their totals. Tap a row to edit its Assigned on the docked keypad,
+/// whose Details button opens Target, status, editing and archiving.
 class PlansScreen extends ConsumerStatefulWidget {
   const PlansScreen({super.key});
 
@@ -94,6 +95,11 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   String? _assignError;
   final _editingRowKey = GlobalKey();
 
+  // The panel is docked over the bottom of the screen, covering the tab bar
+  // like the phone's keyboard; the list gets room below to scroll past it.
+  final _panelPortal = OverlayPortalController();
+  double _panelHeight = 0;
+
   void _startAssign(CalendarMonth month, CategoryPlanSummary summary) {
     if (_editing?.category.id == summary.category.id) return;
     // Moving to another row saves this one first, unless it cannot be saved.
@@ -105,16 +111,32 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
       _draft = AssignDraft.start(summary.assigned);
       _assignError = null;
     });
-    // The panel takes space from the list: keep the row in view above it.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final row = _editingRowKey.currentContext;
-      if (row == null || !row.mounted) return;
-      Scrollable.ensureVisible(
-        row,
-        duration: const Duration(milliseconds: 200),
-        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-      );
-    });
+    _panelPortal.show();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealEditingRow());
+  }
+
+  /// Scrolls the row being edited up out from under the panel.
+  void _revealEditingRow() {
+    final row = _editingRowKey.currentContext;
+    if (row == null || !row.mounted || !mounted || _panelHeight == 0) return;
+    final box = row.findRenderObject();
+    final position = Scrollable.maybeOf(row)?.position;
+    if (box is! RenderBox || !box.attached || position == null) return;
+    final visibleBottom = MediaQuery.sizeOf(context).height - _panelHeight;
+    final rowBottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    final overlap = rowBottom - visibleBottom + Spacing.sm;
+    if (overlap <= 0) return;
+    position.animateTo(
+      (position.pixels + overlap).clamp(0, position.maxScrollExtent),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _panelResized(Size size) {
+    if (!mounted || _editing == null || size.height == _panelHeight) return;
+    setState(() => _panelHeight = size.height);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealEditingRow());
   }
 
   void _pressKey(AssignKey key) => setState(() {
@@ -122,12 +144,16 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
     _assignError = null;
   });
 
-  void _closeAssign() => setState(() {
-    _editing = null;
-    _editingMonth = null;
-    _draft = null;
-    _assignError = null;
-  });
+  void _closeAssign() {
+    _panelPortal.hide();
+    setState(() {
+      _editing = null;
+      _editingMonth = null;
+      _draft = null;
+      _assignError = null;
+      _panelHeight = 0;
+    });
+  }
 
   /// Saves what is typed, if it changed, and closes the panel. Returns
   /// `false`, keeping the panel open with the reason, when the sum cannot be
@@ -180,6 +206,18 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
         const SnackBar(content: Text('This plan could not be saved.')),
       );
     }
+  }
+
+  /// A row's Activity button. On the row being edited it saves first, as
+  /// the panel's Activity does; another row's button was a tap outside,
+  /// which has already saved.
+  void _rowActivity(CalendarMonth month, CategoryPlanSummary summary) {
+    if (_editing?.category.id == summary.category.id) {
+      _assignActivity();
+      return;
+    }
+    if (_editing != null && !_commitAssign()) return;
+    showPlanActivity(context, month, summary.category);
   }
 
   /// Saves first, then opens the transactions or the details.
@@ -239,52 +277,103 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   Widget build(BuildContext context) {
     final month = ref.watch(selectedPlanMonthProvider);
     final summaries = ref.watch(planSummariesProvider(month));
-    return Scaffold(
-      appBar: AppBar(
-        title: const ScreenTitle('Plans'),
-        actions: [
-          IconButton(
-            tooltip: 'Archived plans',
-            icon: const Icon(Icons.archive_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const ArchivedPlansScreen(),
+    return OverlayPortal(
+      controller: _panelPortal,
+      overlayChildBuilder: (context) {
+        if (_editing == null) return const SizedBox.shrink();
+        if (summaries case AsyncData(value: final rows)) {
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: _SizeReporter(
+              onSize: _panelResized,
+              child: _assignPanel(rows),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const ScreenTitle('Plans'),
+          actions: [
+            IconButton(
+              tooltip: 'Archived plans',
+              icon: const Icon(Icons.archive_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ArchivedPlansScreen(),
+                ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Categories',
-            icon: const Icon(Icons.category_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
+            IconButton(
+              tooltip: 'Categories',
+              icon: const Icon(Icons.category_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CategoriesScreen(),
+                ),
+              ),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          const PlanMonthBar(),
-          Expanded(
-            child: switch (summaries) {
-              AsyncData(value: final rows) => _PlanList(
-                month: month,
-                rows: rows,
-                onAssignedTap: (summary) => _startAssign(month, summary),
-                editingId: _editing?.category.id,
-                draft: _draft,
-                editingRowKey: _editingRowKey,
-              ),
-              AsyncError() => const CenteredMessage(
-                'Your plans could not be loaded.',
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ),
-          if (_editing != null)
-            if (summaries case AsyncData(value: final rows)) _assignPanel(rows),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            const PlanMonthBar(),
+            Expanded(
+              child: switch (summaries) {
+                AsyncData(value: final rows) => _PlanList(
+                  month: month,
+                  rows: rows,
+                  onAssignedTap: (summary) => _startAssign(month, summary),
+                  onActivityTap: (summary) => _rowActivity(month, summary),
+                  editingId: _editing?.category.id,
+                  draft: _draft,
+                  editingRowKey: _editingRowKey,
+                  bottomPadding: _panelHeight,
+                ),
+                AsyncError() => const CenteredMessage(
+                  'Your plans could not be loaded.',
+                ),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
+        ),
       ),
     );
+  }
+}
+
+/// Reports its child's size after each layout that changes it.
+class _SizeReporter extends SingleChildRenderObjectWidget {
+  const _SizeReporter({required this.onSize, required super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderSizeReporter renderObject,
+  ) => renderObject.onSize = onSize;
+}
+
+class _RenderSizeReporter extends RenderProxyBox {
+  _RenderSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size == _reported) return;
+    _reported = size;
+    final reported = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(reported));
   }
 }
 
@@ -293,19 +382,25 @@ class _PlanList extends ConsumerWidget {
     required this.month,
     required this.rows,
     required this.onAssignedTap,
+    required this.onActivityTap,
     this.editingId,
     this.draft,
     this.editingRowKey,
+    this.bottomPadding = 0,
   });
 
   final CalendarMonth month;
   final List<CategoryPlanSummary> rows;
   final ValueChanged<CategoryPlanSummary> onAssignedTap;
+  final ValueChanged<CategoryPlanSummary> onActivityTap;
 
   /// The category whose Assigned is being edited, with what is typed.
   final String? editingId;
   final AssignDraft? draft;
   final Key? editingRowKey;
+
+  /// Room below the last row, so it can scroll above the docked panel.
+  final double bottomPadding;
 
   List<CategoryPlanSummary> _rowsIn(PlanGroup group) => [
     for (final row in rows)
@@ -330,6 +425,7 @@ class _PlanList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
+      padding: EdgeInsets.only(bottom: bottomPadding),
       children: [
         ReadyToAssignCard(month: month),
         if (rows.isEmpty)
@@ -355,7 +451,7 @@ class _PlanList extends ConsumerWidget {
                 // The right edge matches the rows, so the totals line up.
                 tilePadding: const EdgeInsets.only(
                   left: Spacing.sm,
-                  right: Spacing.md,
+                  right: Spacing.xs,
                 ),
                 expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
                 title: _groupHeader(group),
@@ -367,9 +463,8 @@ class _PlanList extends ConsumerWidget {
                           ? editingRowKey
                           : null,
                       summary: summary,
-                      onTap: () =>
-                          _openPlanDetails(context, ref, month, summary),
-                      onAssignedTap: () => onAssignedTap(summary),
+                      onTap: () => onAssignedTap(summary),
+                      onActivityTap: () => onActivityTap(summary),
                       draft: summary.category.id == editingId ? draft : null,
                     ),
                   ],
