@@ -3,9 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:drift_sqlite_async/drift_sqlite_async.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:powersync/powersync.dart' as ps;
-import 'package:sqlite_async/sqlite_async.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/domain/auth_identity.dart';
@@ -13,6 +11,7 @@ import '../database/database_name.dart';
 import 'batch_uploader.dart';
 import 'dataset_initializer.dart';
 import 'preview_cleanup.dart';
+import 'store_files.dart';
 import 'synced_database.dart';
 import 'synced_store.dart';
 
@@ -140,28 +139,16 @@ class PowerSyncStore implements SyncedStore {
     final name = syncedDatabaseNameFor(_identity.userId, spaceId);
     final sync = ps.PowerSyncDatabase(
       schema: const ps.Schema([]),
-      path: kIsWeb
-          ? '$name.db'
-          : '${await (_directory ?? _documents)()}/$name.db',
-      // Absolute URLs: the worker fetches the wasm itself, and a relative
-      // path there resolves against the worker's folder (powersync/), not
-      // the page.
-      sqliteOptions: SqliteOptions(
-        webSqliteOptions: WebSqliteOptions(
-          wasmUri: Uri.base.resolve('powersync/sqlite3.wasm').toString(),
-          workerUri: Uri.base
-              .resolve('powersync/powersync_db.worker.js')
-              .toString(),
-        ),
+      path: syncedStorePath(
+        name,
+        kIsWeb ? '' : await (_directory ?? documentsDirectory)(),
       ),
+      sqliteOptions: syncedSqliteOptions(),
     );
     await sync.initialize();
     _sync.complete(sync);
     return SqliteAsyncDriftConnection(sync);
   }
-
-  static Future<String> _documents() async =>
-      (await getApplicationDocumentsDirectory()).path;
 
   Future<void> _start() async {
     try {
@@ -272,9 +259,14 @@ class PowerSyncStore implements SyncedStore {
         .map((rows) => rows.first['pending'] as int);
   }
 
+  Future<void>? _closing;
+
+  /// Closing twice returns the same future, so a caller can wait until the
+  /// store's files are free (to delete them, shared spaces C3).
   @override
-  Future<void> close() async {
-    if (_closed) return;
+  Future<void> close() => _closing ??= _close();
+
+  Future<void> _close() async {
     _closed = true;
     await _statusSubscription?.cancel();
     await _listedSubscription?.cancel();

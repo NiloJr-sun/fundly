@@ -4248,6 +4248,26 @@ class $SyncedSpaceMembersTable extends SyncedSpaceMembers
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4276,6 +4296,8 @@ class $SyncedSpaceMembersTable extends SyncedSpaceMembers
     spaceId,
     userId,
     role,
+    email,
+    displayName,
     createdAt,
     updatedAt,
   ];
@@ -4320,6 +4342,21 @@ class $SyncedSpaceMembersTable extends SyncedSpaceMembers
     } else if (isInserting) {
       context.missing(_roleMeta);
     }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -4361,6 +4398,14 @@ class $SyncedSpaceMembersTable extends SyncedSpaceMembers
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_at'],
@@ -4384,6 +4429,11 @@ class SyncedSpaceMemberRow extends DataClass
   final String spaceId;
   final String userId;
   final String role;
+
+  /// Copied from the member's sign-in when they joined (shared spaces C3,
+  /// Decision C3-3); null when the sign-in had none.
+  final String? email;
+  final String? displayName;
   final String createdAt;
   final String updatedAt;
   const SyncedSpaceMemberRow({
@@ -4391,6 +4441,8 @@ class SyncedSpaceMemberRow extends DataClass
     required this.spaceId,
     required this.userId,
     required this.role,
+    this.email,
+    this.displayName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -4401,6 +4453,12 @@ class SyncedSpaceMemberRow extends DataClass
     map['space_id'] = Variable<String>(spaceId);
     map['user_id'] = Variable<String>(userId);
     map['role'] = Variable<String>(role);
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || displayName != null) {
+      map['display_name'] = Variable<String>(displayName);
+    }
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     return map;
@@ -4412,6 +4470,12 @@ class SyncedSpaceMemberRow extends DataClass
       spaceId: Value(spaceId),
       userId: Value(userId),
       role: Value(role),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      displayName: displayName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(displayName),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -4427,6 +4491,8 @@ class SyncedSpaceMemberRow extends DataClass
       spaceId: serializer.fromJson<String>(json['spaceId']),
       userId: serializer.fromJson<String>(json['userId']),
       role: serializer.fromJson<String>(json['role']),
+      email: serializer.fromJson<String?>(json['email']),
+      displayName: serializer.fromJson<String?>(json['displayName']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
     );
@@ -4439,6 +4505,8 @@ class SyncedSpaceMemberRow extends DataClass
       'spaceId': serializer.toJson<String>(spaceId),
       'userId': serializer.toJson<String>(userId),
       'role': serializer.toJson<String>(role),
+      'email': serializer.toJson<String?>(email),
+      'displayName': serializer.toJson<String?>(displayName),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
     };
@@ -4449,6 +4517,8 @@ class SyncedSpaceMemberRow extends DataClass
     String? spaceId,
     String? userId,
     String? role,
+    Value<String?> email = const Value.absent(),
+    Value<String?> displayName = const Value.absent(),
     String? createdAt,
     String? updatedAt,
   }) => SyncedSpaceMemberRow(
@@ -4456,6 +4526,8 @@ class SyncedSpaceMemberRow extends DataClass
     spaceId: spaceId ?? this.spaceId,
     userId: userId ?? this.userId,
     role: role ?? this.role,
+    email: email.present ? email.value : this.email,
+    displayName: displayName.present ? displayName.value : this.displayName,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -4465,6 +4537,10 @@ class SyncedSpaceMemberRow extends DataClass
       spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
       userId: data.userId.present ? data.userId.value : this.userId,
       role: data.role.present ? data.role.value : this.role,
+      email: data.email.present ? data.email.value : this.email,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -4477,6 +4553,8 @@ class SyncedSpaceMemberRow extends DataClass
           ..write('spaceId: $spaceId, ')
           ..write('userId: $userId, ')
           ..write('role: $role, ')
+          ..write('email: $email, ')
+          ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4484,8 +4562,16 @@ class SyncedSpaceMemberRow extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, spaceId, userId, role, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    spaceId,
+    userId,
+    role,
+    email,
+    displayName,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4494,6 +4580,8 @@ class SyncedSpaceMemberRow extends DataClass
           other.spaceId == this.spaceId &&
           other.userId == this.userId &&
           other.role == this.role &&
+          other.email == this.email &&
+          other.displayName == this.displayName &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -4504,6 +4592,8 @@ class SyncedSpaceMembersCompanion
   final Value<String> spaceId;
   final Value<String> userId;
   final Value<String> role;
+  final Value<String?> email;
+  final Value<String?> displayName;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<int> rowid;
@@ -4512,6 +4602,8 @@ class SyncedSpaceMembersCompanion
     this.spaceId = const Value.absent(),
     this.userId = const Value.absent(),
     this.role = const Value.absent(),
+    this.email = const Value.absent(),
+    this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4521,6 +4613,8 @@ class SyncedSpaceMembersCompanion
     required String spaceId,
     required String userId,
     required String role,
+    this.email = const Value.absent(),
+    this.displayName = const Value.absent(),
     required String createdAt,
     required String updatedAt,
     this.rowid = const Value.absent(),
@@ -4535,6 +4629,8 @@ class SyncedSpaceMembersCompanion
     Expression<String>? spaceId,
     Expression<String>? userId,
     Expression<String>? role,
+    Expression<String>? email,
+    Expression<String>? displayName,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<int>? rowid,
@@ -4544,6 +4640,8 @@ class SyncedSpaceMembersCompanion
       if (spaceId != null) 'space_id': spaceId,
       if (userId != null) 'user_id': userId,
       if (role != null) 'role': role,
+      if (email != null) 'email': email,
+      if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4555,6 +4653,8 @@ class SyncedSpaceMembersCompanion
     Value<String>? spaceId,
     Value<String>? userId,
     Value<String>? role,
+    Value<String?>? email,
+    Value<String?>? displayName,
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<int>? rowid,
@@ -4564,6 +4664,8 @@ class SyncedSpaceMembersCompanion
       spaceId: spaceId ?? this.spaceId,
       userId: userId ?? this.userId,
       role: role ?? this.role,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4585,6 +4687,12 @@ class SyncedSpaceMembersCompanion
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
@@ -4604,6 +4712,8 @@ class SyncedSpaceMembersCompanion
           ..write('spaceId: $spaceId, ')
           ..write('userId: $userId, ')
           ..write('role: $role, ')
+          ..write('email: $email, ')
+          ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6836,6 +6946,8 @@ typedef $$SyncedSpaceMembersTableCreateCompanionBuilder =
       required String spaceId,
       required String userId,
       required String role,
+      Value<String?> email,
+      Value<String?> displayName,
       required String createdAt,
       required String updatedAt,
       Value<int> rowid,
@@ -6846,6 +6958,8 @@ typedef $$SyncedSpaceMembersTableUpdateCompanionBuilder =
       Value<String> spaceId,
       Value<String> userId,
       Value<String> role,
+      Value<String?> email,
+      Value<String?> displayName,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<int> rowid,
@@ -6877,6 +6991,16 @@ class $$SyncedSpaceMembersTableFilterComposer
 
   ColumnFilters<String> get role => $composableBuilder(
     column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6920,6 +7044,16 @@ class $$SyncedSpaceMembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6951,6 +7085,14 @@ class $$SyncedSpaceMembersTableAnnotationComposer
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -7003,6 +7145,8 @@ class $$SyncedSpaceMembersTableTableManager
                 Value<String> spaceId = const Value.absent(),
                 Value<String> userId = const Value.absent(),
                 Value<String> role = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7011,6 +7155,8 @@ class $$SyncedSpaceMembersTableTableManager
                 spaceId: spaceId,
                 userId: userId,
                 role: role,
+                email: email,
+                displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -7021,6 +7167,8 @@ class $$SyncedSpaceMembersTableTableManager
                 required String spaceId,
                 required String userId,
                 required String role,
+                Value<String?> email = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
                 required String createdAt,
                 required String updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -7029,6 +7177,8 @@ class $$SyncedSpaceMembersTableTableManager
                 spaceId: spaceId,
                 userId: userId,
                 role: role,
+                email: email,
+                displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

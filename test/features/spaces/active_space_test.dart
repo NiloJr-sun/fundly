@@ -23,14 +23,12 @@ const userB = SignedIn(
 const business = '7c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5';
 
 class _Service implements SpaceService {
-  _Service(this.ids, {this.offline = false});
+  _Service(this.ids);
 
   final Set<String> ids;
-  final bool offline;
 
   @override
-  Future<Set<String>> memberSpaceIds() async =>
-      offline ? throw Exception('offline') : ids;
+  Future<Set<String>> memberSpaceIds() async => ids;
 
   @override
   Future<Space> create({required String spaceId, required String name}) =>
@@ -110,26 +108,6 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(c.read(activeSpaceIdProvider), userB.userId);
     expect(c.read(syncedStoreProvider)!.spaceId, userB.userId);
-  });
-
-  test('a remembered space the server no longer lists falls back to '
-      'Personal', () async {
-    await remembered.remember(userA.userId, business);
-    final c = container(service: _Service({userA.userId}));
-    expect(c.read(activeSpaceIdProvider), business);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    expect(c.read(activeSpaceIdProvider), userA.userId);
-    expect(remembered.remembered(userA.userId), userA.userId);
-  });
-
-  test('offline, the remembered space stays', () async {
-    await remembered.remember(userA.userId, business);
-    final c = container(service: _Service({}, offline: true));
-    c.read(activeSpaceIdProvider);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    expect(c.read(activeSpaceIdProvider), business);
   });
 
   group('upload envelope', () {

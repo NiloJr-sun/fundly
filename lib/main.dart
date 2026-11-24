@@ -7,12 +7,16 @@ import 'app/app.dart';
 import 'core/config/cloud_config.dart';
 import 'core/sync/dataset_import.dart';
 import 'core/sync/powersync_store.dart';
+import 'core/sync/store_files.dart';
 import 'core/sync/synced_store.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/local_use_choice.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/backup/data/device_copy_store.dart';
 import 'features/spaces/data/active_space_store.dart';
+import 'features/spaces/data/device_space_stores.dart';
+import 'features/spaces/data/sharing_service.dart';
+import 'features/spaces/data/space_removals.dart';
 import 'features/spaces/data/space_service.dart';
 
 Future<void> main() async {
@@ -38,6 +42,9 @@ Future<void> main() async {
           deviceCopyStoreProvider.overrideWithValue(
             SharedPreferencesDeviceCopyStore(preferences),
           ),
+          deviceSpaceStoresProvider.overrideWithValue(
+            SharedPreferencesDeviceSpaceStores(preferences),
+          ),
         ],
         if (supabase != null)
           importDatasetProvider.overrideWithValue(
@@ -47,6 +54,12 @@ Future<void> main() async {
           spaceServiceProvider.overrideWithValue(
             SupabaseSpaceService(supabase),
           ),
+        if (supabase != null) ...[
+          sharingServiceProvider.overrideWithValue(
+            SupabaseSharingService(supabase),
+          ),
+          spaceStoreFilesProvider.overrideWithValue(PowerSyncStoreFiles()),
+        ],
         if (supabase != null)
           syncedStoreOpenerProvider.overrideWithValue(
             (identity, spaceId) => PowerSyncStore.open(

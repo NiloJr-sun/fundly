@@ -262,6 +262,19 @@ void main() {
       expect(reason(code), 'Changed on another device first');
     }
     expect(reason('record_deleted'), 'Deleted on another device');
+    // Shared spaces (C3).
+    expect(
+      reason('not_space_member'),
+      "You're no longer a member of this space",
+    );
+    expect(
+      reason('space_read_only'),
+      'View only: your role in this space cannot change it',
+    );
+    expect(
+      reason('space_owner_only'),
+      'Only an owner of this space can do this',
+    );
     expect(reason('record_not_accessible'), 'The record no longer exists');
     for (final code in [
       'category_in_use',

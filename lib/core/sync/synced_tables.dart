@@ -195,9 +195,9 @@ class SyncedSpaces extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Members of those spaces and their roles (shared spaces C2), from the
-/// `fundly_spaces` stream. Download only. No foreign key: rows of one stream
-/// arrive in any order.
+/// Members of those spaces and their roles (shared spaces C2), with each
+/// member's email and name since C3, from the `fundly_spaces` stream.
+/// Download only. No foreign key: rows of one stream arrive in any order.
 @DataClassName('SyncedSpaceMemberRow')
 class SyncedSpaceMembers extends Table {
   @override
@@ -207,6 +207,11 @@ class SyncedSpaceMembers extends Table {
   TextColumn get spaceId => text()();
   TextColumn get userId => text()();
   TextColumn get role => text()();
+
+  /// Copied from the member's sign-in when they joined (shared spaces C3,
+  /// Decision C3-3); null when the sign-in had none.
+  TextColumn get email => text().nullable()();
+  TextColumn get displayName => text().nullable()();
   TextColumn get createdAt => text()();
   TextColumn get updatedAt => text()();
 

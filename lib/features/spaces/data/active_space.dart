@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import 'active_space_store.dart';
-import 'space_service.dart';
 
 /// The space the app shows for the signed-in user (shared spaces C2), or
 /// null while signed out. Personal (whose id is the user's) unless the user
@@ -21,24 +20,9 @@ class ActiveSpace extends Notifier<String?> {
       ),
     );
     if (userId == null) return null;
-    final remembered = ref.read(activeSpaceStoreProvider).remembered(userId);
-    if (remembered != null && remembered != userId) {
-      Future.microtask(() => _confirmMembership(userId, remembered));
-    }
-    return remembered ?? userId;
-  }
-
-  /// Falls back to Personal when the server says the remembered space is not
-  /// one of the user's (any more). Offline, the remembered space stays.
-  Future<void> _confirmMembership(String userId, String spaceId) async {
-    final service = ref.read(spaceServiceProvider);
-    if (service == null) return;
-    try {
-      final ids = await service.memberSpaceIds();
-      if (!ids.contains(spaceId) && state == spaceId) await selectPersonal();
-    } on Object {
-      // Offline or the server is busy: keep the space; checked next start.
-    }
+    // A remembered space the user no longer belongs to is handled by
+    // spaceRemovalsProvider (shared spaces C3), which may keep it to review.
+    return ref.read(activeSpaceStoreProvider).remembered(userId) ?? userId;
   }
 
   /// Shows [spaceId] from now on, on this device.
@@ -49,8 +33,7 @@ class ActiveSpace extends Notifier<String?> {
     await ref.read(activeSpaceStoreProvider).remember(identity.userId, spaceId);
   }
 
-  /// Back to Personal, for example when the chosen space is not (or no
-  /// longer) one the user belongs to.
+  /// Back to Personal, for example when the chosen space left the user.
   Future<void> selectPersonal() async {
     final identity = ref.read(authIdentityProvider);
     if (identity is SignedIn) await select(identity.userId);

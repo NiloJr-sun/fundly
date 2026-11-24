@@ -6,6 +6,7 @@ import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../domain/space.dart';
+import '../domain/space_member.dart';
 
 /// The spaces [userId] belongs to, as downloaded into [database] (every
 /// store holds the same list).
@@ -39,4 +40,35 @@ final spacesProvider = StreamProvider<List<Space>>((ref) {
   final store = ref.watch(syncedStoreProvider);
   if (identity is! SignedIn || store == null) return Stream.value(const []);
   return watchSpaces(store.database, identity.userId);
+});
+
+/// The members of [spaceId], as downloaded into [database]; empty for a
+/// space the user does not belong to.
+Stream<List<SpaceMember>> watchMembers(
+  SyncedDatabase database,
+  String spaceId,
+) =>
+    (database.select(
+      database.syncedSpaceMembers,
+    )..where((member) => member.spaceId.equals(spaceId))).watch().map(
+      (rows) => sortedMembers([
+        for (final row in rows)
+          SpaceMember(
+            userId: row.userId,
+            role: SpaceRole.fromWire(row.role),
+            email: row.email,
+            displayName: row.displayName,
+          ),
+      ]),
+    );
+
+/// The members of a space the user belongs to, from the active store (every
+/// store holds every space's members); empty while signed out.
+final spaceMembersProvider = StreamProvider.family<List<SpaceMember>, String>((
+  ref,
+  spaceId,
+) {
+  final store = ref.watch(syncedStoreProvider);
+  if (store == null) return Stream.value(const []);
+  return watchMembers(store.database, spaceId);
 });

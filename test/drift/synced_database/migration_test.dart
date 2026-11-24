@@ -9,6 +9,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -209,5 +210,90 @@ void main() {
         expect(await newDb.select(newDb.spaceMembers).get(), isEmpty);
       },
     );
+  });
+
+  test('v3 to v4 keeps spaces, members and the log; members gain an empty '
+      'email and name', () async {
+    const at = '2026-11-24 09:30:00+00';
+    const space = v3.SpacesData(
+      id: 's1',
+      name: 'Household',
+      createdBy: 'u1',
+      createdAt: at,
+      updatedAt: at,
+      revision: 2,
+    );
+    const member = v3.SpaceMembersData(
+      id: 'm1',
+      spaceId: 's1',
+      userId: 'u1',
+      role: 'owner',
+      createdAt: at,
+      updatedAt: at,
+    );
+    const rejection = v3.SyncRejectionsData(
+      batchId: 'b1',
+      kind: 'rejected',
+      code: 'revision_conflict',
+      operations: '{"version":1,"items":[]}',
+      createdIds: '[]',
+      labels: '{}',
+      rejectedAt: '2026-11-24T01:00:00.000Z',
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 3,
+      newVersion: 4,
+      createOld: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
+      openTestedDatabase: SyncedDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insertAll(oldDb.spaces, [space])
+          ..insertAll(oldDb.spaceMembers, [member])
+          ..insertAll(oldDb.syncRejections, [rejection]);
+      },
+      validateItems: (newDb) async {
+        Map<String, Object?> json(Object row) =>
+            (row as dynamic).toJson() as Map<String, Object?>;
+        expect((await newDb.select(newDb.spaces).get()).map(json), [
+          json(space),
+        ]);
+        expect((await newDb.select(newDb.spaceMembers).get()).map(json), [
+          {...json(member), 'email': null, 'displayName': null},
+        ]);
+        expect((await newDb.select(newDb.syncRejections).get()).map(json), [
+          json(rejection),
+        ]);
+      },
+    );
+  });
+
+  test('v3 to v4 in a PowerSync store marks members for the next download '
+      'to write again', () async {
+    final schema = await verifier.schemaAt(3);
+    // Stands in for PowerSync's table of rows to restore from its log.
+    schema.rawDatabase
+      ..execute(
+        'CREATE TABLE ps_updated_rows (row_type TEXT, row_id TEXT, '
+        'PRIMARY KEY (row_type, row_id))',
+      )
+      ..execute(
+        'INSERT INTO space_members (id, space_id, user_id, role, created_at, '
+        "updated_at) VALUES ('m1', 's1', 'u1', 'owner', 'x', 'x')",
+      );
+    final db = SyncedDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 4);
+    final marked = await db
+        .customSelect('SELECT row_type, row_id FROM ps_updated_rows')
+        .get();
+    expect(
+      [
+        for (final row in marked)
+          (row.read<String>('row_type'), row.read<String>('row_id')),
+      ],
+      [('space_members', 'm1')],
+    );
+    await db.close();
   });
 }

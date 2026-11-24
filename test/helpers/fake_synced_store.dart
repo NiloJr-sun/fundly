@@ -88,8 +88,12 @@ class FakeSyncedStore implements SyncedStore {
         item! as Map<String, Object?>,
   ];
 
+  Future<void>? _closing;
+
   @override
-  Future<void> close() async {
+  Future<void> close() => _closing ??= _close();
+
+  Future<void> _close() async {
     closed = true;
     await _states.close();
     if (_opened) await database.close();

@@ -66,6 +66,13 @@ String refusalReason(SyncRejection rejection) => switch (rejection) {
     'Still in use, possibly after changes on another device',
   SyncRejection(code: 'plan_allocation_remaining' || 'has_assigned_money') =>
     'The plan still holds money for this or a later month',
+  // Shared spaces (C3); fuller conflict wording comes with C4.
+  SyncRejection(code: 'not_space_member') =>
+    "You're no longer a member of this space",
+  SyncRejection(code: 'space_read_only') =>
+    'View only: your role in this space cannot change it',
+  SyncRejection(code: 'space_owner_only') =>
+    'Only an owner of this space can do this',
   SyncRejection(:final code) => "The server's rules refused it ($code)",
 };
 

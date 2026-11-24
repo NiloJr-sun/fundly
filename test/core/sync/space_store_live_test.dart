@@ -1,14 +1,18 @@
 // Shared spaces C2.2: the real PowerSyncStore with two spaces, against the
 // LOCAL stack and self-hosted PowerSync (tool/sync_probe/cloud/fundly-local).
-// Skipped unless FUNDLY_TEST_A_EMAIL/PASSWORD and FUNDLY_CHECK_CONFIG are set:
+// C3.2 adds sharing with user B: invites and members through the app's
+// service, and B's store after B is removed with a change not yet sent.
+// Skipped unless FUNDLY_TEST_A_EMAIL/PASSWORD (and _B_ for C3.2) and
+// FUNDLY_CHECK_CONFIG are set:
 //
 //   tool/sync_probe/cloud/fundly-local/up.sh
 //   set -a; . tool/sync_probe/cloud/fundly-local/.env.local; set +a
 //   FUNDLY_CHECK_CONFIG=tool/sync_probe/cloud/fundly-local/config.local.json \
 //     flutter test test/core/sync/space_store_live_test.dart
 //
-// Refuses anything but a local stack. The space is fixed per test user
-// (spaces cannot be deleted before C3); records written here are deleted.
+// Refuses anything but a local stack. The C2.2 space is fixed per test user;
+// records written here are deleted. The C3.2 space is created and deleted.
+// Credentials and invite secrets are never printed.
 @TestOn('vm')
 library;
 
@@ -17,11 +21,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/sync/powersync_store.dart';
+import 'package:fundly/core/sync/store_files.dart';
 import 'package:fundly/core/sync/sync_queue.dart';
+import 'package:fundly/core/sync/sync_rejections.dart';
 import 'package:fundly/core/sync/synced_store.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
+import 'package:fundly/features/spaces/data/sharing_service.dart';
 import 'package:fundly/features/spaces/data/space_directory.dart';
 import 'package:fundly/features/spaces/data/space_service.dart';
+import 'package:fundly/features/spaces/domain/space.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -172,6 +180,230 @@ void main() {
       }
     },
     skip: skip,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+
+  final sharingSkip =
+      skip ??
+      ((_environment['FUNDLY_TEST_B_EMAIL'] ?? '').isEmpty ||
+              (_environment['FUNDLY_TEST_B_PASSWORD'] ?? '').isEmpty
+          ? 'Live check: set FUNDLY_TEST_B_*'
+          : null);
+
+  test(
+    'sharing: invite and accept, members reach the store, and removal with '
+    'an unsent change keeps it refused on the device',
+    () async {
+      final config = jsonDecode(
+        File(configPath).readAsStringSync(),
+      ) as Map<String, Object?>;
+      final url = config['SUPABASE_URL']! as String;
+      if (!url.startsWith('http://127.0.0.1:')) {
+        fail('This check writes to the server: local stack only');
+      }
+      final key = config['SUPABASE_PUBLISHABLE_KEY']! as String;
+      final powerSyncUrl = config['POWERSYNC_URL']! as String;
+      Future<(SupabaseClient, SignedIn)> signIn(String who) async {
+        final client = SupabaseClient(url, key);
+        final session = await client.auth.signInWithPassword(
+          email: _environment['FUNDLY_TEST_${who}_EMAIL']!,
+          password: _environment['FUNDLY_TEST_${who}_PASSWORD']!,
+        );
+        return (
+          client,
+          SignedIn(userId: session.user!.id, email: session.user!.email ?? ''),
+        );
+      }
+
+      final (clientA, a) = await signIn('A');
+      final (clientB, b) = await signIn('B');
+      final sharingA = SupabaseSharingService(clientA);
+      final sharingB = SupabaseSharingService(clientB);
+      final spaceId = const Uuid().v4();
+      await SupabaseSpaceService(clientA)
+          .create(spaceId: spaceId, name: 'C3.2 ${spaceId.substring(0, 8)}');
+      final directory = await Directory.systemTemp.createTemp('fundly-c32-');
+      final files = PowerSyncStoreFiles(directory: () async => directory.path);
+      PowerSyncStore openB({bool connect = true}) => PowerSyncStore.open(
+        b,
+        spaceId,
+        client: clientB,
+        powerSyncUrl: connect ? powerSyncUrl : '',
+        directory: () async => directory.path,
+      );
+      PowerSyncStore? store;
+      try {
+        // Invites, through the app's service: the secret only once.
+        final invite = await sharingA.createInvite(
+          spaceId: spaceId,
+          email: b.email.toUpperCase(),
+          role: SpaceRole.editor,
+        );
+        expect(invite.email, b.email.toLowerCase());
+        expect(invite.secret, matches(RegExp(r'^[0-9a-f]{64}$')));
+        expect(invite.expiresAt.isAfter(DateTime.now().toUtc()), isTrue);
+        final pending = await sharingA.listInvites(spaceId);
+        expect(pending.map((i) => i.id), [invite.id]);
+        expect(pending.single.role, SpaceRole.editor);
+        // A second invite, revoked; B cannot read someone else's invite.
+        final extra = await sharingA.createInvite(
+          spaceId: spaceId,
+          email: 'c32-nobody@example.com',
+          role: SpaceRole.viewer,
+        );
+        await sharingA.revokeInvite(extra.id);
+        expect((await sharingA.listInvites(spaceId)).map((i) => i.id), [
+          invite.id,
+        ]);
+        await expectLater(
+          sharingB.previewInvite(extra.secret),
+          throwsA(
+            isA<SharingException>().having(
+              (e) => e.problem,
+              'problem',
+              // Another email's invite reveals nothing, revoked or not.
+              SharingProblem.inviteOtherEmail,
+            ),
+          ),
+        );
+
+        final preview = await sharingB.previewInvite(invite.secret);
+        expect(preview.spaceId, spaceId);
+        expect(preview.role, SpaceRole.editor);
+        expect(preview.inviterEmail, a.email.toLowerCase());
+        expect(preview.alreadyMember, isFalse);
+        final joined = await sharingB.acceptInvite(invite.secret);
+        expect((joined.spaceId, joined.role), (spaceId, SpaceRole.editor));
+        await expectLater(
+          sharingB.acceptInvite(invite.secret),
+          throwsA(isA<SharingException>()),
+        );
+
+        // B's store gets the space and A's email; a role change arrives.
+        store = openB();
+        await store
+            .watchState()
+            .firstWhere((state) => state.hasSynced)
+            .timeout(const Duration(seconds: 60));
+        // A new space gets its default categories from the first store that
+        // downloads it (here B's): let that upload finish first.
+        final first = store;
+        await _until(
+          () async =>
+              (await clientA
+                      .from('categories')
+                      .select('id')
+                      .eq('space_id', spaceId))
+                  .isNotEmpty &&
+              (await first.watchPendingUploads().first) == 0,
+          "B's first uploads finish",
+        );
+        expect([
+          for (final r in await first.database.watchRejections().first) r.code,
+        ], isEmpty);
+        final members = await watchMembers(
+          store.database,
+          spaceId,
+        ).firstWhere((members) => members.length == 2);
+        expect(
+          members.map((m) => m.email),
+          containsAll([a.email.toLowerCase(), b.email.toLowerCase()]),
+        );
+        await sharingA.setMemberRole(
+          spaceId: spaceId,
+          userId: b.userId,
+          role: SpaceRole.viewer,
+        );
+        await watchSpaces(store.database, b.userId)
+            .firstWhere(
+              (spaces) => spaces.any(
+                (s) => s.id == spaceId && s.role == SpaceRole.viewer,
+              ),
+            )
+            .timeout(const Duration(seconds: 60));
+        await sharingA.setMemberRole(
+          spaceId: spaceId,
+          userId: b.userId,
+          role: SpaceRole.editor,
+        );
+        await watchSpaces(store.database, b.userId)
+            .firstWhere(
+              (spaces) => spaces.any(
+                (s) => s.id == spaceId && s.role == SpaceRole.editor,
+              ),
+            )
+            .timeout(const Duration(seconds: 60));
+        await store.close();
+
+        // B makes a change that cannot upload yet (the store is offline),
+        // then A removes B.
+        store = openB(connect: false);
+        await store.database.queue([
+          SyncOperation(
+            'category.create',
+            newRecordId(),
+            data: const {'name': 'C3.2 never sent', 'kind': 'spending'},
+          ),
+        ]);
+        expect(await store.watchPendingUploads().first, 1);
+        await store.close();
+        await sharingA.removeMember(spaceId: spaceId, userId: b.userId);
+
+        // Closed, the store still holds it: the device keeps the space.
+        expect(await files.exists(b.userId, spaceId), isTrue);
+        final waiting = await files.changesIn(b.userId, spaceId);
+        expect((waiting.unsent, waiting.refused), (1, 0));
+
+        // Opened to review it: the server refuses it as no longer a member,
+        // it lands in Refused changes, and the space's rows leave.
+        final reviewed = store = openB();
+        final refused = await reviewed.database
+            .watchRejections()
+            .firstWhere((list) => list.isNotEmpty)
+            .timeout(const Duration(seconds: 60));
+        expect(refused.single.code, 'not_space_member');
+        await _until(
+          () async =>
+              (await reviewed.watchPendingUploads().first) == 0 &&
+              (await reviewed.database
+                      .customSelect('SELECT id FROM categories')
+                      .get())
+                  .isEmpty &&
+              !(await watchSpaces(
+                reviewed.database,
+                b.userId,
+              ).first).any((s) => s.id == spaceId),
+          'the space leaves the store, its refused change stays',
+        );
+        await expectLater(
+          sharingB.leaveSpace(spaceId),
+          throwsA(
+            isA<SharingException>().having(
+              (e) => e.problem,
+              'problem',
+              SharingProblem.notMember,
+            ),
+          ),
+        );
+        await reviewed.close();
+        final kept = await files.changesIn(b.userId, spaceId);
+        expect([for (final r in refused) r.code], ['not_space_member']);
+        expect((kept.unsent, kept.refused), (0, 1));
+
+        // Removed from the device once reviewed.
+        await files.delete(b.userId, spaceId);
+        expect(await files.exists(b.userId, spaceId), isFalse);
+        expect(directory.listSync(), isEmpty);
+      } finally {
+        await store?.close();
+        await sharingA.deleteSpace(
+          spaceId: spaceId,
+          name: ' c3.2 ${spaceId.substring(0, 8)} ',
+        );
+        await directory.delete(recursive: true);
+      }
+    },
+    skip: sharingSkip,
     timeout: const Timeout(Duration(minutes: 3)),
   );
 }

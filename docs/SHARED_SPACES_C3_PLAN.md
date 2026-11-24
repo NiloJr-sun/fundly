@@ -3,7 +3,7 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C3-1 to C3-10, all as
-recommended). **C3.1 done 2026-11-24**; C3.2 next. Slice C3 of
+recommended). **C3.1 and C3.2 done 2026-11-24**; C3.3 next. Slice C3 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C2 (released as
 1.3.0). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner, and app changes reach `main` only
@@ -172,7 +172,7 @@ other members.
   the backfill and all three rollback rehearsals, the isolation and stream
   checks, the probe, and the app (1192 tests).
 
-### C3.2: App data layer (agent, local)
+### C3.2: App data layer (agent, local) ✅ Done 2026-11-24
 
 Invite and member services, link and secret parsing, synced member names
 (synced schema v4 with its migration test), `canEditProvider`, the device
@@ -180,6 +180,56 @@ list of space stores, the removed-space rules (delete, or keep read-only
 until reviewed), store deletion on iOS and the web, refused-change words.
 Tests: unit and provider tests, plus the live store test extended to removal
 with an unsent change.
+
+**Result** (local only; no UI yet, nothing deployed):
+
+- **Synced schema v4:** `space_members` gains `email` and `display_name`.
+  The upgrade marks existing member rows in `ps_updated_rows`, so the next
+  applied checkpoint writes them again from PowerSync's download log
+  (members downloaded by 1.3.0 had no columns for the names). Snapshot,
+  steps and two migration tests (data kept; rows marked in a PowerSync
+  store).
+- **Services:** `SharingService` (`spaces/data/sharing_service.dart`) for
+  the ten C3 RPCs, with every server code mapped to a `SharingProblem` and
+  plain words for each (`sharing_messages.dart`). `watchMembers` and
+  `spaceMembersProvider` read members from the active store.
+- **Invite links:** `inviteLinkFor`, `inviteSecretFromText` (the link,
+  the link inside a message, or the secret alone; upper case accepted) and
+  `inviteSecretFromUrl` (web `/join#secret`). `inviteEmailProblem` repeats
+  the server's email rule and refuses existing members.
+- **Edit gate:** `canEditProvider` is back: always true signed out and in
+  Personal; in another space true for owners and editors, false for viewers,
+  for a Removed space and before the spaces list has downloaded. Entry
+  points use it in C3.3.
+- **Spaces leaving a device:** `DeviceSpaceStores` (preferences, per user)
+  lists every non-Personal space seen here. `SpaceRemovals` asks the server
+  which spaces the user belongs to when a listed one disappears (and at
+  start), and only acts on its answer. Nothing unsent or refused: the store
+  is deleted (the active one after switching to Personal and closing it,
+  with a notice naming the space). Otherwise the space stays, read-only, in
+  `SpaceRemovalState.removed` until `removeFromDevice`. Offline, nothing is
+  decided; a failed delete is retried at the next start. This replaces
+  C2's "remembered space falls back to Personal". `PowerSyncStoreFiles`
+  finds, inspects (opened without connecting) and deletes closed stores:
+  files on iOS, OPFS or IndexedDB on the web. `close()` now returns the
+  same future when called twice, so deletion waits for it.
+- **Refused changes:** plain words for `not_space_member`,
+  `space_read_only` and `space_owner_only`.
+- **Tests:** 1231 passing (+40), 2 skipped (the live checks). New:
+  removal rules and edit gate (19, with fake stores, server and files),
+  links, members, invite emails, error mapping and wording, the device list
+  in preferences, the v3 to v4 migration. **Live, on local sync, passing
+  twice:** A invites B through the app's service (secret once, listed
+  without it, revoked invites, another email's invite reveals nothing), B
+  previews and accepts (once only), B's store gets A's email and a role
+  change; B queues a change offline, A removes B; the closed store reports
+  1 unsent, opening it logs `not_space_member`, the space's rows leave, the
+  refused change stays; deleting the store leaves no files; the space is
+  deleted afterwards. `flutter analyze` clean; iOS simulator and web builds
+  succeed.
+- **Not yet checked:** web store deletion with a second tab open (C3.3
+  review in Chrome), and that existing members' names appear after an
+  upgrade from 1.3.0 on a real device.
 
 ### C3.3: App UI (agent; owner reviews with two accounts)
 

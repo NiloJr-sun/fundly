@@ -28,7 +28,7 @@ class SyncedDatabase extends _$SyncedDatabase {
   SyncedDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -41,9 +41,37 @@ class SyncedDatabase extends _$SyncedDatabase {
         await migrator.createTable(schema.spaces);
         await migrator.createTable(schema.spaceMembers);
       },
+      // v4 (shared spaces C3): members' email and name.
+      from3To4: (migrator, schema) async {
+        await migrator.addColumn(
+          schema.spaceMembers,
+          schema.spaceMembers.email,
+        );
+        await migrator.addColumn(
+          schema.spaceMembers,
+          schema.spaceMembers.displayName,
+        );
+        await _redownloadMembers();
+      },
     ),
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
+
+  /// Members downloaded before v4 have no email or name here, although
+  /// PowerSync's download log may already hold them. Marking the rows makes
+  /// the next applied checkpoint write them again from that log, the same
+  /// way refused changes are undone (`recordRejection`). Only a PowerSync
+  /// store has the table; a plain database (tests) skips this.
+  Future<void> _redownloadMembers() async {
+    final hasLog = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE name = 'ps_updated_rows'",
+    ).getSingleOrNull();
+    if (hasLog == null) return;
+    await customStatement(
+      'INSERT OR IGNORE INTO ps_updated_rows (row_type, row_id) '
+      "SELECT 'space_members', id FROM space_members",
+    );
+  }
 
   /// How many downloaded rows hold a number that Flutter web cannot represent
   /// exactly. Repositories skip those rows everywhere, so every platform shows

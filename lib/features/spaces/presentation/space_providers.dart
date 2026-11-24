@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/data/auth_repository.dart';
+import '../../auth/domain/auth_identity.dart';
 import '../data/active_space.dart';
 import '../data/space_directory.dart';
+import '../data/space_removals.dart';
 import '../domain/space.dart';
 
 /// The active space as listed, or null before the list has downloaded.
@@ -12,6 +15,35 @@ final activeSpaceProvider = Provider<Space?>((ref) {
     if (space.id == id) return space;
   }
   return null;
+});
+
+/// Whether the active space is one that left the user and is kept on this
+/// device only to review its changes (shared spaces C3).
+final activeSpaceRemovedProvider = Provider<bool>((ref) {
+  final id = ref.watch(activeSpaceIdProvider);
+  return id != null && ref.watch(spaceRemovalsProvider).isRemoved(id);
+});
+
+/// Whether the user may change the records on screen (shared spaces C3,
+/// Decision C3-8). Every add, edit, delete and archive entry point checks it
+/// and shows a "View only" note instead of a form when false; the server
+/// refuses such changes anyway.
+///
+/// Always true signed out and in Personal. In another space, true for an
+/// owner or editor; false for a viewer, for a space that left the user, and
+/// before the spaces list has downloaded.
+final canEditProvider = Provider<bool>((ref) {
+  final userId = ref.watch(
+    authIdentityProvider.select(
+      (identity) => identity is SignedIn ? identity.userId : null,
+    ),
+  );
+  if (userId == null) return true;
+  final activeId = ref.watch(activeSpaceIdProvider);
+  if (activeId == null || activeId == userId) return true;
+  if (ref.watch(activeSpaceRemovedProvider)) return false;
+  final role = ref.watch(activeSpaceProvider)?.role;
+  return role == SpaceRole.owner || role == SpaceRole.editor;
 });
 
 /// The active space's name when the user has more than one space, so screens

@@ -8,6 +8,7 @@ import '../features/auth/domain/auth_identity.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/backup/presentation/device_data_prompt.dart';
 import '../features/spaces/data/active_space.dart';
+import '../features/spaces/data/space_removals.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -25,6 +26,10 @@ class FundlyApp extends ConsumerWidget {
       authIdentityProvider.select(databaseNameFor),
     );
     final activeSpace = ref.watch(activeSpaceIdProvider);
+    // Kept running while the app is open: it handles spaces that leave this
+    // device (shared spaces C3). Listened to, so its changes rebuild nothing
+    // here.
+    ref.listen(spaceRemovalsProvider, (_, _) {});
     // Watched unconditionally so the choice stays live and is cleared when a
     // user signs in.
     final localUseChosen = ref.watch(localUseChosenProvider);

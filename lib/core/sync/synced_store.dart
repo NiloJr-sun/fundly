@@ -80,7 +80,8 @@ abstract interface class SyncedStore {
   /// How many queued batches wait to upload (S5.3).
   Stream<int> watchPendingUploads();
 
-  /// Disconnects and closes the store.
+  /// Disconnects and closes the store. Calling it again returns the same
+  /// future, which completes once the store's files are free.
   Future<void> close();
 }
 
