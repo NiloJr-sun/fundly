@@ -19,6 +19,15 @@ String databaseNameFor(AuthIdentity identity) => switch (identity) {
   SignedIn(:final userId) => 'fundly_sync_${_checkedUserId(userId)}',
 };
 
+/// The synchronized store of [userId]'s space [spaceId] (shared spaces C2).
+/// Personal (whose id is the user's) keeps the name it has had since S5.2,
+/// so upgrading never moves its data; any other space gets its own store.
+String syncedDatabaseNameFor(String userId, String spaceId) {
+  final user = _checkedUserId(userId);
+  final space = _checkedUserId(spaceId);
+  return space == user ? 'fundly_sync_$user' : 'fundly_sync_${user}_$space';
+}
+
 /// The S4 preview database of [userId], which the synchronized store replaces
 /// and deletes (S4 Decision 1).
 String previewDatabaseNameFor(String userId) =>

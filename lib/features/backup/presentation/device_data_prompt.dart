@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
+import '../../spaces/data/active_space.dart';
 import '../data/device_copy_store.dart';
 import '../data/device_data_copier.dart';
 import 'copy_device_data_screen.dart';
@@ -43,6 +44,9 @@ class _DeviceDataPromptState extends ConsumerState<DeviceDataPrompt> {
     if (identity is! SignedIn ||
         state == null ||
         !state.hasSynced ||
+        // Device data is only ever copied into Personal (shared spaces C2,
+        // Decision C2-8); the prompt waits until Personal is shown.
+        ref.read(activeSpaceIdProvider) != identity.userId ||
         _considered.contains(identity.userId) ||
         ref.read(deviceDataCopierProvider) == null ||
         ref.read(deviceCopyStateProvider).settledFor(identity.userId)) {

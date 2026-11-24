@@ -52,9 +52,12 @@ void main() {
                 .interceptWith(_CloseRecorder(name, closed)),
           );
         }),
-        syncedStoreOpenerProvider.overrideWithValue((identity) {
+        syncedStoreOpenerProvider.overrideWithValue((identity, spaceId) {
           opened.add(identity.userId);
-          return stores[identity.userId] = FakeSyncedStore(identity);
+          return stores[identity.userId] = FakeSyncedStore(
+            identity,
+            spaceId: spaceId,
+          );
         }),
       ],
     );

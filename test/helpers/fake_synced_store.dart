@@ -12,13 +12,19 @@ import 'package:fundly/features/auth/domain/auth_identity.dart';
 class FakeSyncedStore implements SyncedStore {
   FakeSyncedStore(
     this.identity, {
+    String? spaceId,
     SyncState state = const SyncState(
       connection: SyncConnection.connected,
       hasSynced: true,
     ),
-  }) : _current = state;
+  }) : spaceId = spaceId ?? identity.userId,
+       _current = state;
 
   final SignedIn identity;
+
+  /// Personal (the user's id) unless given.
+  @override
+  final String spaceId;
 
   /// Created on first use, so widget tests that never read records open no
   /// database (and leave no drift timers behind).

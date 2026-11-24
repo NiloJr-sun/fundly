@@ -63,7 +63,9 @@ List<Override> fakeAccounts(
 
   return [
     // Signed-in widget tests get an empty in-memory synchronized store.
-    syncedStoreOpenerProvider.overrideWithValue(FakeSyncedStore.new),
+    syncedStoreOpenerProvider.overrideWithValue(
+      (identity, spaceId) => FakeSyncedStore(identity, spaceId: spaceId),
+    ),
     unsafeSyncedRowCountProvider.overrideWith((ref) => Stream.value(0)),
     refusedChangesProvider.overrideWith((ref) => Stream.value(const [])),
     activeAccountsProvider.overrideWith((ref) => Stream.value(accounts)),

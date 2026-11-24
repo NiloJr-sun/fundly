@@ -12,6 +12,8 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/local_use_choice.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/backup/data/device_copy_store.dart';
+import 'features/spaces/data/active_space_store.dart';
+import 'features/spaces/data/space_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +32,9 @@ Future<void> main() async {
           localUseChoiceStoreProvider.overrideWithValue(
             SharedPreferencesLocalUseChoiceStore(preferences),
           ),
+          activeSpaceStoreProvider.overrideWithValue(
+            SharedPreferencesActiveSpaceStore(preferences),
+          ),
           deviceCopyStoreProvider.overrideWithValue(
             SharedPreferencesDeviceCopyStore(preferences),
           ),
@@ -39,9 +44,14 @@ Future<void> main() async {
             supabaseImportDataset(supabase),
           ),
         if (supabase != null)
+          spaceServiceProvider.overrideWithValue(
+            SupabaseSpaceService(supabase),
+          ),
+        if (supabase != null)
           syncedStoreOpenerProvider.overrideWithValue(
-            (identity) => PowerSyncStore.open(
+            (identity, spaceId) => PowerSyncStore.open(
               identity,
+              spaceId,
               client: supabase,
               powerSyncUrl: config.powerSyncUrl,
             ),

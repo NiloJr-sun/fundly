@@ -20,13 +20,15 @@ part 'synced_database.g.dart';
     SyncedTransactions,
     SyncedMonthlyPlans,
     SyncRejections,
+    SyncedSpaces,
+    SyncedSpaceMembers,
   ],
 )
 class SyncedDatabase extends _$SyncedDatabase {
   SyncedDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -34,6 +36,11 @@ class SyncedDatabase extends _$SyncedDatabase {
       // v2 (S5.4): the local log of refused changes.
       from1To2: (migrator, schema) =>
           migrator.createTable(schema.syncRejections),
+      // v3 (shared spaces C2): the user's spaces and their members.
+      from2To3: (migrator, schema) async {
+        await migrator.createTable(schema.spaces);
+        await migrator.createTable(schema.spaceMembers);
+      },
     ),
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );

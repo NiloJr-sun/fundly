@@ -7,6 +7,7 @@ import '../features/auth/data/local_use_choice.dart';
 import '../features/auth/domain/auth_identity.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/backup/presentation/device_data_prompt.dart';
+import '../features/spaces/data/active_space.dart';
 import 'home_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -23,6 +24,7 @@ class FundlyApp extends ConsumerWidget {
     final databaseName = ref.watch(
       authIdentityProvider.select(databaseNameFor),
     );
+    final activeSpace = ref.watch(activeSpaceIdProvider);
     // Watched unconditionally so the choice stays live and is cleared when a
     // user signs in.
     final localUseChosen = ref.watch(localUseChosenProvider);
@@ -31,9 +33,10 @@ class FundlyApp extends ConsumerWidget {
         ref.watch(authIdentityProvider) is SignedOut &&
         !localUseChosen;
     return MaterialApp(
-      // A new database means new data: rebuild navigation from the home tabs
-      // so no open screen or dialog keeps showing the previous user's records.
-      key: ValueKey(databaseName),
+      // A new database or space means new data: rebuild navigation from the
+      // home tabs so no open screen or dialog keeps showing the previous
+      // user's or space's records.
+      key: ValueKey((databaseName, activeSpace)),
       title: 'Fundly',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

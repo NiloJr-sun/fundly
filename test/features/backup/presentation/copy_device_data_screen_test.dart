@@ -16,6 +16,7 @@ import 'package:fundly/features/backup/presentation/device_data_prompt.dart';
 import 'package:fundly/features/backup/presentation/export_backup.dart';
 import 'package:fundly/features/backup/presentation/restore_backup.dart';
 import 'package:fundly/features/profile/presentation/profile_screen.dart';
+import 'package:fundly/features/spaces/data/active_space_store.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
 import '../../../helpers/fake_import_server.dart';
@@ -399,6 +400,31 @@ void main() {
       );
       await settle(tester);
       expect(find.text("Copy this device's data?"), findsNothing);
+    });
+
+    testWidgets('waits while another space than Personal is shown '
+        '(shared spaces C2)', (tester) async {
+      await seedEmptyAccount(tester);
+      final remembered = InMemoryActiveSpaceStore();
+      await remembered.remember(
+        user.userId,
+        '7c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5',
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...overrides(),
+            activeSpaceStoreProvider.overrideWithValue(remembered),
+          ],
+          child: const MaterialApp(
+            home: DeviceDataPrompt(child: Scaffold(body: Text('Home'))),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text("Copy this device's data?"), findsNothing);
+      expect(copies.read().dismissed, isEmpty);
     });
 
     testWidgets('Review opens the copy screen', (tester) async {

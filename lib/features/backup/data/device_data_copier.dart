@@ -214,7 +214,8 @@ Future<bool> accountHoldsOnlyDefaults(SyncedDatabase database) async {
   );
 }
 
-/// Copies this device's data into the signed-in account; `null` while signed
+/// Copies this device's data, or restores a backup, into the active space of
+/// the signed-in account (shared spaces C2); `null` while signed
 /// out or in a build without the cloud configuration.
 final deviceDataCopierProvider = Provider<DeviceDataCopier?>((ref) {
   final identity = ref.watch(authIdentityProvider);
@@ -227,6 +228,7 @@ final deviceDataCopierProvider = Provider<DeviceDataCopier?>((ref) {
     import: CloudDatasetImport(
       importDataset: importDataset,
       userId: identity.userId,
+      spaceId: store.spaceId,
     ),
     synced: store.database,
     device: ref.watch(deviceDataReaderProvider),

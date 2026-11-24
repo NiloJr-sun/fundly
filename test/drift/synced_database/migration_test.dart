@@ -8,6 +8,7 @@ import 'package:fundly/core/sync/synced_database.dart';
 import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -139,6 +140,73 @@ void main() {
         );
         expect(json(await newDb.select(newDb.monthlyPlans).get()), json(plans));
         expect(await newDb.select(newDb.syncRejections).get(), isEmpty);
+      },
+    );
+  });
+
+  test('v2 to v3 keeps downloaded rows and refused changes, and adds empty '
+      'space tables', () async {
+    const at = '2026-11-24 09:30:00+00';
+    const account = v2.AccountsData(
+      id: 'a1',
+      name: 'GCash',
+      type: 'savingsCash',
+      openingBalanceMinor: 150000,
+      currencyCode: 'PHP',
+      isArchived: 0,
+      isBudgetAccount: 1,
+      createdAt: at,
+      updatedAt: at,
+      revision: 3,
+    );
+    const category = v2.CategoriesData(
+      id: 'c1',
+      name: 'Fuel',
+      kind: 'spending',
+      isArchived: 0,
+      isPlanArchived: 0,
+      isPlanDeleted: 0,
+      planGroup: 'spending',
+      createdAt: at,
+      updatedAt: at,
+      revision: 1,
+    );
+    const rejection = v2.SyncRejectionsData(
+      batchId: 'b1',
+      kind: 'rejected',
+      code: 'revision_conflict',
+      operations: '{"version":1,"items":[]}',
+      createdIds: '[]',
+      labels: '{}',
+      rejectedAt: '2026-11-24T01:00:00.000Z',
+    );
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: SyncedDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insertAll(oldDb.accounts, [account])
+          ..insertAll(oldDb.categories, [category])
+          ..insertAll(oldDb.syncRejections, [rejection]);
+      },
+      validateItems: (newDb) async {
+        Map<String, Object?> json(Object row) =>
+            (row as dynamic).toJson() as Map<String, Object?>;
+        expect((await newDb.select(newDb.accounts).get()).map(json), [
+          json(account),
+        ]);
+        expect((await newDb.select(newDb.categories).get()).map(json), [
+          json(category),
+        ]);
+        expect((await newDb.select(newDb.syncRejections).get()).map(json), [
+          json(rejection),
+        ]);
+        expect(await newDb.select(newDb.spaces).get(), isEmpty);
+        expect(await newDb.select(newDb.spaceMembers).get(), isEmpty);
       },
     );
   });

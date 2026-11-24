@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/sync/dataset_import.dart';
+import 'package:fundly/core/sync/synced_store.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
@@ -52,7 +53,8 @@ void main() {
     ids = 0;
   });
 
-  CloudDataResetter resetter() => CloudDataResetter(
+  CloudDataResetter resetter({String? spaceId}) => CloudDataResetter(
+    spaceId: spaceId,
     importDataset:
         ({required userId, required importId, required request}) async {
           calls.add((userId: userId, importId: importId, request: request));
@@ -63,6 +65,18 @@ void main() {
     newId: () => 'id-${ids++}',
     wait: (duration) async => waits.add(duration),
   );
+
+  test('a Personal reset is sent without space_id, as before spaces', () async {
+    await resetter(spaceId: user.userId).resetAll(expected: seen);
+    expect(calls.single.request.containsKey('space_id'), isFalse);
+  });
+
+  test('a reset in another space names that space (C2)', () async {
+    const space = '5b1c2d3e-4f50-4a61-8b72-9c83d4e5f601';
+    await resetter(spaceId: space).resetAll(expected: seen);
+    expect(calls.single.request['space_id'], space);
+    expect(calls.single.request['mode'], 'replace');
+  });
 
   test('sends one replace request that leaves only the defaults', () async {
     final after = await resetter().resetAll(expected: seen);
@@ -243,6 +257,9 @@ void main() {
             FakeAuthRepository(initial: user),
           ),
           importDatasetProvider.overrideWithValue(noImport),
+          syncedStoreOpenerProvider.overrideWithValue(
+            (identity, spaceId) => FakeSyncedStore(identity, spaceId: spaceId),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -258,6 +275,9 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(
             FakeAuthRepository(initial: user),
+          ),
+          syncedStoreOpenerProvider.overrideWithValue(
+            (identity, spaceId) => FakeSyncedStore(identity, spaceId: spaceId),
           ),
         ],
       );

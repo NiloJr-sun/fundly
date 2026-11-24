@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/domain/auth_identity.dart';
+import '../../features/spaces/data/active_space.dart';
 import 'sync_rejections.dart';
 import 'synced_database.dart';
 
@@ -64,9 +65,14 @@ class SyncState {
       Object.hash(connection, hasSynced, lastSyncedAt, error, uploadRetry);
 }
 
-/// A signed-in user's synchronized records and their sync connection.
+/// One space's synchronized records on this device and their sync
+/// connection (one store per space since shared spaces C2).
 abstract interface class SyncedStore {
   SyncedDatabase get database;
+
+  /// The space this store holds. Fixed for the store's life: every upload
+  /// and import from it names this space.
+  String get spaceId;
 
   /// The connection state; emits the current state first.
   Stream<SyncState> watchState();
@@ -78,18 +84,22 @@ abstract interface class SyncedStore {
   Future<void> close();
 }
 
-/// Opens the synchronized store for a signed-in user. Set in `main.dart` when
-/// the build carries the cloud configuration; tests override it with an
-/// in-memory store. `null` means signed-in use has no store (only possible in
-/// tests), so the providers below fail clearly instead of guessing.
-final syncedStoreOpenerProvider = Provider<SyncedStore Function(SignedIn)?>(
-  (ref) => null,
-);
+/// Opens the synchronized store of a signed-in user's space. Set in
+/// `main.dart` when the build carries the cloud configuration; tests override
+/// it with an in-memory store. `null` means signed-in use has no store (only
+/// possible in tests), so the providers below fail clearly instead of
+/// guessing.
+final syncedStoreOpenerProvider =
+    Provider<SyncedStore Function(SignedIn identity, String spaceId)?>(
+      (ref) => null,
+    );
 
-/// The open synchronized store while signed in, or `null` while signed out.
+/// The open synchronized store of the active space while signed in, or
+/// `null` while signed out.
 ///
-/// Opening and closing follow the identity: a different user closes the old
-/// store (disconnecting it) before the new one is used. A token refresh for
+/// Opening and closing follow the identity and the active space: another
+/// user or another space closes the old store (disconnecting it and releasing
+/// its stream subscriptions) before the new one is used. A token refresh for
 /// the same user keeps the same store.
 final syncedStoreProvider = Provider<SyncedStore?>((ref) {
   final userId = ref.watch(
@@ -97,13 +107,14 @@ final syncedStoreProvider = Provider<SyncedStore?>((ref) {
       (identity) => identity is SignedIn ? identity.userId : null,
     ),
   );
-  if (userId == null) return null;
+  final spaceId = ref.watch(activeSpaceIdProvider);
+  if (userId == null || spaceId == null) return null;
   final open = ref.watch(syncedStoreOpenerProvider);
   if (open == null) {
     throw StateError('No synchronized store is available in this build.');
   }
   final identity = ref.read(authIdentityProvider) as SignedIn;
-  final store = open(identity);
+  final store = open(identity, spaceId);
   ref.onDispose(store.close);
   return store;
 });

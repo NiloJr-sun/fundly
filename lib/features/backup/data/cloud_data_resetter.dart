@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/sync/dataset_import.dart';
 import '../../../core/sync/sync_queue.dart' show newRecordId;
 import '../../../core/sync/synced_database.dart';
+import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
 import '../../categories/data/default_categories.dart';
@@ -48,6 +49,7 @@ class CloudDataResetter {
   CloudDataResetter({
     required ImportDataset importDataset,
     required String userId,
+    String? spaceId,
     String Function() newId = newRecordId,
     Future<void> Function(Duration) wait = Future<void>.delayed,
     int attempts = 3,
@@ -55,6 +57,7 @@ class CloudDataResetter {
        _import = CloudDatasetImport(
          importDataset: importDataset,
          userId: userId,
+         spaceId: spaceId,
          newId: newId,
          wait: wait,
          attempts: attempts,
@@ -168,14 +171,18 @@ Stream<BackupCounts> watchSyncedCounts(SyncedDatabase database) => database
       ),
     );
 
-/// Resets the signed-in user's account; `null` while signed out or in a
-/// build without the cloud configuration.
+/// Resets the active space (shared spaces C2, Decision C2-8); `null` while
+/// signed out or in a build without the cloud configuration.
 final cloudDataResetterProvider = Provider<CloudDataResetter?>((ref) {
   final identity = ref.watch(authIdentityProvider);
   final importDataset = ref.watch(importDatasetProvider);
-  if (identity is! SignedIn || importDataset == null) return null;
+  final store = ref.watch(syncedStoreProvider);
+  if (identity is! SignedIn || importDataset == null || store == null) {
+    return null;
+  }
   return CloudDataResetter(
     importDataset: importDataset,
     userId: identity.userId,
+    spaceId: store.spaceId,
   );
 });

@@ -3,7 +3,7 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C2-1 to C2-10, all as
-recommended). **C2.1 done 2026-11-24**; C2.2 next. Slice C2 of
+recommended). **C2.1 and C2.2 done 2026-11-24**; C2.3 next. Slice C2 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C0 (go) and C1
 (deployed). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner.
@@ -188,13 +188,52 @@ space's records never reach the old stream.
   powersync READMEs. For C2.4: OPERATIONS.md's publication rule becomes the
   seven tables, and the hosted deploy runs `publication.sql` again.
 
-### C2.2: App data layer (agent, local)
+### C2.2: App data layer (agent, local) ✅ Done 2026-11-24
 
 Synced schema v3 and its migration test; store per (user, space) with the
 explicit subscriptions; active-space provider and its persistence; readiness
 rule; `space_id` in uploads; per-space initialize, export, restore and reset;
 the space RPC client. Tests: unit and provider tests for switching, the
 remembered space, readiness, envelopes; the existing app suite unchanged.
+
+**Result** (app code only; no release):
+
+- **Synced schema v3**: `spaces` and `space_members` tables (download only,
+  also raw tables for PowerSync), migration step, schema snapshot, and a
+  v2→v3 data-integrity test (downloaded rows and refused changes kept, space
+  tables empty); every upgrade path validates.
+- **Active space** (`lib/features/spaces/data/active_space.dart`): Personal by
+  default, remembered per user on the device (SharedPreferences, so the right
+  store opens first); once online, a remembered space the server does not
+  list for the user falls back to Personal; offline it stays.
+- **One store per space**: `syncedStoreProvider` opens the active space's
+  store; switching closes the old one. Personal keeps `fundly_sync_<user>`;
+  other spaces get `fundly_sync_<user>_<space>`. The store subscribes to
+  `fundly_spaces` and `fundly_space_data` for its space with the automatic
+  stream off, releases both on close, and counts as synced only once its
+  space is listed (C0 finding 2); then an empty space queues its default
+  categories. The app's navigation rebuilds on a switch, as it does for a
+  new user.
+- **Uploads and imports name their space**, except Personal, which is sent
+  exactly as before so a batch queued by 1.2.1 still matches its receipt.
+  Reset, Restore from backup and the copy screen act on the active space;
+  the "copy this device's data" prompt waits until Personal is shown.
+- **Spaces list and service**: `spacesProvider` (Personal first, then by
+  name, with the user's role) from the active store, so it works offline;
+  `SupabaseSpaceService` for create, rename and the membership check, with
+  errors mapped for the screens.
+- Tests: 21 new unit and provider tests (store names, envelopes, the active
+  space and store switching, the fallback, the list, error mapping), 2 reset
+  tests, a prompt test (fails without the Personal rule); all 1177 pass.
+  **Live** `test/core/sync/space_store_live_test.dart` runs the real
+  `PowerSyncStore` against local sync (fundly-local): Personal and a second
+  space each download only their own records, the new space gets its own
+  default categories, and a change queued in the second space uploads into
+  it and never reaches Personal. Passed 3 times, the first from an empty
+  space.
+- Found while testing: in a brand-new space the default categories arrive a
+  moment after the store reports synced (queued, then uploaded), as for
+  Personal on a first sign-in.
 
 ### C2.3: App UI (agent; owner reviews on the simulator and Chrome)
 

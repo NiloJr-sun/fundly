@@ -47,12 +47,34 @@ typedef ApplyBatch = Future<void> Function(
   Map<String, dynamic> operations,
 );
 
-/// The real [ApplyBatch]: the `fundly_apply_operations` RPC.
-ApplyBatch supabaseApplyBatch(SupabaseClient client) =>
+/// The real [ApplyBatch]: the `fundly_apply_operations` RPC, into the
+/// store's space. A batch for another space names it (`space_id`); a Personal
+/// batch is sent exactly as queued, as before spaces, so a retry of a batch
+/// queued by an older app still matches its receipt (the server defaults to
+/// Personal).
+ApplyBatch supabaseApplyBatch(
+  SupabaseClient client, {
+  required String userId,
+  required String spaceId,
+}) =>
     (batchId, operations) => client.rpc<dynamic>(
       'fundly_apply_operations',
-      params: {'batch_id': batchId, 'operations': operations},
+      params: {
+        'batch_id': batchId,
+        'operations': envelopeForSpace(
+          operations,
+          userId: userId,
+          spaceId: spaceId,
+        ),
+      },
     );
+
+/// [operations] as sent for [spaceId] (public for tests).
+Map<String, dynamic> envelopeForSpace(
+  Map<String, dynamic> operations, {
+  required String userId,
+  required String spaceId,
+}) => spaceId == userId ? operations : {...operations, 'space_id': spaceId};
 
 /// Uploads the oldest queued batch. Returns false when the queue is empty.
 ///

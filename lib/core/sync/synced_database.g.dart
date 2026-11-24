@@ -3736,6 +3736,882 @@ class SyncRejectionsCompanion extends UpdateCompanion<SyncRejectionRow> {
   }
 }
 
+class $SyncedSpacesTable extends SyncedSpaces
+    with TableInfo<$SyncedSpacesTable, SyncedSpaceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncedSpacesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _personalOfMeta = const VerificationMeta(
+    'personalOf',
+  );
+  @override
+  late final GeneratedColumn<String> personalOf = GeneratedColumn<String>(
+    'personal_of',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    personalOf,
+    createdBy,
+    createdAt,
+    updatedAt,
+    revision,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'spaces';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncedSpaceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('personal_of')) {
+      context.handle(
+        _personalOfMeta,
+        personalOf.isAcceptableOrUnknown(data['personal_of']!, _personalOfMeta),
+      );
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_revisionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncedSpaceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncedSpaceRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      personalOf: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}personal_of'],
+      ),
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncedSpacesTable createAlias(String alias) {
+    return $SyncedSpacesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncedSpaceRow extends DataClass implements Insertable<SyncedSpaceRow> {
+  final String id;
+  final String name;
+
+  /// The user whose Personal space this is (its id equals theirs), or null.
+  final String? personalOf;
+  final String? createdBy;
+  final String createdAt;
+  final String updatedAt;
+  final int revision;
+  const SyncedSpaceRow({
+    required this.id,
+    required this.name,
+    this.personalOf,
+    this.createdBy,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.revision,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || personalOf != null) {
+      map['personal_of'] = Variable<String>(personalOf);
+    }
+    if (!nullToAbsent || createdBy != null) {
+      map['created_by'] = Variable<String>(createdBy);
+    }
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    map['revision'] = Variable<int>(revision);
+    return map;
+  }
+
+  SyncedSpacesCompanion toCompanion(bool nullToAbsent) {
+    return SyncedSpacesCompanion(
+      id: Value(id),
+      name: Value(name),
+      personalOf: personalOf == null && nullToAbsent
+          ? const Value.absent()
+          : Value(personalOf),
+      createdBy: createdBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdBy),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      revision: Value(revision),
+    );
+  }
+
+  factory SyncedSpaceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncedSpaceRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      personalOf: serializer.fromJson<String?>(json['personalOf']),
+      createdBy: serializer.fromJson<String?>(json['createdBy']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'personalOf': serializer.toJson<String?>(personalOf),
+      'createdBy': serializer.toJson<String?>(createdBy),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'revision': serializer.toJson<int>(revision),
+    };
+  }
+
+  SyncedSpaceRow copyWith({
+    String? id,
+    String? name,
+    Value<String?> personalOf = const Value.absent(),
+    Value<String?> createdBy = const Value.absent(),
+    String? createdAt,
+    String? updatedAt,
+    int? revision,
+  }) => SyncedSpaceRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    personalOf: personalOf.present ? personalOf.value : this.personalOf,
+    createdBy: createdBy.present ? createdBy.value : this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    revision: revision ?? this.revision,
+  );
+  SyncedSpaceRow copyWithCompanion(SyncedSpacesCompanion data) {
+    return SyncedSpaceRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      personalOf: data.personalOf.present
+          ? data.personalOf.value
+          : this.personalOf,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedSpaceRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('personalOf: $personalOf, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('revision: $revision')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    personalOf,
+    createdBy,
+    createdAt,
+    updatedAt,
+    revision,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncedSpaceRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.personalOf == this.personalOf &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.revision == this.revision);
+}
+
+class SyncedSpacesCompanion extends UpdateCompanion<SyncedSpaceRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> personalOf;
+  final Value<String?> createdBy;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> revision;
+  final Value<int> rowid;
+  const SyncedSpacesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.personalOf = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncedSpacesCompanion.insert({
+    required String id,
+    required String name,
+    this.personalOf = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    required int revision,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       revision = Value(revision);
+  static Insertable<SyncedSpaceRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? personalOf,
+    Expression<String>? createdBy,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? revision,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (personalOf != null) 'personal_of': personalOf,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (revision != null) 'revision': revision,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncedSpacesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? personalOf,
+    Value<String?>? createdBy,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<int>? revision,
+    Value<int>? rowid,
+  }) {
+    return SyncedSpacesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      personalOf: personalOf ?? this.personalOf,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      revision: revision ?? this.revision,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (personalOf.present) {
+      map['personal_of'] = Variable<String>(personalOf.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedSpacesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('personalOf: $personalOf, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('revision: $revision, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncedSpaceMembersTable extends SyncedSpaceMembers
+    with TableInfo<$SyncedSpaceMembersTable, SyncedSpaceMemberRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncedSpaceMembersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spaceIdMeta = const VerificationMeta(
+    'spaceId',
+  );
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+    'space_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    spaceId,
+    userId,
+    role,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'space_members';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncedSpaceMemberRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(
+        _spaceIdMeta,
+        spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncedSpaceMemberRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncedSpaceMemberRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      spaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}space_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncedSpaceMembersTable createAlias(String alias) {
+    return $SyncedSpaceMembersTable(attachedDatabase, alias);
+  }
+}
+
+class SyncedSpaceMemberRow extends DataClass
+    implements Insertable<SyncedSpaceMemberRow> {
+  final String id;
+  final String spaceId;
+  final String userId;
+  final String role;
+  final String createdAt;
+  final String updatedAt;
+  const SyncedSpaceMemberRow({
+    required this.id,
+    required this.spaceId,
+    required this.userId,
+    required this.role,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['user_id'] = Variable<String>(userId);
+    map['role'] = Variable<String>(role);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  SyncedSpaceMembersCompanion toCompanion(bool nullToAbsent) {
+    return SyncedSpaceMembersCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      userId: Value(userId),
+      role: Value(role),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SyncedSpaceMemberRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncedSpaceMemberRow(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      userId: serializer.fromJson<String>(json['userId']),
+      role: serializer.fromJson<String>(json['role']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'userId': serializer.toJson<String>(userId),
+      'role': serializer.toJson<String>(role),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  SyncedSpaceMemberRow copyWith({
+    String? id,
+    String? spaceId,
+    String? userId,
+    String? role,
+    String? createdAt,
+    String? updatedAt,
+  }) => SyncedSpaceMemberRow(
+    id: id ?? this.id,
+    spaceId: spaceId ?? this.spaceId,
+    userId: userId ?? this.userId,
+    role: role ?? this.role,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SyncedSpaceMemberRow copyWithCompanion(SyncedSpaceMembersCompanion data) {
+    return SyncedSpaceMemberRow(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      role: data.role.present ? data.role.value : this.role,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedSpaceMemberRow(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('userId: $userId, ')
+          ..write('role: $role, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, spaceId, userId, role, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncedSpaceMemberRow &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.userId == this.userId &&
+          other.role == this.role &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SyncedSpaceMembersCompanion
+    extends UpdateCompanion<SyncedSpaceMemberRow> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<String> userId;
+  final Value<String> role;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const SyncedSpaceMembersCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncedSpaceMembersCompanion.insert({
+    required String id,
+    required String spaceId,
+    required String userId,
+    required String role,
+    required String createdAt,
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       spaceId = Value(spaceId),
+       userId = Value(userId),
+       role = Value(role),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<SyncedSpaceMemberRow> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<String>? userId,
+    Expression<String>? role,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (userId != null) 'user_id': userId,
+      if (role != null) 'role': role,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncedSpaceMembersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? spaceId,
+    Value<String>? userId,
+    Value<String>? role,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncedSpaceMembersCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      userId: userId ?? this.userId,
+      role: role ?? this.role,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedSpaceMembersCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('userId: $userId, ')
+          ..write('role: $role, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$SyncedDatabase extends GeneratedDatabase {
   _$SyncedDatabase(QueryExecutor e) : super(e);
   $SyncedDatabaseManager get managers => $SyncedDatabaseManager(this);
@@ -3750,6 +4626,9 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
   late final $SyncedMonthlyPlansTable syncedMonthlyPlans =
       $SyncedMonthlyPlansTable(this);
   late final $SyncRejectionsTable syncRejections = $SyncRejectionsTable(this);
+  late final $SyncedSpacesTable syncedSpaces = $SyncedSpacesTable(this);
+  late final $SyncedSpaceMembersTable syncedSpaceMembers =
+      $SyncedSpaceMembersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3761,6 +4640,8 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
     syncedTransactions,
     syncedMonthlyPlans,
     syncRejections,
+    syncedSpaces,
+    syncedSpaceMembers,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -5696,6 +6577,502 @@ typedef $$SyncRejectionsTableProcessedTableManager =
       SyncRejectionRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncedSpacesTableCreateCompanionBuilder =
+    SyncedSpacesCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> personalOf,
+      Value<String?> createdBy,
+      required String createdAt,
+      required String updatedAt,
+      required int revision,
+      Value<int> rowid,
+    });
+typedef $$SyncedSpacesTableUpdateCompanionBuilder =
+    SyncedSpacesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> personalOf,
+      Value<String?> createdBy,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+
+class $$SyncedSpacesTableFilterComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpacesTable> {
+  $$SyncedSpacesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get personalOf => $composableBuilder(
+    column: $table.personalOf,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncedSpacesTableOrderingComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpacesTable> {
+  $$SyncedSpacesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get personalOf => $composableBuilder(
+    column: $table.personalOf,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncedSpacesTableAnnotationComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpacesTable> {
+  $$SyncedSpacesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get personalOf => $composableBuilder(
+    column: $table.personalOf,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+}
+
+class $$SyncedSpacesTableTableManager
+    extends
+        RootTableManager<
+          _$SyncedDatabase,
+          $SyncedSpacesTable,
+          SyncedSpaceRow,
+          $$SyncedSpacesTableFilterComposer,
+          $$SyncedSpacesTableOrderingComposer,
+          $$SyncedSpacesTableAnnotationComposer,
+          $$SyncedSpacesTableCreateCompanionBuilder,
+          $$SyncedSpacesTableUpdateCompanionBuilder,
+          (
+            SyncedSpaceRow,
+            BaseReferences<
+              _$SyncedDatabase,
+              $SyncedSpacesTable,
+              SyncedSpaceRow
+            >,
+          ),
+          SyncedSpaceRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncedSpacesTableTableManager(_$SyncedDatabase db, $SyncedSpacesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncedSpacesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncedSpacesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncedSpacesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> personalOf = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedSpacesCompanion(
+                id: id,
+                name: name,
+                personalOf: personalOf,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                revision: revision,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> personalOf = const Value.absent(),
+                Value<String?> createdBy = const Value.absent(),
+                required String createdAt,
+                required String updatedAt,
+                required int revision,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedSpacesCompanion.insert(
+                id: id,
+                name: name,
+                personalOf: personalOf,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                revision: revision,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncedSpacesTable, SyncedSpaceRow>(table),
+                  BaseReferences<
+                    _$SyncedDatabase,
+                    $SyncedSpacesTable,
+                    SyncedSpaceRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncedSpacesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SyncedDatabase,
+      $SyncedSpacesTable,
+      SyncedSpaceRow,
+      $$SyncedSpacesTableFilterComposer,
+      $$SyncedSpacesTableOrderingComposer,
+      $$SyncedSpacesTableAnnotationComposer,
+      $$SyncedSpacesTableCreateCompanionBuilder,
+      $$SyncedSpacesTableUpdateCompanionBuilder,
+      (
+        SyncedSpaceRow,
+        BaseReferences<_$SyncedDatabase, $SyncedSpacesTable, SyncedSpaceRow>,
+      ),
+      SyncedSpaceRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncedSpaceMembersTableCreateCompanionBuilder =
+    SyncedSpaceMembersCompanion Function({
+      required String id,
+      required String spaceId,
+      required String userId,
+      required String role,
+      required String createdAt,
+      required String updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncedSpaceMembersTableUpdateCompanionBuilder =
+    SyncedSpaceMembersCompanion Function({
+      Value<String> id,
+      Value<String> spaceId,
+      Value<String> userId,
+      Value<String> role,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncedSpaceMembersTableFilterComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpaceMembersTable> {
+  $$SyncedSpaceMembersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncedSpaceMembersTableOrderingComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpaceMembersTable> {
+  $$SyncedSpaceMembersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spaceId => $composableBuilder(
+    column: $table.spaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncedSpaceMembersTableAnnotationComposer
+    extends Composer<_$SyncedDatabase, $SyncedSpaceMembersTable> {
+  $$SyncedSpaceMembersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get spaceId =>
+      $composableBuilder(column: $table.spaceId, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SyncedSpaceMembersTableTableManager
+    extends
+        RootTableManager<
+          _$SyncedDatabase,
+          $SyncedSpaceMembersTable,
+          SyncedSpaceMemberRow,
+          $$SyncedSpaceMembersTableFilterComposer,
+          $$SyncedSpaceMembersTableOrderingComposer,
+          $$SyncedSpaceMembersTableAnnotationComposer,
+          $$SyncedSpaceMembersTableCreateCompanionBuilder,
+          $$SyncedSpaceMembersTableUpdateCompanionBuilder,
+          (
+            SyncedSpaceMemberRow,
+            BaseReferences<
+              _$SyncedDatabase,
+              $SyncedSpaceMembersTable,
+              SyncedSpaceMemberRow
+            >,
+          ),
+          SyncedSpaceMemberRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncedSpaceMembersTableTableManager(
+    _$SyncedDatabase db,
+    $SyncedSpaceMembersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncedSpaceMembersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncedSpaceMembersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncedSpaceMembersTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> spaceId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedSpaceMembersCompanion(
+                id: id,
+                spaceId: spaceId,
+                userId: userId,
+                role: role,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String spaceId,
+                required String userId,
+                required String role,
+                required String createdAt,
+                required String updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedSpaceMembersCompanion.insert(
+                id: id,
+                spaceId: spaceId,
+                userId: userId,
+                role: role,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncedSpaceMembersTable, SyncedSpaceMemberRow>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$SyncedDatabase,
+                    $SyncedSpaceMembersTable,
+                    SyncedSpaceMemberRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncedSpaceMembersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SyncedDatabase,
+      $SyncedSpaceMembersTable,
+      SyncedSpaceMemberRow,
+      $$SyncedSpaceMembersTableFilterComposer,
+      $$SyncedSpaceMembersTableOrderingComposer,
+      $$SyncedSpaceMembersTableAnnotationComposer,
+      $$SyncedSpaceMembersTableCreateCompanionBuilder,
+      $$SyncedSpaceMembersTableUpdateCompanionBuilder,
+      (
+        SyncedSpaceMemberRow,
+        BaseReferences<
+          _$SyncedDatabase,
+          $SyncedSpaceMembersTable,
+          SyncedSpaceMemberRow
+        >,
+      ),
+      SyncedSpaceMemberRow,
+      PrefetchHooks Function()
+    >;
 
 class $SyncedDatabaseManager {
   final _$SyncedDatabase _db;
@@ -5715,4 +7092,8 @@ class $SyncedDatabaseManager {
       $$SyncedMonthlyPlansTableTableManager(_db, _db.syncedMonthlyPlans);
   $$SyncRejectionsTableTableManager get syncRejections =>
       $$SyncRejectionsTableTableManager(_db, _db.syncRejections);
+  $$SyncedSpacesTableTableManager get syncedSpaces =>
+      $$SyncedSpacesTableTableManager(_db, _db.syncedSpaces);
+  $$SyncedSpaceMembersTableTableManager get syncedSpaceMembers =>
+      $$SyncedSpaceMembersTableTableManager(_db, _db.syncedSpaceMembers);
 }

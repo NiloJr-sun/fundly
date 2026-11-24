@@ -27,6 +27,8 @@ final syncedRawSchema = ps.Schema(
       'categories',
       'transactions',
       'monthly_plans',
+      'spaces',
+      'space_members',
     ])
       ps.RawTable.inferred(name: table, schema: const ps.RawTableSchema()),
   ],
@@ -81,20 +83,35 @@ SyncState syncStateFor({
 /// queries wait until PowerSync and Drift are ready. Repositories queue their
 /// own upload batches (`SyncQueue`), so there are no capture triggers.
 class PowerSyncStore implements SyncedStore {
-  PowerSyncStore._(this._identity, this._client, this._powerSyncUrl) {
+  PowerSyncStore._(
+    this._identity,
+    this.spaceId,
+    this._client,
+    this._powerSyncUrl,
+    this._directory,
+  ) {
     database = SyncedDatabase(DatabaseConnection.delayed(_openConnection()));
     unawaited(_start());
   }
 
-  /// Opens the store for [identity] and starts downloading. [powerSyncUrl]
-  /// may be empty (a build without it): the store then never connects.
+  /// Opens the store of [identity]'s space [spaceId] and starts downloading
+  /// it. [powerSyncUrl] may be empty (a build without it): the store then
+  /// never connects. [directory] holds the store's file on native platforms;
+  /// the app's documents folder unless given (tests).
   factory PowerSyncStore.open(
-    SignedIn identity, {
+    SignedIn identity,
+    String spaceId, {
     required SupabaseClient client,
     required String powerSyncUrl,
-  }) => PowerSyncStore._(identity, client, powerSyncUrl);
+    Future<String> Function()? directory,
+  }) => PowerSyncStore._(identity, spaceId, client, powerSyncUrl, directory);
+
+  final Future<String> Function()? _directory;
 
   final SignedIn _identity;
+
+  @override
+  final String spaceId;
   final SupabaseClient _client;
   final String _powerSyncUrl;
   final _sync = Completer<ps.PowerSyncDatabase>();
@@ -105,19 +122,27 @@ class PowerSyncStore implements SyncedStore {
         : SyncConnection.connecting,
   );
   StreamSubscription<ps.SyncStatus>? _statusSubscription;
+  StreamSubscription<bool>? _listedSubscription;
+  final _subscriptions = <ps.SyncStreamSubscription>[];
   _SupabaseConnector? _connector;
   bool _closed = false;
+
+  /// Whether this store's space is in its downloaded spaces list. A first
+  /// download can finish before a membership granted moments earlier reaches
+  /// sync (shared spaces C0, finding 2), so the store only counts as synced
+  /// once its own space is listed.
+  bool _spaceListed = false;
 
   @override
   late final SyncedDatabase database;
 
   Future<DatabaseConnection> _openConnection() async {
-    final name = databaseNameFor(_identity);
+    final name = syncedDatabaseNameFor(_identity.userId, spaceId);
     final sync = ps.PowerSyncDatabase(
       schema: const ps.Schema([]),
       path: kIsWeb
           ? '$name.db'
-          : '${(await getApplicationDocumentsDirectory()).path}/$name.db',
+          : '${await (_directory ?? _documents)()}/$name.db',
       // Absolute URLs: the worker fetches the wasm itself, and a relative
       // path there resolves against the worker's folder (powersync/), not
       // the page.
@@ -135,6 +160,9 @@ class PowerSyncStore implements SyncedStore {
     return SqliteAsyncDriftConnection(sync);
   }
 
+  static Future<String> _documents() async =>
+      (await getApplicationDocumentsDirectory()).path;
+
   Future<void> _start() async {
     try {
       // Opening runs Drift's migrations, which create the raw tables; the
@@ -151,12 +179,35 @@ class PowerSyncStore implements SyncedStore {
         _client,
         _powerSyncUrl,
         _identity,
+        spaceId,
         onUploadFailureChanged: () => _onStatus(sync.currentStatus),
       );
+      final listed = Completer<void>();
+      _listedSubscription = _watchSpaceListed().listen((isListed) {
+        _spaceListed = isListed;
+        if (isListed && !listed.isCompleted) listed.complete();
+        _onStatus(sync.currentStatus);
+      });
       _statusSubscription = sync.statusStream.listen(_onStatus);
-      await sync.connect(connector: connector);
+      // The spaces list, and this space's records. The automatic stream
+      // (fundly_user_data) is for apps 1.2.x and stays off.
+      _subscriptions
+        ..add(await sync.syncStream('fundly_spaces').subscribe())
+        ..add(
+          await sync.syncStream('fundly_space_data', {
+            'space_id': spaceId,
+          }).subscribe(),
+        );
+      if (_closed) return;
+      await sync.connect(
+        connector: connector,
+        options: const ps.SyncOptions(includeDefaultStreams: false),
+      );
       if (firstDownload) {
-        await sync.waitForFirstSync();
+        for (final subscription in _subscriptions) {
+          await subscription.waitForFirstSync();
+        }
+        await listed.future;
         if (!_closed) await initializeDatasetIfEmpty(database);
       }
     } on Object catch (error) {
@@ -175,12 +226,21 @@ class PowerSyncStore implements SyncedStore {
     }
   }
 
+  Stream<bool> _watchSpaceListed() => database
+      .customSelect(
+        'SELECT EXISTS (SELECT 1 FROM spaces WHERE id = ?) AS listed',
+        variables: [Variable.withString(spaceId)],
+        readsFrom: {database.syncedSpaces},
+      )
+      .watchSingle()
+      .map((row) => row.read<bool>('listed'));
+
   void _onStatus(ps.SyncStatus status) {
     _emit(
       syncStateFor(
         connected: status.connected,
         connecting: status.connecting,
-        hasSynced: status.hasSynced ?? false,
+        hasSynced: (status.hasSynced ?? false) && _spaceListed,
         lastSyncedAt: status.lastSyncedAt,
         downloadError: status.downloadError,
         uploadError: status.uploadError,
@@ -217,6 +277,12 @@ class PowerSyncStore implements SyncedStore {
     if (_closed) return;
     _closed = true;
     await _statusSubscription?.cancel();
+    await _listedSubscription?.cancel();
+    // Released, as PowerSync asks (shared spaces C0, finding 5); the store
+    // is closed, so nothing downloads for this space until it opens again.
+    for (final subscription in _subscriptions) {
+      subscription.unsubscribe();
+    }
     await _state.close();
     await database.close();
     if (_sync.isCompleted) {
@@ -233,13 +299,15 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
   _SupabaseConnector(
     this._client,
     this._endpoint,
-    this._identity, {
+    this._identity,
+    this._spaceId, {
     required this.onUploadFailureChanged,
   });
 
   final SupabaseClient _client;
   final String _endpoint;
   final SignedIn _identity;
+  final String _spaceId;
 
   /// Called when [lastUploadFailure] changes.
   final void Function() onUploadFailureChanged;
@@ -285,7 +353,11 @@ class _SupabaseConnector extends ps.PowerSyncBackendConnector {
       if (_client.auth.currentSession?.user.id != _identity.userId) {
         throw const SyncUploadException(UploadOutcome.transient, 'signed_out');
       }
-      final apply = supabaseApplyBatch(_client);
+      final apply = supabaseApplyBatch(
+        _client,
+        userId: _identity.userId,
+        spaceId: _spaceId,
+      );
       while (await uploadNextBatch(database, apply)) {}
     } on SyncUploadException catch (failure) {
       _recordFailure(failure);

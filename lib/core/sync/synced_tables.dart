@@ -173,6 +173,52 @@ class SyncedMonthlyPlans extends Table {
   ];
 }
 
+/// The spaces the user belongs to (shared spaces C2), from the
+/// `fundly_spaces` stream. Download only: spaces are created and renamed
+/// online through their own RPCs, never through the upload queue.
+@DataClassName('SyncedSpaceRow')
+class SyncedSpaces extends Table {
+  @override
+  String get tableName => 'spaces';
+
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+
+  /// The user whose Personal space this is (its id equals theirs), or null.
+  TextColumn get personalOf => text().nullable()();
+  TextColumn get createdBy => text().nullable()();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+  IntColumn get revision => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Members of those spaces and their roles (shared spaces C2), from the
+/// `fundly_spaces` stream. Download only. No foreign key: rows of one stream
+/// arrive in any order.
+@DataClassName('SyncedSpaceMemberRow')
+class SyncedSpaceMembers extends Table {
+  @override
+  String get tableName => 'space_members';
+
+  TextColumn get id => text()();
+  TextColumn get spaceId => text()();
+  TextColumn get userId => text()();
+  TextColumn get role => text()();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (role IN ('owner', 'editor', 'viewer'))",
+  ];
+}
+
 /// Changes the server refused (cloud sync S5.4). Local only: it is not one of
 /// PowerSync's raw tables, so it is never downloaded or uploaded.
 @DataClassName('SyncRejectionRow')

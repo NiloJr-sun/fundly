@@ -34,18 +34,26 @@ class CloudImportException implements Exception {
 }
 
 /// Sends one `fundly_import_dataset` request (supabase/IMPORT_API.md) for the
-/// signed-in user, used by Reset all data and by copying this device's data.
+/// signed-in user into one space, used by Reset all data, Restore from backup
+/// and copying this device's data.
 class CloudDatasetImport {
   CloudDatasetImport({
     required ImportDataset importDataset,
     required this._userId,
+    String? spaceId,
     this._newId = newRecordId,
     this._wait = Future<void>.delayed,
     this.attempts = 3,
-  }) : _import = importDataset;
+  }) : _import = importDataset,
+       _spaceId = spaceId ?? _userId;
 
   final ImportDataset _import;
   final String _userId;
+
+  /// The space the import replaces or fills; Personal (the user's id) by
+  /// default. Personal requests are sent without `space_id`, exactly as
+  /// before spaces (the server defaults to Personal).
+  final String _spaceId;
   final String Function() _newId;
   final Future<void> Function(Duration) _wait;
 
@@ -68,7 +76,9 @@ class CloudDatasetImport {
         final result = await _import(
           userId: _userId,
           importId: importId,
-          request: request,
+          request: _spaceId == _userId
+              ? request
+              : {...request, 'space_id': _spaceId},
         );
         return _countsFrom(result);
       } on Object catch (error) {
