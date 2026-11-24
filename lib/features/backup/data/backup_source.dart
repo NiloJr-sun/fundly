@@ -35,6 +35,7 @@ typedef BackupCategory = ({
   bool isPlanDeleted,
   String planGroup,
   Object? linkedAccountId,
+  int? defaultTargetMinor,
 });
 
 typedef BackupTransaction = ({
@@ -132,6 +133,7 @@ class LocalBackupSource implements BackupSource {
             isPlanDeleted: category.isPlanDeleted,
             planGroup: category.planGroup.name,
             linkedAccountId: category.linkedAccountId,
+            defaultTargetMinor: category.defaultTargetMinor,
           ),
       ],
       transactions: [

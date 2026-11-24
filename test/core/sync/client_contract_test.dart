@@ -164,6 +164,22 @@ void main() {
       name: 'Gifts',
       kind: CategoryKind.spending,
     );
+    // A default Target (1.4.0): set on create, changed, removed, and an
+    // empty plan kept while one is set.
+    final rent = await categories.create(
+      name: 'House rent',
+      kind: CategoryKind.spending,
+      defaultTarget: php(500000),
+    );
+    await plans.save(
+      month: CalendarMonth(2026, 11),
+      categoryId: rent.id,
+      target: null,
+      assigned: php(0),
+    );
+    await categories.setDefaultTarget(rent.id, php(0));
+    await categories.setDefaultTarget(food.id, php(250000));
+    await categories.setDefaultTarget(food.id, null);
     await plans.setArchived(gifts.id, archived: true);
     await plans.setArchived(gifts.id, archived: false);
     await categories.setArchived(gifts.id, archived: true);
@@ -243,7 +259,7 @@ void main() {
       );
     }
     // Setting BDO again while it is already a budget account queues nothing.
-    expect(batches, hasLength(39));
+    expect(batches, hasLength(44));
     await store.close();
   });
 }

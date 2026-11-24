@@ -36,7 +36,8 @@ from write_api_test import authenticated, execute, literal  # noqa: E402
 COLUMNS = {
     'custom_account_types': 'id,name,base_type,revision',
     'accounts': 'id,name,type,opening_balance_minor,is_archived,custom_type_id,is_budget_account,revision',
-    'categories': 'id,name,kind,is_archived,is_plan_archived,is_plan_deleted,plan_group,linked_account_id,revision',
+    'categories': 'id,name,kind,is_archived,is_plan_archived,is_plan_deleted,plan_group,linked_account_id,'
+                  'default_target_minor,revision',
     'transactions': 'id,type,amount_minor,date,payee,category_id,source_account_id,destination_account_id,note,revision',
     'monthly_plans': 'id,month,category_id,target_amount_minor,assigned_amount_minor,revision',
 }

@@ -210,6 +210,7 @@ Future<bool> accountHoldsOnlyDefaults(SyncedDatabase database) async {
         !category.isPlanDeleted &&
         category.planGroup == 'spending' &&
         category.linkedAccountId == null &&
+        category.defaultTargetMinor == null &&
         defaults.contains((category.name, category.kind)),
   );
 }

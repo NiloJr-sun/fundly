@@ -88,9 +88,13 @@ class SyncedPlanRepository implements PlanRepository {
         throw const PlanValidationException(PlanValidationError.planArchived);
       }
       final existing = await _find(month, categoryId);
-      if (target == null && assigned.isZero) {
+      if (target == null &&
+          assigned.isZero &&
+          category.defaultTargetMinor == null) {
         // Nothing to say: the plan is removed (and nothing is sent if there
-        // was none, which the server would treat as a no-op).
+        // was none, which the server would treat as a no-op). With a default
+        // Target the empty plan is kept, as the server does, so the month
+        // stays without a Target.
         if (existing == null) return (null, <SyncOperation>[]);
         await (_database.delete(
           _plans,

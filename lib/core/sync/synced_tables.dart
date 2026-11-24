@@ -85,6 +85,9 @@ class SyncedCategories extends Table {
   BoolColumn get isPlanDeleted => boolean()();
   TextColumn get planGroup => text()();
   TextColumn get linkedAccountId => text().nullable()();
+
+  /// Added in synced schema v5; servers before it send none.
+  IntColumn get defaultTargetMinor => integer().nullable()();
   TextColumn get createdAt => text()();
   TextColumn get updatedAt => text()();
   IntColumn get revision => integer()();

@@ -144,6 +144,37 @@ void main() {
       expect(await plansFor(november), isEmpty);
     });
 
+    test('with a default Target, clearing keeps an empty plan', () async {
+      await categories.setDefaultTarget(food, php(500000));
+      await plan(food, 300000);
+
+      final kept = await repository.save(
+        month: november,
+        categoryId: food,
+        target: null,
+        assigned: php(0),
+      );
+
+      expect(kept!.target, isNull);
+      expect(kept.assigned, php(0));
+      expect(await plansFor(november), [kept]);
+    });
+
+    test('with a default Target, an empty plan can be created', () async {
+      await categories.setDefaultTarget(food, php(500000));
+
+      final created = await repository.save(
+        month: december,
+        categoryId: food,
+        target: null,
+        assigned: php(0),
+      );
+
+      expect(created!.target, isNull);
+      expect(await plansFor(december), [created]);
+      expect(await plansFor(november), isEmpty);
+    });
+
     test('rejects a negative target or assigned amount', () async {
       await expectLater(
         plan(food, -1, assigned: 0),

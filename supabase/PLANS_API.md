@@ -15,15 +15,19 @@ decimal-string `expected_revision`. Request data is strictly allowlisted.
 
 | Operation | `data` fields |
 |---|---|
-| `category.create` | Required `name`, `kind` (`spending`, `inflow`); optional `plan_group` (`spending`, `savings`, `liability`; default `spending`). |
-| `category.update` | Nonempty partial object containing `name` and/or `plan_group`. Kind is immutable. |
+| `category.create` | Required `name`, `kind` (`spending`, `inflow`); optional `plan_group` (`spending`, `savings`, `liability`; default `spending`); optional `default_target_minor` (nonnegative decimal string or null; default null). |
+| `category.update` | Nonempty partial object containing `name`, `plan_group` and/or `default_target_minor` (null removes it). Kind is immutable. An update without `default_target_minor`, as apps before 1.4.0 send, keeps the saved value. |
 | `category.set_archived` | Required Boolean `archived`. |
 | `category.delete` | Omitted or `{}`. |
 
 Names follow the account rules: trimmed, 1–40 UTF-16 units, owner-scoped ASCII
 case-insensitive uniqueness that includes archived and linked categories.
 Inflow categories always stay in the `spending` group; an unknown kind or group,
-or another group for an inflow, is `invalid_request`. Archived categories keep
+or another group for an inflow, is `invalid_request`. The default Target
+(`default_target_minor`, since `20261125010000_category_default_target.sql`)
+is the Target a month uses when it has no plan of its own; a default Target on
+an inflow category, or below zero, is `invalid_request`, and the table refuses
+one on a linked row. Archived categories keep
 their history; new transactions already reject them (S2.2A), and edits may keep
 them. Deletion is refused with `category_in_use` while any transaction
 references the category. Its monthly plans are deleted with it and listed in
@@ -65,6 +69,9 @@ Checks run in the repository's order: the category must be the caller's
 plan-deleted (`plan_deleted`) and not plan-archived (`plan_archived`). Null
 Target plus zero Assigned removes the record and returns `deleted: true` with
 its prior revision; with no record it is a no-op returning `"record": null`.
+When the category has a default Target, that empty record is kept (or
+created) instead, so the month stays without a Target rather than using the
+default.
 An archived category may keep editing an existing record but cannot gain a new
 one (`category_archived`).
 

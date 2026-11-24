@@ -58,6 +58,7 @@ class SyncedBackupSource implements BackupSource {
             isPlanDeleted: category.isPlanDeleted,
             planGroup: category.planGroup,
             linkedAccountId: category.linkedAccountId,
+            defaultTargetMinor: category.defaultTargetMinor,
           ),
       ],
       transactions: [

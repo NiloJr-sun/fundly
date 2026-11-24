@@ -10,6 +10,7 @@ import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
+import 'generated/schema_v5.dart' as v5;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -293,6 +294,98 @@ void main() {
           (row.read<String>('row_type'), row.read<String>('row_id')),
       ],
       [('space_members', 'm1')],
+    );
+    await db.close();
+  });
+
+  test('v4 to v5 keeps every category; none has a default Target', () async {
+    const at = '2026-11-24 09:30:00+00';
+    const account = v4.AccountsData(
+      id: 'acc-card',
+      name: 'RCBC Card',
+      type: 'credit',
+      openingBalanceMinor: 0,
+      currencyCode: 'PHP',
+      isArchived: 0,
+      isBudgetAccount: 0,
+      createdAt: at,
+      updatedAt: at,
+      revision: 1,
+    );
+    const categories = [
+      v4.CategoriesData(
+        id: 'cat-food',
+        name: 'Food',
+        kind: 'spending',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'savings',
+        createdAt: at,
+        updatedAt: at,
+        revision: 3,
+      ),
+      v4.CategoriesData(
+        id: 'cat-card',
+        name: 'RCBC Card',
+        kind: 'spending',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'liability',
+        linkedAccountId: 'acc-card',
+        createdAt: at,
+        updatedAt: at,
+        revision: 1,
+      ),
+    ];
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 4,
+      newVersion: 5,
+      createOld: v4.DatabaseAtV4.new,
+      createNew: v5.DatabaseAtV5.new,
+      openTestedDatabase: SyncedDatabase.new,
+      createItems: (batch, oldDb) => batch
+        ..insert(oldDb.accounts, account)
+        ..insertAll(oldDb.categories, categories),
+      validateItems: (newDb) async {
+        final rows = await (newDb.select(
+          newDb.categories,
+        )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+        expect(rows.map((row) => row.toJson()).toList(), [
+          for (final category in categories.reversed)
+            {...category.toJson(), 'defaultTargetMinor': null},
+        ]);
+      },
+    );
+  });
+
+  test('v4 to v5 in a PowerSync store marks categories for the next download '
+      'to write again', () async {
+    final schema = await verifier.schemaAt(4);
+    schema.rawDatabase
+      ..execute(
+        'CREATE TABLE ps_updated_rows (row_type TEXT, row_id TEXT, '
+        'PRIMARY KEY (row_type, row_id))',
+      )
+      ..execute(
+        'INSERT INTO categories (id, name, kind, is_archived, '
+        'is_plan_archived, is_plan_deleted, plan_group, created_at, '
+        "updated_at, revision) VALUES ('c1', 'Food', 'spending', 0, 0, 0, "
+        "'spending', 'x', 'x', 1)",
+      );
+    final db = SyncedDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 5);
+    final marked = await db
+        .customSelect('SELECT row_type, row_id FROM ps_updated_rows')
+        .get();
+    expect(
+      [
+        for (final row in marked)
+          (row.read<String>('row_type'), row.read<String>('row_id')),
+      ],
+      [('categories', 'c1')],
     );
     await db.close();
   });

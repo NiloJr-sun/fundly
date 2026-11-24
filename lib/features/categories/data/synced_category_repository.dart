@@ -1,11 +1,13 @@
 import 'package:drift/drift.dart';
 
+import '../../../core/money/money.dart';
 import '../../../core/sync/sync_queue.dart';
 import '../../../core/sync/synced_database.dart';
 import '../domain/category.dart';
 import '../domain/category_rules.dart';
 import '../domain/category_validation_exception.dart';
 import 'category_repository.dart';
+import 'category_row_mapping.dart';
 
 /// Categories in the signed-in user's synchronized store. Writes apply
 /// locally at once and queue the matching operation for upload (S5.3), with
@@ -24,7 +26,7 @@ class SyncedCategoryRepository implements CategoryRepository {
   Stream<List<Category>> watchAll({CategoryKind? kind}) {
     final query = _database.select(_database.syncedCategories)
       ..where(
-        (_) => CustomExpression<bool>('NOT (${unsafe('categories.revision')})'),
+        (_) => CustomExpression<bool>('NOT (${unsafeCategory('categories')})'),
       )
       ..orderBy([
         (category) => OrderingTerm(expression: category.createdAt),
@@ -43,8 +45,10 @@ class SyncedCategoryRepository implements CategoryRepository {
     required String name,
     required CategoryKind kind,
     PlanGroup planGroup = PlanGroup.spending,
+    Money? defaultTarget,
   }) => _database.writeAndQueue(() async {
     _requireGroupAllowed(kind, planGroup);
+    requireValidDefaultTarget(defaultTarget, kind: kind, isLinked: false);
     final trimmedName = await _validName(name);
     final id = newRecordId();
     final now = syncedTimestamp(_now());
@@ -59,6 +63,7 @@ class SyncedCategoryRepository implements CategoryRepository {
             isPlanArchived: false,
             isPlanDeleted: false,
             planGroup: planGroup.name,
+            defaultTargetMinor: Value(defaultTarget?.minorUnits),
             createdAt: now,
             updatedAt: now,
             revision: 1,
@@ -74,11 +79,47 @@ class SyncedCategoryRepository implements CategoryRepository {
             'name': trimmedName,
             'kind': kind.name,
             'plan_group': planGroup.name,
+            // Sent only when set, so a category without one is the same
+            // request older servers accepted.
+            if (defaultTarget != null)
+              'default_target_minor': wireMinor(defaultTarget.minorUnits),
           },
         ),
       ],
     );
   });
+
+  @override
+  Future<Category> setDefaultTarget(String id, Money? defaultTarget) =>
+      _database.writeAndQueue(() async {
+        final existing = await _findUnlinked(id);
+        requireValidDefaultTarget(
+          defaultTarget,
+          kind: CategoryKind.values.byName(existing.kind),
+          isLinked: false,
+        );
+        final row = await _update(
+          existing,
+          SyncedCategoriesCompanion(
+            defaultTargetMinor: Value(defaultTarget?.minorUnits),
+          ),
+        );
+        return (
+          syncedCategory(row),
+          [
+            SyncOperation(
+              'category.update',
+              id,
+              expectedRevision: existing.revision,
+              data: {
+                'default_target_minor': defaultTarget == null
+                    ? null
+                    : wireMinor(defaultTarget.minorUnits),
+              },
+            ),
+          ],
+        );
+      });
 
   @override
   Future<Category> setPlanGroup(String id, PlanGroup planGroup) =>
@@ -258,4 +299,5 @@ Category syncedCategory(SyncedCategoryRow row) => Category(
   isPlanDeleted: row.isPlanDeleted,
   planGroup: PlanGroup.values.byName(row.planGroup),
   linkedAccountId: row.linkedAccountId,
+  defaultTarget: defaultTargetOf(row.defaultTargetMinor),
 );

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/money/money.dart';
+
 /// Whether a category classifies spending or inflows.
 enum CategoryKind { spending, inflow }
 
@@ -24,6 +26,7 @@ final class Category {
     this.isPlanDeleted = false,
     this.planGroup = PlanGroup.spending,
     this.linkedAccountId,
+    this.defaultTarget,
   });
 
   /// Non-null for a managed liability-account Plans row.
@@ -45,6 +48,12 @@ final class Category {
 
   bool get isArchivedInPlans => isArchived || isPlanArchived;
 
+  /// The Target a month uses when it has no plan of its own for this
+  /// category; `null` for no Target. Only spending categories without a
+  /// linked account have one. Zero or positive; a zero Target differs from
+  /// none.
+  final Money? defaultTarget;
+
   /// Where a spending category appears on the Plans page. Inflow categories
   /// are not planned, so theirs is always [PlanGroup.spending] and unused.
   final PlanGroup planGroup;
@@ -59,7 +68,8 @@ final class Category {
       other.isPlanArchived == isPlanArchived &&
       other.isPlanDeleted == isPlanDeleted &&
       other.planGroup == planGroup &&
-      other.linkedAccountId == linkedAccountId;
+      other.linkedAccountId == linkedAccountId &&
+      other.defaultTarget == defaultTarget;
 
   @override
   int get hashCode => Object.hash(
@@ -71,6 +81,7 @@ final class Category {
     isPlanDeleted,
     planGroup,
     linkedAccountId,
+    defaultTarget,
   );
 
   @override

@@ -13,6 +13,7 @@ import '../../accounts/domain/account.dart';
 import '../../accounts/domain/account_rules.dart';
 import '../../accounts/domain/account_type.dart';
 import '../../accounts/domain/custom_account_type_rules.dart';
+import '../../categories/data/category_row_mapping.dart';
 import '../../categories/data/liability_plan_categories.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/domain/category_rules.dart';
@@ -154,6 +155,7 @@ final class BackupSnapshot {
             isPlanDeleted: value(row.isPlanDeleted, false),
             planGroup: value(row.planGroup, PlanGroup.spending).name,
             linkedAccountId: value(row.linkedAccountId, null),
+            defaultTargetMinor: value(row.defaultTargetMinor, null),
           ),
       ],
       transactions: [
@@ -591,6 +593,18 @@ class _Parser {
         );
       }
     }
+    final defaultTarget = formatVersion >= 8
+        ? reader.integerOrNull('defaultTargetMinor')
+        : null;
+    if (defaultTarget != null &&
+        (defaultTarget < 0 ||
+            kind != CategoryKind.spending ||
+            linkedAccountId != null)) {
+      reader.fail(
+        'defaultTargetMinor',
+        'only unlinked spending categories have one, zero or more',
+      );
+    }
     _categories[recordIdOf(id)] = Category(
       id: recordIdOf(id),
       name: name,
@@ -600,6 +614,7 @@ class _Parser {
       isPlanDeleted: isPlanDeleted,
       planGroup: planGroup,
       linkedAccountId: recordIdOrNull(linkedAccountId),
+      defaultTarget: defaultTargetOf(defaultTarget),
     );
     return CategoriesCompanion.insert(
       id: Value(id),
@@ -610,6 +625,7 @@ class _Parser {
       isPlanDeleted: Value(isPlanDeleted),
       planGroup: Value(planGroup),
       linkedAccountId: Value(linkedAccountId),
+      defaultTargetMinor: Value(defaultTarget),
     );
   }
 

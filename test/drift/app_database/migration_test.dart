@@ -11,6 +11,7 @@ import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v13.dart' as v13;
+import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1208,4 +1209,100 @@ void main() {
       );
     },
   );
+
+  test('v13 to v14 keeps every category; none has a default Target, and only '
+      'unlinked spending categories may get one', () async {
+    const account = v13.AccountsData(
+      id: 1,
+      name: 'RCBC Credit',
+      type: 'credit',
+      openingBalanceMinor: 0,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-01T00:00:00.000Z',
+      isArchived: 0,
+      isBudgetAccount: 0,
+    );
+    const categories = [
+      v13.CategoriesData(
+        id: 1,
+        name: 'Food & Groceries',
+        kind: 'spending',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'spending',
+      ),
+      v13.CategoriesData(
+        id: 2,
+        name: 'Salary',
+        kind: 'inflow',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'spending',
+      ),
+      v13.CategoriesData(
+        id: 3,
+        name: 'RCBC Credit',
+        kind: 'spending',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'liability',
+        linkedAccountId: 1,
+      ),
+    ];
+    const plan = v13.MonthlyPlansData(
+      id: 1,
+      month: '2026-11',
+      categoryId: 1,
+      targetAmountMinor: 500000,
+      assignedAmountMinor: 300000,
+      currencyCode: 'PHP',
+      createdAt: '2026-11-01T00:00:00.000Z',
+      updatedAt: '2026-11-01T00:00:00.000Z',
+    );
+    await verifier.testWithDataIntegrity(
+      oldVersion: 13,
+      newVersion: 14,
+      createOld: v13.DatabaseAtV13.new,
+      createNew: v14.DatabaseAtV14.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, db) => batch
+        ..insert(db.accounts, account)
+        ..insertAll(db.categories, categories)
+        ..insert(db.monthlyPlans, plan),
+      validateItems: (db) async {
+        final rows = await (db.select(
+          db.categories,
+        )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+        expect(rows.map((c) => c.toJson()).toList(), [
+          for (final category in categories)
+            {...category.toJson(), 'defaultTargetMinor': null},
+        ]);
+        expect(
+          (await db.select(db.monthlyPlans).get()).single.toJson(),
+          plan.toJson(),
+        );
+        await db.customStatement(
+          'UPDATE categories SET default_target_minor = 0 WHERE id = 1',
+        );
+        for (final statement in [
+          'UPDATE categories SET default_target_minor = -1 WHERE id = 1',
+          'UPDATE categories SET default_target_minor = 100 WHERE id = 2',
+          'UPDATE categories SET default_target_minor = 100 WHERE id = 3',
+        ]) {
+          await expectLater(
+            db.customStatement(statement),
+            throwsA(isA<Exception>()),
+            reason: statement,
+          );
+        }
+        expect(
+          await db.customSelect('PRAGMA foreign_key_check').get(),
+          isEmpty,
+        );
+      },
+    );
+  });
 }

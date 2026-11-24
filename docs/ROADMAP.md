@@ -242,7 +242,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 
 | ID | Task | Status |
 |---|---|---|
-| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 7) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
+| 5.1 | JSON backup export: Account tab ⋮ → Export backup; versioned JSON (now format 8) of every record, shared through the system share sheet (`share_plus`) | ✅ Done (2026-11-17) |
 | 5.2 | JSON restore: Account tab ⋮ → Restore from backup; pick a file (`file_picker`), check it fully, confirm with counts (option to export current data first), replace all data in one transaction | ✅ Done (2026-11-17) |
 | 5.3 | CSV export of transactions | Proposed |
 
@@ -297,7 +297,9 @@ derived balances are left out. Format 7 (2026-11-22, cloud sync S6.3) is
 format 6 with every ID and reference written as text: UUIDs from a signed-in
 account, decimal strings from this device. It is what every export writes.
 On restore, text IDs (1–64 characters, unique per table) become local numbers
-in file order and the format 6 checks apply; restore accepts formats 1–7.
+in file order and the format 6 checks apply. Format 8 (2026-11-25) adds each
+category's `defaultTargetMinor`; restore accepts formats 1–8, and formats 1–7
+restore with no default Target.
 Signed in, a restore goes into the account through the copy screen. Field names are mapped explicitly in
 `BackupExporter`, so a schema change does not change the format by itself;
 bump `formatVersion` when the format changes.

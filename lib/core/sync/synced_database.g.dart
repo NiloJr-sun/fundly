@@ -1199,6 +1199,16 @@ class $SyncedCategoriesTable extends SyncedCategories
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _defaultTargetMinorMeta =
+      const VerificationMeta('defaultTargetMinor');
+  @override
+  late final GeneratedColumn<int> defaultTargetMinor = GeneratedColumn<int>(
+    'default_target_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1242,6 +1252,7 @@ class $SyncedCategoriesTable extends SyncedCategories
     isPlanDeleted,
     planGroup,
     linkedAccountId,
+    defaultTargetMinor,
     createdAt,
     updatedAt,
     revision,
@@ -1326,6 +1337,15 @@ class $SyncedCategoriesTable extends SyncedCategories
         ),
       );
     }
+    if (data.containsKey('default_target_minor')) {
+      context.handle(
+        _defaultTargetMinorMeta,
+        defaultTargetMinor.isAcceptableOrUnknown(
+          data['default_target_minor']!,
+          _defaultTargetMinorMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1391,6 +1411,10 @@ class $SyncedCategoriesTable extends SyncedCategories
         DriftSqlType.string,
         data['${effectivePrefix}linked_account_id'],
       ),
+      defaultTargetMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}default_target_minor'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_at'],
@@ -1422,6 +1446,9 @@ class SyncedCategoryRow extends DataClass
   final bool isPlanDeleted;
   final String planGroup;
   final String? linkedAccountId;
+
+  /// Added in synced schema v5; servers before it send none.
+  final int? defaultTargetMinor;
   final String createdAt;
   final String updatedAt;
   final int revision;
@@ -1434,6 +1461,7 @@ class SyncedCategoryRow extends DataClass
     required this.isPlanDeleted,
     required this.planGroup,
     this.linkedAccountId,
+    this.defaultTargetMinor,
     required this.createdAt,
     required this.updatedAt,
     required this.revision,
@@ -1450,6 +1478,9 @@ class SyncedCategoryRow extends DataClass
     map['plan_group'] = Variable<String>(planGroup);
     if (!nullToAbsent || linkedAccountId != null) {
       map['linked_account_id'] = Variable<String>(linkedAccountId);
+    }
+    if (!nullToAbsent || defaultTargetMinor != null) {
+      map['default_target_minor'] = Variable<int>(defaultTargetMinor);
     }
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
@@ -1469,6 +1500,9 @@ class SyncedCategoryRow extends DataClass
       linkedAccountId: linkedAccountId == null && nullToAbsent
           ? const Value.absent()
           : Value(linkedAccountId),
+      defaultTargetMinor: defaultTargetMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultTargetMinor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       revision: Value(revision),
@@ -1489,6 +1523,7 @@ class SyncedCategoryRow extends DataClass
       isPlanDeleted: serializer.fromJson<bool>(json['isPlanDeleted']),
       planGroup: serializer.fromJson<String>(json['planGroup']),
       linkedAccountId: serializer.fromJson<String?>(json['linkedAccountId']),
+      defaultTargetMinor: serializer.fromJson<int?>(json['defaultTargetMinor']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       revision: serializer.fromJson<int>(json['revision']),
@@ -1506,6 +1541,7 @@ class SyncedCategoryRow extends DataClass
       'isPlanDeleted': serializer.toJson<bool>(isPlanDeleted),
       'planGroup': serializer.toJson<String>(planGroup),
       'linkedAccountId': serializer.toJson<String?>(linkedAccountId),
+      'defaultTargetMinor': serializer.toJson<int?>(defaultTargetMinor),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'revision': serializer.toJson<int>(revision),
@@ -1521,6 +1557,7 @@ class SyncedCategoryRow extends DataClass
     bool? isPlanDeleted,
     String? planGroup,
     Value<String?> linkedAccountId = const Value.absent(),
+    Value<int?> defaultTargetMinor = const Value.absent(),
     String? createdAt,
     String? updatedAt,
     int? revision,
@@ -1535,6 +1572,9 @@ class SyncedCategoryRow extends DataClass
     linkedAccountId: linkedAccountId.present
         ? linkedAccountId.value
         : this.linkedAccountId,
+    defaultTargetMinor: defaultTargetMinor.present
+        ? defaultTargetMinor.value
+        : this.defaultTargetMinor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     revision: revision ?? this.revision,
@@ -1557,6 +1597,9 @@ class SyncedCategoryRow extends DataClass
       linkedAccountId: data.linkedAccountId.present
           ? data.linkedAccountId.value
           : this.linkedAccountId,
+      defaultTargetMinor: data.defaultTargetMinor.present
+          ? data.defaultTargetMinor.value
+          : this.defaultTargetMinor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       revision: data.revision.present ? data.revision.value : this.revision,
@@ -1574,6 +1617,7 @@ class SyncedCategoryRow extends DataClass
           ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
           ..write('linkedAccountId: $linkedAccountId, ')
+          ..write('defaultTargetMinor: $defaultTargetMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('revision: $revision')
@@ -1591,6 +1635,7 @@ class SyncedCategoryRow extends DataClass
     isPlanDeleted,
     planGroup,
     linkedAccountId,
+    defaultTargetMinor,
     createdAt,
     updatedAt,
     revision,
@@ -1607,6 +1652,7 @@ class SyncedCategoryRow extends DataClass
           other.isPlanDeleted == this.isPlanDeleted &&
           other.planGroup == this.planGroup &&
           other.linkedAccountId == this.linkedAccountId &&
+          other.defaultTargetMinor == this.defaultTargetMinor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.revision == this.revision);
@@ -1621,6 +1667,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
   final Value<bool> isPlanDeleted;
   final Value<String> planGroup;
   final Value<String?> linkedAccountId;
+  final Value<int?> defaultTargetMinor;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<int> revision;
@@ -1634,6 +1681,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
     this.isPlanDeleted = const Value.absent(),
     this.planGroup = const Value.absent(),
     this.linkedAccountId = const Value.absent(),
+    this.defaultTargetMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.revision = const Value.absent(),
@@ -1648,6 +1696,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
     required bool isPlanDeleted,
     required String planGroup,
     this.linkedAccountId = const Value.absent(),
+    this.defaultTargetMinor = const Value.absent(),
     required String createdAt,
     required String updatedAt,
     required int revision,
@@ -1671,6 +1720,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
     Expression<bool>? isPlanDeleted,
     Expression<String>? planGroup,
     Expression<String>? linkedAccountId,
+    Expression<int>? defaultTargetMinor,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<int>? revision,
@@ -1685,6 +1735,8 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
       if (isPlanDeleted != null) 'is_plan_deleted': isPlanDeleted,
       if (planGroup != null) 'plan_group': planGroup,
       if (linkedAccountId != null) 'linked_account_id': linkedAccountId,
+      if (defaultTargetMinor != null)
+        'default_target_minor': defaultTargetMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (revision != null) 'revision': revision,
@@ -1701,6 +1753,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
     Value<bool>? isPlanDeleted,
     Value<String>? planGroup,
     Value<String?>? linkedAccountId,
+    Value<int?>? defaultTargetMinor,
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<int>? revision,
@@ -1715,6 +1768,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
       isPlanDeleted: isPlanDeleted ?? this.isPlanDeleted,
       planGroup: planGroup ?? this.planGroup,
       linkedAccountId: linkedAccountId ?? this.linkedAccountId,
+      defaultTargetMinor: defaultTargetMinor ?? this.defaultTargetMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       revision: revision ?? this.revision,
@@ -1749,6 +1803,9 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
     if (linkedAccountId.present) {
       map['linked_account_id'] = Variable<String>(linkedAccountId.value);
     }
+    if (defaultTargetMinor.present) {
+      map['default_target_minor'] = Variable<int>(defaultTargetMinor.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
@@ -1775,6 +1832,7 @@ class SyncedCategoriesCompanion extends UpdateCompanion<SyncedCategoryRow> {
           ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
           ..write('linkedAccountId: $linkedAccountId, ')
+          ..write('defaultTargetMinor: $defaultTargetMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('revision: $revision, ')
@@ -5361,6 +5419,7 @@ typedef $$SyncedCategoriesTableCreateCompanionBuilder =
       required bool isPlanDeleted,
       required String planGroup,
       Value<String?> linkedAccountId,
+      Value<int?> defaultTargetMinor,
       required String createdAt,
       required String updatedAt,
       required int revision,
@@ -5376,6 +5435,7 @@ typedef $$SyncedCategoriesTableUpdateCompanionBuilder =
       Value<bool> isPlanDeleted,
       Value<String> planGroup,
       Value<String?> linkedAccountId,
+      Value<int?> defaultTargetMinor,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<int> revision,
@@ -5428,6 +5488,11 @@ class $$SyncedCategoriesTableFilterComposer
 
   ColumnFilters<String> get linkedAccountId => $composableBuilder(
     column: $table.linkedAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5496,6 +5561,11 @@ class $$SyncedCategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5550,6 +5620,11 @@ class $$SyncedCategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get linkedAccountId => $composableBuilder(
     column: $table.linkedAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
     builder: (column) => column,
   );
 
@@ -5608,6 +5683,7 @@ class $$SyncedCategoriesTableTableManager
                 Value<bool> isPlanDeleted = const Value.absent(),
                 Value<String> planGroup = const Value.absent(),
                 Value<String?> linkedAccountId = const Value.absent(),
+                Value<int?> defaultTargetMinor = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
@@ -5621,6 +5697,7 @@ class $$SyncedCategoriesTableTableManager
                 isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
+                defaultTargetMinor: defaultTargetMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 revision: revision,
@@ -5636,6 +5713,7 @@ class $$SyncedCategoriesTableTableManager
                 required bool isPlanDeleted,
                 required String planGroup,
                 Value<String?> linkedAccountId = const Value.absent(),
+                Value<int?> defaultTargetMinor = const Value.absent(),
                 required String createdAt,
                 required String updatedAt,
                 required int revision,
@@ -5649,6 +5727,7 @@ class $$SyncedCategoriesTableTableManager
                 isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
+                defaultTargetMinor: defaultTargetMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 revision: revision,

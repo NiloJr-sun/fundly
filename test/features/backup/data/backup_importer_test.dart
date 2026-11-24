@@ -94,6 +94,11 @@ void main() {
       kind: CategoryKind.spending,
       planGroup: PlanGroup.liability,
     );
+    // A default Target, on a seeded category (format 8).
+    final rent = (await categories.watchAll().first).firstWhere(
+      (c) => c.name == 'Rent',
+    );
+    await categories.setDefaultTarget(rent.id, php(1500000));
     final transactions = TransactionRepository(database, clock: () => now);
     await transactions.create(
       TransactionDraft(
@@ -287,6 +292,65 @@ void main() {
       },
     );
   }
+
+  group('default Target (format 8)', () {
+    List<Map<String, Object?>> categoriesOf(Map<String, Object?> backup) =>
+        (backup['categories']! as List).cast<Map<String, Object?>>();
+
+    Future<Category> restoredNamed(String name) async =>
+        (await CategoryRepository(
+          target,
+        ).watchAll().first).singleWhere((c) => c.name == name);
+
+    test('restores with the category', () async {
+      final original = await exportJson(source);
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(original));
+
+      expect((await restoredNamed('Rent')).defaultTarget, php(1500000));
+      expect((await restoredNamed('Utilities')).defaultTarget, isNull);
+    });
+
+    test('a format 7 file restores with no default Target', () async {
+      final backup = await exportedBackup();
+      backup['formatVersion'] = 7;
+      for (final category in categoriesOf(backup)) {
+        category.remove('defaultTargetMinor');
+      }
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+      expect((await restoredNamed('Rent')).defaultTarget, isNull);
+    });
+
+    test('a format 8 category must state it, even as null', () async {
+      final backup = await exportedBackup();
+      categoriesOf(backup).first.remove('defaultTargetMinor');
+
+      expect(
+        () => parseBackup(jsonEncode(backup)),
+        throwsProblem(BackupImportProblem.invalidData, 'defaultTargetMinor'),
+      );
+    });
+
+    for (final (description, pick, value) in [
+      ('a negative one', 'Rent', -1),
+      ('one on an inflow category', 'Salary', 100),
+      ('one on a debt row', 'RCBC Credit', 100),
+    ]) {
+      test('rejects $description', () async {
+        final backup = await exportedBackup();
+        categoriesOf(backup)
+                .singleWhere((c) => c['name'] == pick)['defaultTargetMinor'] =
+            value;
+
+        expect(
+          () => parseBackup(jsonEncode(backup)),
+          throwsProblem(BackupImportProblem.invalidData, 'defaultTargetMinor'),
+        );
+      });
+    }
+  });
 
   test('restore rejects two categories linked to one account', () async {
     final backup = await sourceBackup();
@@ -889,7 +953,7 @@ void main() {
       'a signed-out export is format 7 and restores to the same data',
       () async {
         final backup = await exportedBackup();
-        expect(backup['formatVersion'], 7);
+        expect(backup['formatVersion'], 8);
         expect(
           (backup['accounts']! as List).first,
           containsPair('id', isA<String>()),

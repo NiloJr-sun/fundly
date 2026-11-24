@@ -1022,6 +1022,21 @@ class $CategoriesTable extends Categories
       'UNIQUE REFERENCES accounts (id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _defaultTargetMinorMeta =
+      const VerificationMeta('defaultTargetMinor');
+  @override
+  late final GeneratedColumn<int> defaultTargetMinor = GeneratedColumn<int>(
+    'default_target_minor',
+    aliasedName,
+    true,
+    check: () =>
+        defaultTargetMinor.isNull() |
+        (ComparableExpr(defaultTargetMinor).isBiggerOrEqualValue(0) &
+            kind.equals('spending') &
+            linkedAccountId.isNull()),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1032,6 +1047,7 @@ class $CategoriesTable extends Categories
     isPlanDeleted,
     planGroup,
     linkedAccountId,
+    defaultTargetMinor,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1089,6 +1105,15 @@ class $CategoriesTable extends Categories
         ),
       );
     }
+    if (data.containsKey('default_target_minor')) {
+      context.handle(
+        _defaultTargetMinorMeta,
+        defaultTargetMinor.isAcceptableOrUnknown(
+          data['default_target_minor']!,
+          _defaultTargetMinorMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1134,6 +1159,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.int,
         data['${effectivePrefix}linked_account_id'],
       ),
+      defaultTargetMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}default_target_minor'],
+      ),
     );
   }
 
@@ -1168,6 +1197,10 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
 
   /// Managed Plans row for one liability account; normal categories have none.
   final int? linkedAccountId;
+
+  /// The Target, in minor units, for months without their own plan; `null`
+  /// for no Target. Only unlinked spending categories have one.
+  final int? defaultTargetMinor;
   const CategoryRow({
     required this.id,
     required this.name,
@@ -1177,6 +1210,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     required this.isPlanDeleted,
     required this.planGroup,
     this.linkedAccountId,
+    this.defaultTargetMinor,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1199,6 +1233,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     if (!nullToAbsent || linkedAccountId != null) {
       map['linked_account_id'] = Variable<int>(linkedAccountId);
     }
+    if (!nullToAbsent || defaultTargetMinor != null) {
+      map['default_target_minor'] = Variable<int>(defaultTargetMinor);
+    }
     return map;
   }
 
@@ -1214,6 +1251,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       linkedAccountId: linkedAccountId == null && nullToAbsent
           ? const Value.absent()
           : Value(linkedAccountId),
+      defaultTargetMinor: defaultTargetMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultTargetMinor),
     );
   }
 
@@ -1235,6 +1275,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         serializer.fromJson<String>(json['planGroup']),
       ),
       linkedAccountId: serializer.fromJson<int?>(json['linkedAccountId']),
+      defaultTargetMinor: serializer.fromJson<int?>(json['defaultTargetMinor']),
     );
   }
   @override
@@ -1253,6 +1294,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
         $CategoriesTable.$converterplanGroup.toJson(planGroup),
       ),
       'linkedAccountId': serializer.toJson<int?>(linkedAccountId),
+      'defaultTargetMinor': serializer.toJson<int?>(defaultTargetMinor),
     };
   }
 
@@ -1265,6 +1307,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     bool? isPlanDeleted,
     PlanGroup? planGroup,
     Value<int?> linkedAccountId = const Value.absent(),
+    Value<int?> defaultTargetMinor = const Value.absent(),
   }) => CategoryRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1276,6 +1319,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     linkedAccountId: linkedAccountId.present
         ? linkedAccountId.value
         : this.linkedAccountId,
+    defaultTargetMinor: defaultTargetMinor.present
+        ? defaultTargetMinor.value
+        : this.defaultTargetMinor,
   );
   CategoryRow copyWithCompanion(CategoriesCompanion data) {
     return CategoryRow(
@@ -1295,6 +1341,9 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
       linkedAccountId: data.linkedAccountId.present
           ? data.linkedAccountId.value
           : this.linkedAccountId,
+      defaultTargetMinor: data.defaultTargetMinor.present
+          ? data.defaultTargetMinor.value
+          : this.defaultTargetMinor,
     );
   }
 
@@ -1308,7 +1357,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           ..write('isPlanArchived: $isPlanArchived, ')
           ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
-          ..write('linkedAccountId: $linkedAccountId')
+          ..write('linkedAccountId: $linkedAccountId, ')
+          ..write('defaultTargetMinor: $defaultTargetMinor')
           ..write(')'))
         .toString();
   }
@@ -1323,6 +1373,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     isPlanDeleted,
     planGroup,
     linkedAccountId,
+    defaultTargetMinor,
   );
   @override
   bool operator ==(Object other) =>
@@ -1335,7 +1386,8 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
           other.isPlanArchived == this.isPlanArchived &&
           other.isPlanDeleted == this.isPlanDeleted &&
           other.planGroup == this.planGroup &&
-          other.linkedAccountId == this.linkedAccountId);
+          other.linkedAccountId == this.linkedAccountId &&
+          other.defaultTargetMinor == this.defaultTargetMinor);
 }
 
 class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
@@ -1347,6 +1399,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
   final Value<bool> isPlanDeleted;
   final Value<PlanGroup> planGroup;
   final Value<int?> linkedAccountId;
+  final Value<int?> defaultTargetMinor;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1356,6 +1409,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.isPlanDeleted = const Value.absent(),
     this.planGroup = const Value.absent(),
     this.linkedAccountId = const Value.absent(),
+    this.defaultTargetMinor = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
@@ -1366,6 +1420,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     this.isPlanDeleted = const Value.absent(),
     this.planGroup = const Value.absent(),
     this.linkedAccountId = const Value.absent(),
+    this.defaultTargetMinor = const Value.absent(),
   }) : name = Value(name),
        kind = Value(kind);
   static Insertable<CategoryRow> custom({
@@ -1377,6 +1432,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Expression<bool>? isPlanDeleted,
     Expression<String>? planGroup,
     Expression<int>? linkedAccountId,
+    Expression<int>? defaultTargetMinor,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1387,6 +1443,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       if (isPlanDeleted != null) 'is_plan_deleted': isPlanDeleted,
       if (planGroup != null) 'plan_group': planGroup,
       if (linkedAccountId != null) 'linked_account_id': linkedAccountId,
+      if (defaultTargetMinor != null)
+        'default_target_minor': defaultTargetMinor,
     });
   }
 
@@ -1399,6 +1457,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     Value<bool>? isPlanDeleted,
     Value<PlanGroup>? planGroup,
     Value<int?>? linkedAccountId,
+    Value<int?>? defaultTargetMinor,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -1409,6 +1468,7 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
       isPlanDeleted: isPlanDeleted ?? this.isPlanDeleted,
       planGroup: planGroup ?? this.planGroup,
       linkedAccountId: linkedAccountId ?? this.linkedAccountId,
+      defaultTargetMinor: defaultTargetMinor ?? this.defaultTargetMinor,
     );
   }
 
@@ -1443,6 +1503,9 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
     if (linkedAccountId.present) {
       map['linked_account_id'] = Variable<int>(linkedAccountId.value);
     }
+    if (defaultTargetMinor.present) {
+      map['default_target_minor'] = Variable<int>(defaultTargetMinor.value);
+    }
     return map;
   }
 
@@ -1456,7 +1519,8 @@ class CategoriesCompanion extends UpdateCompanion<CategoryRow> {
           ..write('isPlanArchived: $isPlanArchived, ')
           ..write('isPlanDeleted: $isPlanDeleted, ')
           ..write('planGroup: $planGroup, ')
-          ..write('linkedAccountId: $linkedAccountId')
+          ..write('linkedAccountId: $linkedAccountId, ')
+          ..write('defaultTargetMinor: $defaultTargetMinor')
           ..write(')'))
         .toString();
   }
@@ -3588,6 +3652,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isPlanDeleted,
   Value<PlanGroup> planGroup,
   Value<int?> linkedAccountId,
+  Value<int?> defaultTargetMinor,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
@@ -3598,6 +3663,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isPlanDeleted,
   Value<PlanGroup> planGroup,
   Value<int?> linkedAccountId,
+  Value<int?> defaultTargetMinor,
 });
 
 final class $$CategoriesTableReferences
@@ -3703,6 +3769,11 @@ class $$CategoriesTableFilterComposer
         column: $table.planGroup,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
+    builder: (column) => ColumnFilters(column),
+  );
 
   $$AccountsTableFilterComposer get linkedAccountId {
     final $$AccountsTableFilterComposer composer = $composerBuilder(
@@ -3822,6 +3893,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AccountsTableOrderingComposer get linkedAccountId {
     final $$AccountsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3881,6 +3957,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<PlanGroup, String> get planGroup =>
       $composableBuilder(column: $table.planGroup, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultTargetMinor => $composableBuilder(
+    column: $table.defaultTargetMinor,
+    builder: (column) => column,
+  );
 
   $$AccountsTableAnnotationComposer get linkedAccountId {
     final $$AccountsTableAnnotationComposer composer = $composerBuilder(
@@ -3996,6 +4077,7 @@ class $$CategoriesTableTableManager
                 Value<bool> isPlanDeleted = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
                 Value<int?> linkedAccountId = const Value.absent(),
+                Value<int?> defaultTargetMinor = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
@@ -4005,6 +4087,7 @@ class $$CategoriesTableTableManager
                 isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
+                defaultTargetMinor: defaultTargetMinor,
               ),
           createCompanionCallback:
               ({
@@ -4016,6 +4099,7 @@ class $$CategoriesTableTableManager
                 Value<bool> isPlanDeleted = const Value.absent(),
                 Value<PlanGroup> planGroup = const Value.absent(),
                 Value<int?> linkedAccountId = const Value.absent(),
+                Value<int?> defaultTargetMinor = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
@@ -4025,6 +4109,7 @@ class $$CategoriesTableTableManager
                 isPlanDeleted: isPlanDeleted,
                 planGroup: planGroup,
                 linkedAccountId: linkedAccountId,
+                defaultTargetMinor: defaultTargetMinor,
               ),
           withReferenceMapper: (p0) => p0
               .map(

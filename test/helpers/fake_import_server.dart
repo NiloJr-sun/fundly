@@ -172,6 +172,7 @@ BackupRecords sampleDeviceRecords() {
         isArchived: true,
         isPlanArchived: true,
         isPlanDeleted: true,
+        defaultTargetMinor: 500000,
       ),
     ],
     transactions: [
@@ -228,6 +229,7 @@ BackupCategory _category(
   bool isArchived = false,
   bool isPlanArchived = false,
   bool isPlanDeleted = false,
+  int? defaultTargetMinor,
 }) => (
   id: id,
   name: name,
@@ -237,6 +239,7 @@ BackupCategory _category(
   isPlanDeleted: isPlanDeleted,
   planGroup: planGroup,
   linkedAccountId: linkedAccountId,
+  defaultTargetMinor: defaultTargetMinor,
 );
 
 BackupTransaction _transaction(

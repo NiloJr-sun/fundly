@@ -36,7 +36,7 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 7);
+      expect(backup['formatVersion'], 8);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
@@ -53,6 +53,7 @@ void main() {
         'isPlanArchived': false,
         'isPlanDeleted': false,
         'linkedAccountId': null,
+        'defaultTargetMinor': null,
       });
     },
   );
@@ -172,6 +173,7 @@ void main() {
       'isPlanArchived': false,
       'isPlanDeleted': false,
       'linkedAccountId': null,
+      'defaultTargetMinor': null,
     });
     expect(backup['transactions'], [
       {

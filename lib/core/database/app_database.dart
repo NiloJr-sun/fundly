@@ -55,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -142,6 +142,14 @@ class AppDatabase extends _$AppDatabase {
       // The v13 schema no longer has the index, so it is dropped by name.
       from12To13: (m, schema) async {
         await customStatement('DROP INDEX accounts_one_budget_account');
+      },
+      // v14: spending categories can have a default Target for months
+      // without their own plan. Existing categories start with none.
+      from13To14: (m, schema) async {
+        await m.addColumn(
+          schema.categories,
+          schema.categories.defaultTargetMinor,
+        );
       },
     ),
     beforeOpen: (details) async {

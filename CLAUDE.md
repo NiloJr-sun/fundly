@@ -534,8 +534,8 @@ released as app **1.2.0 (3)**, signed off on 2026-11-23: Google sign-in,
 Supabase and PowerSync, the web app on Vercel and iOS installed with
 `devicectl`. The minimum supported app version is 1.2.0.
 [docs/OPERATIONS.md](docs/OPERATIONS.md) is the runbook for deploying,
-rolling back, outages and backups. The database is at schema v13 and backups
-at format 7. [AGENTS.md](AGENTS.md) summarises the current state, commands
+rolling back, outages and backups. The database is at schema v14 and backups
+at format 8. [AGENTS.md](AGENTS.md) summarises the current state, commands
 and pitfalls for any coding agent.
 
 F.1 (refused delete cards name the record) is live as 1.2.1. Shared spaces
@@ -785,9 +785,12 @@ suggestions as approved decisions.
                           Available and Status    
                           per category per month  
                           (schema v6). Target is  
-                          optional and set per    
-                          month; Assigned is one  
-                          edited total, not       
+                          optional and set per
+                          month, else the
+                          category's default
+                          (2026-11-25 row);
+                          Assigned is one edited
+                          total, not
                           checked against income. 
                           Activity counts         
                           Spending, except debt
@@ -1400,5 +1403,32 @@ suggestions as approved decisions.
                           version bump; iOS was
                           not affected. No schema
                           or backup change.
+
+  2026-11-25              Default Target per      Confirmed
+                          category (schema v14,
+                          synced v5): optional,
+                          set in the category
+                          form for spending
+                          categories you manage;
+                          empty means none, 0 is
+                          a ₱0 Target. A month
+                          without its own plan
+                          uses it, in every month;
+                          a month's own plan wins,
+                          even with no Target.
+                          Clearing a month keeps
+                          an empty plan while a
+                          default is set. Only the
+                          Target carries over;
+                          Assigned starts at zero.
+                          Debt rows and inflow
+                          have none. Server
+                          migration 20261125010000
+                          (additive), sync config
+                          column, backup format 8
+                          (formats 1–7 restore
+                          with none). Ships in
+                          1.4.0; older apps keep
+                          the saved value.
 
   -----------------------------------------------------------------------

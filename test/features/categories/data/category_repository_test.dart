@@ -265,6 +265,103 @@ void main() {
     });
   });
 
+  group('default Target', () {
+    const php5000 = Money(minorUnits: 500000, currencyCode: 'PHP');
+
+    test('categories start with no default Target', () async {
+      final categories = await repository.watchAll().first;
+
+      expect(categories.map((c) => c.defaultTarget).toSet(), {null});
+    });
+
+    test('create stores a default Target, zero included', () async {
+      final rent = await repository.create(
+        name: 'House rent',
+        kind: CategoryKind.spending,
+        defaultTarget: php5000,
+      );
+      final gifts = await repository.create(
+        name: 'Gifts',
+        kind: CategoryKind.spending,
+        defaultTarget: const Money.zero('PHP'),
+      );
+
+      expect(rent.defaultTarget, php5000);
+      expect(await named('House rent'), rent);
+      expect(gifts.defaultTarget, const Money.zero('PHP'));
+      expect(await named('Gifts'), gifts);
+    });
+
+    test('create refuses one on an inflow category or below zero', () async {
+      await expectLater(
+        repository.create(
+          name: 'Bonus',
+          kind: CategoryKind.inflow,
+          defaultTarget: php5000,
+        ),
+        throwsArgumentError,
+      );
+      await expectLater(
+        repository.create(
+          name: 'Gifts',
+          kind: CategoryKind.spending,
+          defaultTarget: const Money(minorUnits: -1, currencyCode: 'PHP'),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        (await repository.watchAll().first).map((c) => c.name),
+        isNot(anyOf(contains('Bonus'), contains('Gifts'))),
+      );
+    });
+
+    test('setDefaultTarget sets, changes and removes it', () async {
+      final food = await named('Food & Groceries');
+
+      final set = await repository.setDefaultTarget(food.id, php5000);
+      expect(set.defaultTarget, php5000);
+      expect(set.name, 'Food & Groceries');
+      expect(await named('Food & Groceries'), set);
+
+      final removed = await repository.setDefaultTarget(food.id, null);
+      expect(removed.defaultTarget, isNull);
+    });
+
+    test('setDefaultTarget refuses inflow and debt rows', () async {
+      final salary = await named('Salary');
+      await expectLater(
+        repository.setDefaultTarget(salary.id, php5000),
+        throwsArgumentError,
+      );
+
+      await AccountRepository(database).create(
+        name: 'RCBC Credit',
+        type: AccountType.credit,
+        enteredOpeningAmount: const Money.zero('PHP'),
+      );
+      final debtRow = (await repository.watchAll().first).singleWhere(
+        (c) => c.linkedAccountId != null,
+      );
+      await expectLater(
+        repository.setDefaultTarget(debtRow.id, php5000),
+        throwsStateError,
+      );
+      expect(repository.setDefaultTarget('999', php5000), throwsStateError);
+    });
+
+    test('the database refuses one on an inflow category', () async {
+      final salary = await named('Salary');
+
+      await expectLater(
+        database.customStatement(
+          'UPDATE categories SET default_target_minor = 100 WHERE id = ?',
+          [int.parse(salary.id)],
+        ),
+        throwsA(isA<Exception>()),
+      );
+    });
+  });
+
   group('setArchived', () {
     test('archives and restores, keeping the category listed', () async {
       final food = await named('Food & Groceries');

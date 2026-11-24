@@ -57,6 +57,7 @@ BackupRecords copied(BackupRecords records, ImportIdMap ids) {
           isPlanDeleted: r.isPlanDeleted,
           planGroup: r.planGroup,
           linkedAccountId: ref('accounts', r.linkedAccountId),
+          defaultTargetMinor: r.defaultTargetMinor,
         ),
     ],
     transactions: [
@@ -118,6 +119,7 @@ BackupCategory category(
   String kind = 'spending',
   bool archived = false,
   String group = 'spending',
+  int? defaultTargetMinor,
 }) => (
   id: name.hashCode,
   name: name,
@@ -127,6 +129,7 @@ BackupCategory category(
   isPlanDeleted: false,
   planGroup: group,
   linkedAccountId: null,
+  defaultTargetMinor: defaultTargetMinor,
 );
 
 void main() {
@@ -185,6 +188,12 @@ void main() {
       expect(rows('monthly_plans')[1]['target_amount_minor'], isNull);
       expect(rows('monthly_plans')[0]['assigned_amount_minor'], '600000');
       expect(rows('categories')[4], containsPair('is_plan_deleted', true));
+      // A default Target is sent only when set.
+      expect(rows('categories')[4]['default_target_minor'], '500000');
+      expect(
+        rows('categories')[0].containsKey('default_target_minor'),
+        isFalse,
+      );
       // Backups keep no category timestamps: the server sets them.
       expect(rows('categories')[0].containsKey('created_at'), isFalse);
       for (final table in importTables) {
@@ -257,6 +266,12 @@ void main() {
         isTrue,
       );
       expect(
+        hasDeviceData(
+          onlyCategories([category('Rent', defaultTargetMinor: 0)]),
+        ),
+        isTrue,
+      );
+      expect(
         hasDeviceData(onlyCategories([category('Rent', kind: 'inflow')])),
         isTrue,
       );
@@ -302,6 +317,31 @@ void main() {
       );
     });
 
+    test('notices a different default Target', () {
+      final copy = copied(records, ids);
+      final changed = withRecords(
+        copy,
+        categories: [
+          for (final c in copy.categories)
+            (
+              id: c.id,
+              name: c.name,
+              kind: c.kind,
+              isArchived: c.isArchived,
+              isPlanArchived: c.isPlanArchived,
+              isPlanDeleted: c.isPlanDeleted,
+              planGroup: c.planGroup,
+              linkedAccountId: c.linkedAccountId,
+              defaultTargetMinor: c.defaultTargetMinor == null ? null : 1,
+            ),
+        ],
+      );
+      expect(
+        firstDifference(records, changed, ids),
+        'categories 5: defaultTargetMinor',
+      );
+    });
+
     test('finds a wrong reference, a missing record and an extra one', () {
       final copy = copied(records, ids);
       final relinked = withRecords(
@@ -319,6 +359,7 @@ void main() {
                     isPlanDeleted: c.isPlanDeleted,
                     planGroup: c.planGroup,
                     linkedAccountId: ids['accounts']!['1'],
+                    defaultTargetMinor: c.defaultTargetMinor,
                   ),
         ],
       );

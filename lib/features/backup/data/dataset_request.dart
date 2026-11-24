@@ -91,6 +91,9 @@ DatasetRequest datasetRequestFor(
         'is_plan_deleted': category.isPlanDeleted,
         'plan_group': category.planGroup,
         'linked_account_id': ref('accounts', category.linkedAccountId),
+        // Sent only when set, so a request without one is unchanged.
+        if (category.defaultTargetMinor case final target?)
+          'default_target_minor': '$target',
       },
   ];
   final transactions = [
@@ -191,6 +194,7 @@ bool hasDeviceData(BackupRecords records) =>
           category.isPlanDeleted ||
           category.planGroup != 'spending' ||
           category.linkedAccountId != null ||
+          category.defaultTargetMinor != null ||
           !_defaultNames.contains((category.name, category.kind)),
     );
 
@@ -323,6 +327,7 @@ Map<String, Object?> _category(BackupCategory r, _Ref ref) => {
   'isPlanDeleted': r.isPlanDeleted,
   'planGroup': r.planGroup,
   'linkedAccountId': ref('accounts', r.linkedAccountId),
+  'defaultTargetMinor': r.defaultTargetMinor,
 };
 
 Map<String, Object?> _transaction(BackupTransaction r, _Ref ref) => {

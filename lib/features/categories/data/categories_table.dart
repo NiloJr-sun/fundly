@@ -4,7 +4,7 @@ import '../../accounts/data/accounts_table.dart';
 import '../domain/category.dart';
 
 /// SQLite table for [Category]s (added in schema v2; `is_archived` in v4;
-/// `plan_group` in v8).
+/// `plan_group` in v8; `default_target_minor` in v14).
 ///
 /// Names are unique ignoring ASCII case and 1-40 characters long. A category
 /// used by a transaction cannot be deleted (the foreign key restricts it).
@@ -50,6 +50,21 @@ class Categories extends Table {
     #id,
     onDelete: KeyAction.setNull,
   )();
+
+  /// The Target, in minor units, for months without their own plan; `null`
+  /// for no Target. Only unlinked spending categories have one.
+  IntColumn get defaultTargetMinor =>
+      integer().nullable()
+      // The check refers to the column itself, drift's documented way to
+      // write a column CHECK; the generated code does not recurse.
+      .check(
+        // ignore: recursive_getters
+        defaultTargetMinor.isNull() |
+            // ignore: recursive_getters
+            (defaultTargetMinor.isBiggerOrEqualValue(0) &
+                kind.equals('spending') &
+                linkedAccountId.isNull()),
+      )();
 
   @override
   List<String> get customConstraints => [

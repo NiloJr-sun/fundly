@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/domain/category_validation_exception.dart';
 import 'package:fundly/features/categories/presentation/category_form_screen.dart';
@@ -61,6 +62,7 @@ void main() {
 
   Future<void> tapButton(WidgetTester tester, String label) async {
     await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
   }
@@ -81,6 +83,7 @@ void main() {
         name: 'Groceries',
         kind: CategoryKind.spending,
         planGroup: PlanGroup.spending,
+        defaultTarget: null,
       ));
       expect(find.text('Category added'), findsOneWidget);
       expect(find.byType(CategoryFormScreen), findsNothing);
@@ -119,6 +122,7 @@ void main() {
         name: 'Emergency fund',
         kind: CategoryKind.spending,
         planGroup: PlanGroup.savings,
+        defaultTarget: null,
       ));
     });
 
@@ -288,6 +292,106 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(CategoryFormScreen), findsOneWidget);
+    });
+  });
+
+  group('default Target', () {
+    Finder targetField() => find.widgetWithText(TextFormField, 'Target');
+    const php5000 = Money(minorUnits: 500000, currencyCode: 'PHP');
+
+    testWidgets('a new spending category saves the entered Target', (
+      tester,
+    ) async {
+      await openForm(tester);
+
+      expect(
+        find.text('Default for each new month. Leave empty for no target.'),
+        findsOneWidget,
+      );
+      await tester.enterText(nameField(), 'House rent');
+      await tester.enterText(targetField(), '5,000');
+      await tapButton(tester, 'Add category');
+
+      expect(repository.created.single.defaultTarget, php5000);
+    });
+
+    testWidgets('an empty Target means none', (tester) async {
+      await openForm(tester);
+
+      await tester.enterText(nameField(), 'Gifts');
+      await tapButton(tester, 'Add category');
+
+      expect(repository.created.single.defaultTarget, isNull);
+    });
+
+    testWidgets('an invalid amount is not saved', (tester) async {
+      await openForm(tester);
+
+      await tester.enterText(nameField(), 'Gifts');
+      await tester.enterText(targetField(), '-5');
+      await tapButton(tester, 'Add category');
+
+      expect(repository.created, isEmpty);
+    });
+
+    testWidgets('inflow categories have no Target', (tester) async {
+      await openForm(tester);
+
+      await tester.tap(find.byType(DropdownButtonFormField<CategoryKind>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Inflow').last);
+      await tester.pumpAndSettle();
+
+      expect(targetField(), findsNothing);
+      await tester.enterText(nameField(), 'Bonus');
+      await tapButton(tester, 'Add category');
+      expect(repository.created.single.defaultTarget, isNull);
+    });
+
+    testWidgets('editing changes the Target, and only when it changed', (
+      tester,
+    ) async {
+      await openForm(tester, editing: food);
+
+      await tapButton(tester, 'Save changes');
+      expect(repository.defaultTargetChanges, isEmpty);
+    });
+
+    testWidgets('editing sets and clears the Target', (tester) async {
+      const withTarget = Category(
+        id: foodId,
+        name: 'Food',
+        kind: CategoryKind.spending,
+        defaultTarget: php5000,
+      );
+      await openForm(tester, editing: withTarget);
+
+      expect(
+        find.descendant(of: targetField(), matching: find.text('5000.00')),
+        findsOneWidget,
+      );
+      await tester.enterText(targetField(), '');
+      await tapButton(tester, 'Save changes');
+
+      expect(repository.defaultTargetChanges.single, (
+        id: foodId,
+        defaultTarget: null,
+      ));
+    });
+
+    testWidgets('a zero Target left empty stays zero', (tester) async {
+      const zero = Category(
+        id: foodId,
+        name: 'Food',
+        kind: CategoryKind.spending,
+        defaultTarget: Money.zero('PHP'),
+      );
+      await openForm(tester, editing: zero);
+
+      expect(find.textContaining('Leave empty to keep a'), findsOneWidget);
+      await tapButton(tester, 'Save changes');
+
+      expect(repository.defaultTargetChanges, isEmpty);
     });
   });
 }

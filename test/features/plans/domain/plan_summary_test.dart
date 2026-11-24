@@ -308,6 +308,102 @@ void main() {
     });
   });
 
+  group('default Target', () {
+    // Transport has a PHP 5,000 default Target; Food has none.
+    final withDefault = [
+      categories[foodId]!,
+      Category(
+        id: transportId,
+        name: 'Transport',
+        kind: CategoryKind.spending,
+        defaultTarget: php(500000),
+      ),
+    ];
+
+    List<CategoryPlanSummary> summarizeDefaults({
+      List<MonthlyPlan> plans = const [],
+      List<TransactionDraft> transactions = const [],
+      CalendarMonth? month,
+    }) => planSummaries(
+      month: month ?? november,
+      categories: withDefault,
+      plans: plans,
+      transactions: transactions,
+    );
+
+    test('a month without its own plan uses the default Target', () {
+      final row = rowFor(summarizeDefaults(), transportId);
+
+      expect(row.hasPlan, isFalse);
+      expect(row.target, php(500000));
+      expect(row.status, PlanStatus.underfunded);
+      expect(rowFor(summarizeDefaults(), foodId).target, isNull);
+    });
+
+    test('every month without a plan uses it, past and future alike', () {
+      for (final month in [CalendarMonth(2025, 1), CalendarMonth(2027, 6)]) {
+        expect(
+          rowFor(summarizeDefaults(month: month), transportId).target,
+          php(500000),
+        );
+      }
+    });
+
+    test("a month's own Target overrides the default", () {
+      final row = rowFor(
+        summarizeDefaults(plans: [plan(transportId, 300000)]),
+        transportId,
+      );
+
+      expect(row.target, php(300000));
+      expect(row.status, PlanStatus.funded);
+    });
+
+    test('a plan with no Target keeps the month without one', () {
+      final row = rowFor(
+        summarizeDefaults(plans: [plan(transportId, null)]),
+        transportId,
+      );
+
+      expect(row.hasPlan, isTrue);
+      expect(row.target, isNull);
+      expect(row.status, isNull);
+    });
+
+    test('a plan in another month does not stop the default', () {
+      final row = rowFor(
+        summarizeDefaults(
+          plans: [plan(transportId, 100000, month: CalendarMonth(2026, 10))],
+        ),
+        transportId,
+      );
+
+      expect(row.target, php(500000));
+    });
+
+    test('assigned is not carried over: it starts at zero', () {
+      final row = rowFor(
+        summarizeDefaults(
+          plans: [
+            plan(
+              transportId,
+              500000,
+              assigned: 500000,
+              month: CalendarMonth(2026, 10),
+            ),
+          ],
+          transactions: [spending(amount: 20000, category: transportId)],
+        ),
+        transportId,
+      );
+
+      expect(row.assigned, php(0));
+      expect(row.activity, php(20000));
+      expect(row.available, php(-20000));
+      expect(row.status, PlanStatus.overspent);
+    });
+  });
+
   group('archived and inflow categories', () {
     test('inflow categories never get a row', () {
       final rows = summarize(transactions: [inflow(category: salaryId)]);

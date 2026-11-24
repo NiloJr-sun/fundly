@@ -15,7 +15,7 @@ for two things:
   (`lib/features/backup/data/device_data_copier.dart`). The request mapping
   is checked against the local server by `supabase/tests/client_contract_test.py`.
 - **Restoring a backup file while signed in (S6.3):** the same flow, with the
-  parsed file (formats 1–7) as the source. The contract test also sends
+  parsed file (formats 1–8) as the source. The contract test also sends
   requests built from a format 7 file and a format 3 file.
 
 The batch API ([WRITE_API.md](WRITE_API.md)) and its receipts, the tables and
@@ -61,8 +61,10 @@ and every count, delete and insert are per space (WRITE_API.md, Spaces).
 ### Records
 
 Records use the download wire shape, without `owner_id` or `revision`. Every
-field is required except `created_at` and `updated_at`, and unknown fields are
-refused.
+field is required except `created_at`, `updated_at` and the category's
+`default_target_minor` (a nonnegative decimal string or null, only on unlinked
+spending categories; refused otherwise as `invalid_value`), and unknown fields
+are refused.
 
 | Table | Fields |
 |---|---|

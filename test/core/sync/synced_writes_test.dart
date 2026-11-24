@@ -412,6 +412,58 @@ void main() {
       ]);
     });
 
+    test('a default Target is sent on create only when set', () async {
+      final repository = SyncedCategoryRepository(store.database);
+      final rent = await repository.create(
+        name: 'Rent',
+        kind: CategoryKind.spending,
+        defaultTarget: php(500000),
+      );
+      await repository.create(name: 'Gifts', kind: CategoryKind.spending);
+
+      expect(rent.defaultTarget, php(500000));
+      expect(
+        (await row('categories', rent.id))['default_target_minor'],
+        500000,
+      );
+      final items = await store.queuedItems();
+      expect(items.first['data'], {
+        'name': 'Rent',
+        'kind': 'spending',
+        'plan_group': 'spending',
+        'default_target_minor': '500000',
+      });
+      expect(
+        (items.last['data']! as Map<String, Object?>).containsKey(
+          'default_target_minor',
+        ),
+        isFalse,
+      );
+    });
+
+    test('setDefaultTarget sends the amount, or null to remove it', () async {
+      final repository = SyncedCategoryRepository(store.database);
+      final set = await repository.setDefaultTarget(food, php(0));
+      final removed = await repository.setDefaultTarget(food, null);
+
+      expect(set.defaultTarget, php(0));
+      expect(removed.defaultTarget, isNull);
+      final items = await store.queuedItems();
+      expect(items.map((i) => i['operation']), [
+        'category.update',
+        'category.update',
+      ]);
+      expect(items.map((i) => i['expected_revision']), ['1', '2']);
+      expect(items.map((i) => i['data']), [
+        {'default_target_minor': '0'},
+        {'default_target_minor': null},
+      ]);
+      await expectLater(
+        repository.setDefaultTarget(cardRow, php(100)),
+        throwsStateError,
+      );
+    });
+
     test('a category in use cannot be deleted', () async {
       await SyncedTransactionRepository(store.database).create(_lunch());
       await expectLater(
@@ -503,6 +555,30 @@ void main() {
       expect(await repository.watchForMonth(november).first, isEmpty);
       expect(await store.queuedItems(), hasLength(2));
     });
+
+    test(
+      'with a default Target, clearing keeps and sends an empty plan',
+      () async {
+        await SyncedCategoryRepository(store.database)
+            .setDefaultTarget(food, php(500000));
+        final repository = SyncedPlanRepository(store.database);
+        final plan = await repository.save(
+          month: november,
+          categoryId: food,
+          target: null,
+          assigned: php(0),
+        );
+
+        expect(plan!.target, isNull);
+        expect(await repository.watchForMonth(november).first, [plan]);
+        final last = (await store.queuedItems()).last;
+        expect(last['operation'], 'plan.save');
+        expect(
+          (last['data']! as Map<String, Object?>)['target_amount_minor'],
+          null,
+        );
+      },
+    );
 
     test('archiving sends the device time zone', () async {
       final repository = SyncedPlanRepository(

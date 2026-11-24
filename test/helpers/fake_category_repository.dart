@@ -1,3 +1,4 @@
+import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/domain/category_validation_exception.dart';
@@ -6,8 +7,16 @@ import 'package:fundly/features/categories/domain/category_validation_exception.
 /// under the fake test clock. Repository behaviour itself is covered by
 /// `category_repository_test.dart` against an in-memory database.
 class FakeCategoryRepository implements CategoryRepository {
-  final List<({String name, CategoryKind kind, PlanGroup planGroup})> created =
-      [];
+  final List<
+    ({
+      String name,
+      CategoryKind kind,
+      PlanGroup planGroup,
+      Money? defaultTarget,
+    })
+  >
+  created = [];
+  final List<({String id, Money? defaultTarget})> defaultTargetChanges = [];
   final List<({String id, PlanGroup planGroup})> groupChanges = [];
   final List<({String id, String name})> renamed = [];
   final List<({String id, bool archived})> archivedChanges = [];
@@ -25,14 +34,33 @@ class FakeCategoryRepository implements CategoryRepository {
     required String name,
     required CategoryKind kind,
     PlanGroup planGroup = PlanGroup.spending,
+    Money? defaultTarget,
   }) async {
     _maybeFail();
-    created.add((name: name, kind: kind, planGroup: planGroup));
+    created.add((
+      name: name,
+      kind: kind,
+      planGroup: planGroup,
+      defaultTarget: defaultTarget,
+    ));
     return Category(
       id: '${100 + created.length}',
       name: name.trim(),
       kind: kind,
       planGroup: planGroup,
+      defaultTarget: defaultTarget,
+    );
+  }
+
+  @override
+  Future<Category> setDefaultTarget(String id, Money? defaultTarget) async {
+    _maybeFail();
+    defaultTargetChanges.add((id: id, defaultTarget: defaultTarget));
+    return Category(
+      id: id,
+      name: '',
+      kind: CategoryKind.spending,
+      defaultTarget: defaultTarget,
     );
   }
 

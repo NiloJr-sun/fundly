@@ -28,7 +28,7 @@ class SyncedDatabase extends _$SyncedDatabase {
   SyncedDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,25 +51,35 @@ class SyncedDatabase extends _$SyncedDatabase {
           schema.spaceMembers,
           schema.spaceMembers.displayName,
         );
-        await _redownloadMembers();
+        await _redownload('space_members');
+      },
+      // v5: categories' default Target. Rows already downloaded are written
+      // again from PowerSync's log, which holds the column once the server
+      // sends it.
+      from4To5: (migrator, schema) async {
+        await migrator.addColumn(
+          schema.categories,
+          schema.categories.defaultTargetMinor,
+        );
+        await _redownload('categories');
       },
     ),
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
 
-  /// Members downloaded before v4 have no email or name here, although
-  /// PowerSync's download log may already hold them. Marking the rows makes
+  /// Rows downloaded before a column was added here lack it, although
+  /// PowerSync's download log may already hold it. Marking the rows makes
   /// the next applied checkpoint write them again from that log, the same
   /// way refused changes are undone (`recordRejection`). Only a PowerSync
   /// store has the table; a plain database (tests) skips this.
-  Future<void> _redownloadMembers() async {
+  Future<void> _redownload(String table) async {
     final hasLog = await customSelect(
       "SELECT 1 FROM sqlite_master WHERE name = 'ps_updated_rows'",
     ).getSingleOrNull();
     if (hasLog == null) return;
     await customStatement(
       'INSERT OR IGNORE INTO ps_updated_rows (row_type, row_id) '
-      "SELECT 'space_members', id FROM space_members",
+      "SELECT '$table', id FROM $table",
     );
   }
 
@@ -80,7 +90,7 @@ class SyncedDatabase extends _$SyncedDatabase {
     'SELECT '
     '(SELECT count(*) FROM custom_account_types WHERE ${unsafe('revision')}) + '
     '(SELECT count(*) FROM accounts WHERE ${unsafeAccount('accounts')}) + '
-    '(SELECT count(*) FROM categories WHERE ${unsafe('revision')}) + '
+    '(SELECT count(*) FROM categories WHERE ${unsafeCategory('categories')}) + '
     '(SELECT count(*) FROM transactions WHERE ${unsafeTransaction('transactions')}) + '
     '(SELECT count(*) FROM monthly_plans WHERE ${unsafePlan('monthly_plans')}) '
     'AS unsafe',
@@ -96,6 +106,10 @@ String unsafe(String column) => 'abs($column) > $maxSafeInteger';
 
 String unsafeAccount(String table) =>
     '${unsafe('$table.opening_balance_minor')} OR ${unsafe('$table.revision')}';
+
+String unsafeCategory(String table) =>
+    '${unsafe('coalesce($table.default_target_minor, 0)')} OR '
+    '${unsafe('$table.revision')}';
 
 String unsafeTransaction(String table) =>
     '${unsafe('$table.amount_minor')} OR ${unsafe('$table.revision')}';

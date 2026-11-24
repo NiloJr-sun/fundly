@@ -73,18 +73,19 @@ simulator build for anything that changes app code. macOS has no
 
 ## 3. Current state (2026-11-17)
 
-- **Database:** drift (SQLite), **schema v13**. Tables: `accounts`
+- **Database:** drift (SQLite), **schema v14** (synced store v5). Tables: `accounts`
   (`custom_type_id`, `is_budget_account`), `custom_account_types`,
   `categories` (`kind`, `is_archived`, `is_plan_archived`, `is_plan_deleted`,
-  `plan_group`, `linked_account_id`), `transactions`,
+  `plan_group`, `linked_account_id`, `default_target_minor`), `transactions`,
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
-- **Backup format 7** (JSON export and replace-all restore from the Profile
-  tab): format 6 with every ID and reference as text. Signed out, IDs are
+- **Backup format 8** (JSON export and replace-all restore from the Profile
+  tab): format 6 with every ID and reference as text (format 7), plus each
+  category's `defaultTargetMinor` (format 8). Signed out, IDs are
   decimal strings (`LocalBackupSource`); signed in, UUIDs
   (`SyncedBackupSource`), and only when the synced store matches the server
   (`signedInExportBlocker`).
-  - Restore accepts formats 1–7. `_numberTextIds` in `backup_importer.dart`
+  - Restore accepts formats 1–8; formats 1–7 restore with no default Target. `_numberTextIds` in `backup_importer.dart`
     turns format 7 IDs into local numbers in file order, so the format 6
     checks apply unchanged.
   - Signed in, Restore from backup parses the file locally, then opens the

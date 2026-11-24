@@ -21,6 +21,9 @@
 # for them; 1.2.x sends no parameters and is unchanged. The parameter comes from
 # the client, so it only ever narrows what is sent: access is decided by
 # auth.user_id() and the membership subqueries, never by it.
+#
+# 1.4.0: categories carry default_target_minor, the default Target for months
+# without their own plan. Older apps ignore the column.
 config:
   edition: 3
 streams:
@@ -35,7 +38,8 @@ streams:
         FROM accounts WHERE owner_id = auth.user_id()
           AND connection.parameter('space_streams') IS NULL
       - SELECT id, name, kind, is_archived, is_plan_archived, is_plan_deleted,
-          plan_group, linked_account_id, created_at, updated_at, revision
+          plan_group, linked_account_id, default_target_minor, created_at,
+          updated_at, revision
         FROM categories WHERE owner_id = auth.user_id()
           AND connection.parameter('space_streams') IS NULL
       - SELECT id, type, amount_minor, currency_code, date, payee, category_id,
@@ -66,7 +70,8 @@ streams:
         WHERE space_id = subscription.parameter('space_id')
           AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
       - SELECT id, name, kind, is_archived, is_plan_archived, is_plan_deleted,
-          plan_group, linked_account_id, created_at, updated_at, revision
+          plan_group, linked_account_id, default_target_minor, created_at,
+          updated_at, revision
         FROM categories
         WHERE space_id = subscription.parameter('space_id')
           AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())

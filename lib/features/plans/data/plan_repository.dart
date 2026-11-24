@@ -39,7 +39,9 @@ class PlanRepository {
   /// Saves the [target] and [assigned] amount for [categoryId] in [month],
   /// creating the plan or replacing both amounts. A `null` [target] means no
   /// target. With no target and nothing assigned the plan is removed, since
-  /// it would say nothing.
+  /// it would say nothing, unless the category has a default Target: then
+  /// the empty plan is kept, so the month stays without a Target instead of
+  /// using the default.
   ///
   /// Returns the saved plan, or `null` when it was removed. Throws
   /// [PlanValidationException] when a rule is broken. An archived category's
@@ -76,7 +78,9 @@ class PlanRepository {
       if (category.isPlanArchived) {
         throw const PlanValidationException(PlanValidationError.planArchived);
       }
-      if (target == null && assigned.isZero) {
+      if (target == null &&
+          assigned.isZero &&
+          category.defaultTargetMinor == null) {
         await clear(month: month, categoryId: categoryId);
         return null;
       }

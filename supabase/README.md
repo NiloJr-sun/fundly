@@ -47,6 +47,12 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   Personal records (null elsewhere), and the online `fundly_create_space` and
   `fundly_rename_space` RPCs ([WRITE_API.md](WRITE_API.md), Spaces). Grants the
   PowerSync replication role read access to `spaces` and `space_members`.
+- `migrations/20261125010000_category_default_target.sql` (app 1.4.0): a
+  default Target per spending category (`categories.default_target_minor`),
+  accepted by `category.create`/`category.update` and imports; `plan.save`
+  keeps an empty plan while the category has one. Replaces `category_wire`,
+  `apply_category`, `apply_plan_save` and `fundly_import_dataset` with only
+  those changes ([PLANS_API.md](PLANS_API.md)).
 - `migrations/20261124040000_sharing.sql` (C3.1): invites bound to an email,
   members' names and emails, role changes, removing, leaving and deleting
   spaces ([SPACES_API.md](SPACES_API.md)).
@@ -59,7 +65,7 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `rollback/20261124_c1_rollback.sql`: **not a migration.** Restores the pre-C1
   API and rules without touching data; rehearsed by
   `tests/migration/c1_rollback_test.py`.
-- `tests/database/`: **1064 pgTAP assertions**, run in
+- `tests/database/`: **1088 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests

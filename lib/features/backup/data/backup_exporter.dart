@@ -55,8 +55,9 @@ class BackupExporter {
   /// 2 added `planGroup` to categories; 3 added `isBudgetAccount` to
   /// accounts. Format 4 adds category `linkedAccountId`; 5 adds
   /// `isPlanArchived`; 6 adds `isPlanDeleted`; 7 writes every ID and
-  /// reference as text (cloud sync S6, Decision 6).
-  static const int formatVersion = 7;
+  /// reference as text (cloud sync S6, Decision 6); 8 adds category
+  /// `defaultTargetMinor`.
+  static const int formatVersion = 8;
 
   final BackupSource _source;
   final DateTime Function() _now;
@@ -103,6 +104,7 @@ class BackupExporter {
             'isPlanDeleted': category.isPlanDeleted,
             'planGroup': category.planGroup,
             'linkedAccountId': _id(category.linkedAccountId),
+            'defaultTargetMinor': category.defaultTargetMinor,
           },
       ],
       'transactions': [

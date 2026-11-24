@@ -23,7 +23,8 @@ enum PlanStatus {
 }
 
 /// One category's target, assigned, activity and available amounts in one
-/// month. Category targets and assignments do not carry over between months.
+/// month. Assignments do not carry over between months; a month without its
+/// own plan uses the category's default Target.
 @immutable
 final class CategoryPlanSummary {
   const CategoryPlanSummary({
@@ -36,7 +37,8 @@ final class CategoryPlanSummary {
 
   final Category category;
 
-  /// The month's budget, or `null` when no target is set.
+  /// The month's budget: its own plan's Target, or the category's default
+  /// Target when the month has no plan; `null` when neither sets one.
   final Money? target;
 
   /// Money set aside this month; zero when nothing is assigned.
@@ -101,6 +103,8 @@ final class CategoryPlanSummary {
 ///   archived spending rows are returned, including those without history.
 /// - Inflow categories never appear: plans are for spending only.
 /// - Plans for other months in [plans] are ignored.
+/// - A month with its own plan uses that plan's Target, even when it has
+///   none; a month without one uses the category's default Target.
 List<CategoryPlanSummary> planSummaries({
   required CalendarMonth month,
   required Iterable<Category> categories,
@@ -134,7 +138,9 @@ List<CategoryPlanSummary> planSummaries({
           category.isArchivedInPlans == archived)
         CategoryPlanSummary(
           category: category,
-          target: planByCategory[category.id]?.target,
+          target: planByCategory.containsKey(category.id)
+              ? planByCategory[category.id]!.target
+              : category.defaultTarget,
           assigned:
               planByCategory[category.id]?.assigned ?? Money.zero(currencyCode),
           activity: activityByCategory[category.id] ?? Money.zero(currencyCode),

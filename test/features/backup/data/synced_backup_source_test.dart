@@ -121,7 +121,7 @@ void main() {
     final backup = await export();
 
     expect(backup['app'], 'fundly');
-    expect(backup['formatVersion'], 7);
+    expect(backup['formatVersion'], 8);
     expect(backup['schemaVersion'], store.database.schemaVersion);
     expect(backup['exportedAt'], '2026-11-22T06:30:00.000Z');
   });
@@ -182,6 +182,7 @@ void main() {
         'isPlanDeleted': false,
         'planGroup': 'spending',
         'linkedAccountId': null,
+        'defaultTargetMinor': null,
       },
       {
         'id': cardRow,
@@ -192,6 +193,7 @@ void main() {
         'isPlanDeleted': false,
         'planGroup': 'liability',
         'linkedAccountId': card,
+        'defaultTargetMinor': null,
       },
       {
         'id': salary,
@@ -202,6 +204,7 @@ void main() {
         'isPlanDeleted': false,
         'planGroup': 'spending',
         'linkedAccountId': null,
+        'defaultTargetMinor': null,
       },
     ]);
     expect(backup['transactions'], [
@@ -281,7 +284,7 @@ void main() {
     expect(backup.fileName, 'fundly-backup-2026-11-22.json');
     expect(checkpoint.fileName, '2026-11-22_1430_reset_checkpoint.json');
     final decoded = jsonDecode(backup.contents) as Map<String, Object?>;
-    expect(decoded['formatVersion'], 7);
+    expect(decoded['formatVersion'], 8);
     expect(backup.contents, startsWith('{\n  "app": "fundly",'));
   });
 
@@ -317,7 +320,7 @@ void main() {
 
       final backup = await container.read(backupExporterProvider).export();
 
-      expect(backup['formatVersion'], 7);
+      expect(backup['formatVersion'], 8);
       expect((backup['accounts']! as List<Object?>), hasLength(3));
     });
 
@@ -336,7 +339,7 @@ void main() {
 
       final backup = await container.read(backupExporterProvider).export();
 
-      expect(backup['formatVersion'], 7);
+      expect(backup['formatVersion'], 8);
     });
   });
 }
