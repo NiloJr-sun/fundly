@@ -1,0 +1,31 @@
+# Fundly's own sync config on the LOCAL Supabase stack (supabase/, ports 5532x),
+# with self-hosted PowerSync (open edition) and its storage. For rehearsing
+# sync changes and developing the app against local sync. See README.md.
+# Passwords are fixed local values; nothing is exposed beyond the Mac.
+name: fundly-local-powersync
+services:
+  storage:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_PASSWORD: fundly-local-storage
+      POSTGRES_DB: powersync_storage
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d powersync_storage"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  powersync:
+    image: journeyapps/powersync-service:1.29.1
+    command: ["start", "-r", "unified"]
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+    volumes:
+      - ./service.yaml:/config/service.yaml:ro
+      - ../../../../powersync/sync-config.yaml:/config/sync-config.yaml:ro
+    ports:
+      - "127.0.0.1:55380:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

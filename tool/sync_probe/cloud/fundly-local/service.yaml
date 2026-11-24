@@ -1,0 +1,20 @@
+# Self-hosted PowerSync for Fundly's LOCAL Supabase stack only. The sync
+# config is the repository's powersync/sync-config.yaml, unchanged.
+replication:
+  connections:
+    - type: postgresql
+      uri: postgresql://powersync_local:fundly-local-powersync@host.docker.internal:55322/postgres
+      sslmode: disable
+storage:
+  type: postgresql
+  uri: postgresql://postgres:fundly-local-storage@storage:5432/powersync_storage
+  sslmode: disable
+port: 8080
+sync_config:
+  path: sync-config.yaml
+client_auth:
+  jwks_uri: http://host.docker.internal:55321/auth/v1/.well-known/jwks.json
+  audience:
+    - authenticated
+telemetry:
+  disable_telemetry_sharing: true

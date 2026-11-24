@@ -114,6 +114,32 @@ their user id. Wherever these documents say "owner" or "the caller's", read
   record the space.
 - Each record stores `created_by` and `updated_by` (the sender). They are not
   downloaded yet; results may include them, and clients ignore them.
+- Since C2, `owner_id` is set only on a Personal space's records (null in any
+  other space), so the legacy stream carries exactly Personal.
+
+### Creating and renaming spaces (C2, online only)
+
+```sql
+select public.fundly_create_space(space_id uuid, name text);
+select public.fundly_rename_space(space_id uuid, name text, expected_revision text);
+```
+
+Both return `{ "id", "name", "personal", "revision" }` (revision as a decimal
+string). Names are trimmed, 1–40 UTF-16 units, and unique among the spaces the
+caller owns, ignoring ASCII case; Personal can be renamed. Creating makes the
+caller the owner; retrying the same id and name returns the space. A user owns
+at most 10 spaces, Personal included. Both take a per-user lock.
+
+| SQLSTATE | Message | Meaning |
+|---|---|---|
+| `22023` | `invalid_request` | Missing id, or a malformed `expected_revision`. |
+| `P0001` | `invalid_name` | Empty after trimming, or over 40 UTF-16 units. |
+| `P0001` | `name_taken` | The caller already owns a space with that name. |
+| `P0001` | `space_id_unavailable` | The id is used by another space (or the same id with another name). |
+| `P0001` | `space_limit_reached` | The caller already owns 10 spaces. |
+| `P0001` | `not_space_member` / `space_owner_only` | Rename by a non-member / non-owner. |
+| `P0001` | `revision_conflict` | Rename from a stale revision; detail has `current_revision`. |
+
 
 ## Errors
 

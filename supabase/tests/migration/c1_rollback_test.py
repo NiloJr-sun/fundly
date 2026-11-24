@@ -4,8 +4,8 @@ Run from the repository root against the LOCAL stack only:
 
     python3 supabase/tests/migration/c1_rollback_test.py
 
-It RESETS the local database (fully migrated), writes data through the C1
-write API, applies supabase/rollback/20261124_c1_rollback.sql in one
+It RESETS the local database to the C1 state (migration 20261124020000),
+writes data through the C1 write API, applies supabase/rollback/20261124_c1_rollback.sql in one
 transaction, checks every existing value is unchanged, then runs the pre-C1
 server tests against the rolled-back database. The database is reset again at
 the end (fully migrated, empty).
@@ -18,6 +18,7 @@ from pathlib import Path
 from spaces_backfill_test import CONTAINER, RECORD_TABLES, execute, seed, snapshot, supabase
 
 ROLLBACK = Path('supabase/rollback/20261124_c1_rollback.sql')
+C1_LAST = '20261124020000'
 PRE_C1_PGTAP = ['account_write_api_test.sql', 'category_plan_write_api_test.sql', 'dataset_import_test.sql',
                 'dataset_initialize_test.sql', 'schema_test.sql', 'sync_protocol_test.sql', 'write_api_test.sql']
 PRE_C1_PYTHON = ['concurrency/write_api_test.py', 'concurrency/account_write_api_test.py',
@@ -36,7 +37,8 @@ def run(command):
 def main():
     if CONTAINER != 'supabase_db_fundly-schema-dev':
         sys.exit('This rehearsal only runs on the default local stack.')
-    supabase('db', 'reset')
+    # The C1 rollback applies to the C1 state (before C2's migration).
+    supabase('db', 'reset', '--version', C1_LAST)
     try:
         seed()
         before = snapshot(strip_new=True)

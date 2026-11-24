@@ -2,7 +2,8 @@
 
 Date: 2026-11-24
 
-Status: **proposed, awaiting approval.** Slice C2 of
+Status: **approved 2026-11-24** (Decisions C2-1 to C2-10, all as
+recommended). **C2.1 done 2026-11-24**; C2.2 next. Slice C2 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C0 (go) and C1
 (deployed). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner.
@@ -136,7 +137,7 @@ re-downloads once (identical data).
 
 ## Sub-slices
 
-### C2.1: Server and sync config (agent, local)
+### C2.1: Server and sync config (agent, local) ✅ Done 2026-11-24
 
 Migration (Personal-only `owner_id`, space RPCs, name rules, limit),
 publication and `sync-config.yaml` changes, rollback file. Tests: pgTAP for
@@ -147,6 +148,45 @@ all C1 and earlier tests unchanged. Local sync rehearsal with self-hosted
 PowerSync (as in C0): an old-style client (automatic stream only) still gets
 exactly Personal; a new-style client gets each space separately; a second
 space's records never reach the old stream.
+
+**Result** (local only; nothing deployed):
+
+- Migration `20261124030000_private_spaces.sql`: Personal-only `owner_id`
+  (the bridge trigger sets it from the space and refuses a mismatching one;
+  tombstones may have none), `fundly_create_space` and `fundly_rename_space`
+  with the name rules, the 10-space limit, idempotent create and
+  revision-checked rename; read grants on the space tables for the hosted
+  replication role. `powersync/sync-config.yaml` gains `fundly_spaces` and
+  `fundly_space_data` (opt-in; `fundly_user_data` untouched);
+  `powersync/publication.sql` lists seven tables.
+- New `tests/database/private_spaces_test.sql`, 38 checks: create (trim,
+  retry, id taken, names unique per owner ignoring case, empty and long
+  names, the limit with Personal counted), rename (owner, stale revision,
+  Personal, name taken, case-only change, editor and outsider refused),
+  anonymous refused, records written to a new space have no `owner_id` and
+  get their own default categories, the legacy filter finds only Personal,
+  a forced `owner_id` refused, tombstones without an owner, member-only reads.
+- **Sync, against the real config** on self-hosted PowerSync with the local
+  stack (new harness `tool/sync_probe/cloud/fundly-local/`): new
+  `tool/sync_probe/test/c2_space_streams_test.dart` passes. A 1.2.x-style
+  client gets exactly Personal and no space rows; 1.3.0-style stores get
+  exactly their space (Personal or the new one) plus the spaces list; a
+  non-member subscribing to the space gets nothing. With the membership
+  check removed from one query, the test fails (the outsider receives the
+  accounts). The S3 checks (`api_isolation.py`, `fundly_stream_test.dart`)
+  also pass on the new config.
+- Rollback `supabase/rollback/20261124_c2_rollback.sql`, rehearsed by new
+  `tests/migration/c2_rollback_test.py`: refuses and changes nothing while a
+  record lives outside Personal; otherwise applies in one transaction, keeps
+  every record, tombstone, receipt and what each user reads, removes empty
+  extra spaces, and the C1-era suites pass afterwards. The C1 rollback
+  rehearsal now starts from the C1 state.
+- Unchanged and passing: all earlier tests (982 pgTAP in total, lint, the
+  concurrency suites, the contract, import timing, the backfill check) and
+  the app (format, analyze, 1156 tests).
+- Docs: WRITE_API.md (creating and renaming spaces, errors), supabase and
+  powersync READMEs. For C2.4: OPERATIONS.md's publication rule becomes the
+  seven tables, and the hosted deploy runs `publication.sql` again.
 
 ### C2.2: App data layer (agent, local)
 

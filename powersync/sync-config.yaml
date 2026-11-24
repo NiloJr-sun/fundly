@@ -5,6 +5,13 @@
 # fundly_deleted_records) are not published and must never be added here.
 # One stream keeps all five tables at the same priority, which the client's
 # deferred foreign keys require.
+#
+# Shared spaces C2: fundly_user_data serves apps 1.2.x and is unchanged; since C2
+# owner_id is set only on Personal records, so it carries exactly Personal.
+# App 1.3.0 turns it off (includeDefaultStreams: false) and subscribes to the two
+# opt-in streams below: fundly_spaces, and fundly_space_data once per store with
+# that store's space_id. The membership subquery means a subscription for a
+# space the user is not a member of matches nothing.
 config:
   edition: 3
 streams:
@@ -25,3 +32,37 @@ streams:
       - SELECT id, month, category_id, target_amount_minor, assigned_amount_minor,
           currency_code, created_at, updated_at, revision
         FROM monthly_plans WHERE owner_id = auth.user_id()
+  fundly_spaces:
+    auto_subscribe: false
+    queries:
+      - SELECT id, name, personal_of, created_by, created_at, updated_at, revision
+        FROM spaces WHERE id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+      - SELECT id, space_id, user_id, role, created_at, updated_at
+        FROM space_members WHERE space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+  fundly_space_data:
+    auto_subscribe: false
+    queries:
+      - SELECT id, name, base_type, created_at, updated_at, revision
+        FROM custom_account_types
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+      - SELECT id, name, type, opening_balance_minor, currency_code, is_archived,
+          custom_type_id, is_budget_account, created_at, updated_at, revision
+        FROM accounts
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+      - SELECT id, name, kind, is_archived, is_plan_archived, is_plan_deleted,
+          plan_group, linked_account_id, created_at, updated_at, revision
+        FROM categories
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+      - SELECT id, type, amount_minor, currency_code, date, payee, category_id,
+          source_account_id, destination_account_id, note, created_at, updated_at, revision
+        FROM transactions
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
+      - SELECT id, month, category_id, target_amount_minor, assigned_amount_minor,
+          currency_code, created_at, updated_at, revision
+        FROM monthly_plans
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())

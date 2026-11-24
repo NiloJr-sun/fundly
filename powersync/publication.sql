@@ -1,4 +1,4 @@
--- S3: replicate exactly the five Fundly tables to PowerSync. Run by the owner in
+-- S3: replicate exactly the Fundly tables to PowerSync (seven since shared spaces C2). Run by the owner in
 -- the Supabase SQL editor after the S2 migrations are pushed. Idempotent.
 -- `SET TABLE` replaces the whole list, so the S1 probe tables leave the
 -- publication in the same statement. Backend-only tables are never published.
@@ -21,9 +21,12 @@ alter publication powersync set table
   public.accounts,
   public.categories,
   public.transactions,
-  public.monthly_plans;
+  public.monthly_plans,
+  public.spaces,
+  public.space_members;
 
--- Record this output: it must list exactly the five tables above.
+-- Record this output: it must list exactly the seven tables above (the five
+-- record tables, plus spaces and space_members since shared spaces C2).
 select schemaname, tablename
 from pg_catalog.pg_publication_tables
 where pubname = 'powersync'

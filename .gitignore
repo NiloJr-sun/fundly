@@ -59,3 +59,7 @@ app.*.map.json
 /tool/sync_probe/cloud/c0/.env.local
 /tool/sync_probe/cloud/c0/supabase/.branches/
 /tool/sync_probe/cloud/c0/supabase/.temp/
+
+# Fundly local sync (tool/sync_probe/cloud/fundly-local): generated endpoints and test users
+/tool/sync_probe/cloud/fundly-local/config.local.json
+/tool/sync_probe/cloud/fundly-local/.env.local
