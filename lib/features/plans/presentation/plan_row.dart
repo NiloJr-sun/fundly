@@ -48,9 +48,13 @@ class PlanRow extends StatelessWidget {
     final category = summary.category;
     final draft = this.draft;
     final row = Material(
+      // Rows sit on the plain surface, below their group's tinted band.
       color: draft == null
-          ? Colors.transparent
-          : theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+          ? theme.colorScheme.surface
+          : Color.alphaBlend(
+              theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              theme.colorScheme.surface,
+            ),
       child: InkWell(
         onTap: onTap,
         child: Padding(

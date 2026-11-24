@@ -329,7 +329,10 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   editingId: _editing?.category.id,
                   draft: _draft,
                   editingRowKey: _editingRowKey,
-                  bottomPadding: _panelHeight,
+                  // A little extra so the last row clears the panel's edge.
+                  bottomPadding: _panelHeight == 0
+                      ? 0
+                      : _panelHeight + Spacing.md,
                 ),
                 AsyncError() => const CenteredMessage(
                   'Your plans could not be loaded.',
@@ -435,40 +438,51 @@ class _PlanList extends ConsumerWidget {
         // One section per group that has rows, in [PlanGroup] order.
         for (final group in PlanGroup.values)
           if (rows.any((row) => row.category.planGroup == group))
-            Card(
+            // Nearly edge to edge with rounded corners: a tinted band for the
+            // group, then its rows on the plain surface, with hairlines
+            // between them.
+            Padding(
               key: ValueKey(group),
-              margin: const EdgeInsets.symmetric(
-                horizontal: Spacing.md,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.sm,
                 vertical: Spacing.xs,
               ),
-              clipBehavior: Clip.antiAlias,
-              child: ExpansionTile(
-                key: PageStorageKey('plans-group-${group.name}'),
-                initiallyExpanded: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                shape: const Border(),
-                collapsedShape: const Border(),
-                // The right edge matches the rows, so the totals line up.
-                tilePadding: const EdgeInsets.only(
-                  left: Spacing.sm,
-                  right: Spacing.xs,
-                ),
-                expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-                title: _groupHeader(group),
-                children: [
-                  for (final (index, summary) in _rowsIn(group).indexed) ...[
-                    if (index > 0) const Divider(height: 1),
-                    PlanRow(
-                      key: summary.category.id == editingId
-                          ? editingRowKey
-                          : null,
-                      summary: summary,
-                      onTap: () => onAssignedTap(summary),
-                      onActivityTap: () => onActivityTap(summary),
-                      draft: summary.category.id == editingId ? draft : null,
-                    ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Spacing.md),
+                child: ExpansionTile(
+                  key: PageStorageKey('plans-group-${group.name}'),
+                  initiallyExpanded: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  shape: const Border(),
+                  collapsedShape: const Border(),
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainer,
+                  collapsedBackgroundColor: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainer,
+                  // The right edge matches the rows, so the totals line up.
+                  tilePadding: const EdgeInsets.only(
+                    left: Spacing.sm,
+                    right: Spacing.xs,
+                  ),
+                  expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+                  title: _groupHeader(group),
+                  children: [
+                    for (final summary in _rowsIn(group)) ...[
+                      const Divider(height: 1),
+                      PlanRow(
+                        key: summary.category.id == editingId
+                            ? editingRowKey
+                            : null,
+                        summary: summary,
+                        onTap: () => onAssignedTap(summary),
+                        onActivityTap: () => onActivityTap(summary),
+                        draft: summary.category.id == editingId ? draft : null,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
       ],

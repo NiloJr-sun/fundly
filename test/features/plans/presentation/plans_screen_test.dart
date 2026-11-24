@@ -1348,6 +1348,29 @@ void main() {
       expect(find.byType(AllTransactionsScreen), findsOneWidget);
     });
 
+    testWidgets('sections are nearly full width, with rounded corners', (
+      tester,
+    ) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      final screen = tester.getRect(find.byType(PlansScreen));
+      final section = tester.getRect(find.byType(ExpansionTile).first);
+      final food = tester.getRect(row('Food'));
+      for (final rect in [section, food]) {
+        expect(rect.left, screen.left + 8);
+        expect(rect.right, screen.right - 8);
+      }
+      final clip = tester.widget<ClipRRect>(
+        find
+            .ancestor(
+              of: find.byType(ExpansionTile).first,
+              matching: find.byType(ClipRRect),
+            )
+            .first,
+      );
+      expect(clip.borderRadius, BorderRadius.circular(16));
+    });
+
     testWidgets('group totals line up with the row columns', (tester) async {
       await pumpScreen(tester, plans: [plan(foodId, 500000)]);
 
