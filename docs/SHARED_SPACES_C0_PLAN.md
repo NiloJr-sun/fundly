@@ -5,9 +5,10 @@ Date: 2026-11-24
 Status: **approved 2026-11-24** (Decisions C0-1 to C0-4, all as
 recommended). The PowerSync free plan allows only one instance (Fundly's
 production one), so C0-1 fell back to the **local** option, approved the same
-day (see C0-1). **C0.1–C0.4 done 2026-11-24**; findings and a go recommendation in
-[SHARED_SPACES_C0_FINDINGS.md](SHARED_SPACES_C0_FINDINGS.md), awaiting the
-owner's review. Slice C0 of
+day (see C0-1). **Complete 2026-11-24: go** (owner decision); findings in
+[SHARED_SPACES_C0_FINDINGS.md](SHARED_SPACES_C0_FINDINGS.md). The local C0
+environment was removed with `down.sh --wipe` (Decision C0-3); the files
+stay as the record and `up.sh` can recreate it. Slice C0 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md) (approved 2026-11-22).
 C0 is a throwaway prototype in the style of S1
 ([CLOUD_SYNC_S1_FINDINGS.md](CLOUD_SYNC_S1_FINDINGS.md)). It produces go/no-go

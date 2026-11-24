@@ -14,7 +14,7 @@ Last updated: 2026-11-17
 | Item | State |
 |---|---|
 | Flutter / Dart | 3.47.9 stable / Dart 3.13.7 |
-| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**. **Cloud sync released as 1.2.0 (3)** on 2026-11-23 (`docs/CLOUD_SYNC_PLAN.md`, S1–S7). Approved next: F.1, then planning shared spaces C0 |
+| Roadmap | **Phases 0–4 done** (MVP delivered), plus the post-MVP refinements below. Phase 5: **5.1 backup export and 5.2 restore done**. **Cloud sync released as 1.2.0 (3)** on 2026-11-23 (`docs/CLOUD_SYNC_PLAN.md`, S1–S7). F.1 done (1.2.1). Shared spaces C0 done 2026-11-24: go (`docs/SHARED_SPACES_C0_FINDINGS.md`). Approved next: planning shared spaces C1 |
 | Platforms | iOS (primary), Android best-effort |
 | Dependencies | drift + drift_flutter (SQLite), flutter_riverpod, intl, share_plus (share sheet for backups), file_picker (choosing a backup to restore); dev: drift_dev, build_runner, flutter_lints |
 | Database | Schema **v13** on the device; signed in, a synced store per user (Supabase + PowerSync). Tables: accounts (any number of budget accounts), custom_account_types, categories, transactions, monthly_plans; migration tests for every step |
@@ -251,6 +251,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | ID | Task | Status |
 |---|---|---|
 | F.1 | Name the record on refused-change cards (S7.2 row 5 follow-up) | ✅ Done 2026-11-23: 1.2.1 (4) live on the web (Vercel) and installed on the iPhone with `devicectl` (data copied off first; build kept in `~/fundly-releases/1.2.1-4/`) |
+| C0 | Shared spaces sync prototype (`docs/SHARED_SPACES_C0_PLAN.md`) | ✅ Done 2026-11-24: go (`docs/SHARED_SPACES_C0_FINDINGS.md`); local C0 environment removed |
 
 F.1 plan, approved 2026-11-23 with all three decisions as recommended:
 
@@ -338,8 +339,8 @@ Group tests by rule number, e.g. `group('Rule 5: transfers excluded from spendin
 ## 6. Next step
 
 The MVP roadmap, the post-MVP refinements, JSON backup export and restore
-(5.1, 5.2) and cloud sync (released as 1.2.0) are delivered. Approved next,
-one at a time: F.1 (above), then planning shared spaces slice C0
-(`docs/SHARED_SPACES_PROPOSAL.md`). The remaining Phase 5 proposal is CSV
+(5.1, 5.2), cloud sync (released as 1.2.0) and F.1 (1.2.1) are delivered.
+Shared spaces C0 is done with a go. Approved next: planning shared spaces
+slice C1 (`docs/SHARED_SPACES_PROPOSAL.md`), when the product owner asks. The remaining Phase 5 proposal is CSV
 export of transactions (5.3). Plan each task like any other: propose,
 approve, then build.

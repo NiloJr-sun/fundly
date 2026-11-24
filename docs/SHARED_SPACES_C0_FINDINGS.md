@@ -2,7 +2,9 @@
 
 Date: 2026-11-24
 
-Status: **written for the product owner's review.** Slice C0 of
+Status: **accepted 2026-11-24: go.** Recorded in CLAUDE.md §11 and the
+roadmap; the proposal corrections below are applied and the local C0
+environment is removed. Slice C0 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), planned in
 [SHARED_SPACES_C0_PLAN.md](SHARED_SPACES_C0_PLAN.md) (approved 2026-11-24).
 No Fundly app code, schema, backup format, production server object or

@@ -3,9 +3,9 @@
 Date: 2026-11-22
 
 Status: **approved 2026-11-22** (scope change and Decisions 1–10, all as
-recommended). Recorded in CLAUDE.md §6 and §11. Not started: per Decision
-10, C0 begins after cloud sync S6 and S7. Each slice is planned in detail
-and approved before implementation.
+recommended). Recorded in CLAUDE.md §6 and §11. **C0 done 2026-11-24: go**
+([findings](SHARED_SPACES_C0_FINDINGS.md)); C1 is next to plan. Each slice is
+planned in detail and approved before implementation.
 
 ## Goal
 
@@ -27,8 +27,9 @@ Every synced record belongs to exactly one user today:
   `transactions`, `monthly_plans`) have `owner_id → auth.users`.
 - Row-level security is `read_own`; writes go only through
   `fundly_apply_operations`, which takes `actor = auth.uid()`.
-- Uniqueness is per owner: account, category and custom type names; one
-  budget account (`accounts_one_budget_account`).
+- Uniqueness is per owner: account, category and custom type names. Any
+  number of budget accounts since 2026-11-23 (schema v13), so the old
+  `accounts_one_budget_account` index is gone.
 - Writes are serialized per user with
   `pg_advisory_xact_lock(hashtextextended('fundly:' || actor, 0))`.
 - Tombstones (`fundly_deleted_records`) and revision conflicts are
@@ -37,7 +38,7 @@ Every synced record belongs to exactly one user today:
   ([powersync/sync-config.yaml](../powersync/sync-config.yaml)).
 - The device keeps one synced store per user (`fundly_sync_<user id>`), and
   switches stores when the signed-in user changes.
-- The signed-out local database (schema v12) is a separate, single dataset.
+- The signed-out local database (schema v13) is a separate, single dataset.
 
 So "whose data is this" is answered by the user everywhere. This proposal
 moves that answer to the space, and makes the user's access come from
@@ -82,8 +83,9 @@ membership.
 - One stream for a space's records, subscribed with the selected `space_id`
   and checked against `space_members` on the server. Losing membership removes
   that space's rows from the device at the next checkpoint.
-- Whether PowerSync sync streams handle this membership filter cleanly,
-  including on web, is the first thing to prove (slice C0).
+- C0 proved this membership filter on iOS and Chrome (self-hosted
+  PowerSync), including removal; see the
+  [C0 findings](SHARED_SPACES_C0_FINDINGS.md) for what C1–C3 must add.
 
 ### App
 
@@ -121,7 +123,8 @@ membership.
   them, and moves all their records into it. No records change otherwise.
 - The device's existing per-user store is replaced by the Personal space's
   store; it downloads again (same as a new device).
-- Backups become per space (format decided with S6).
+- Backups become per space. S6 settled format 7 for one user's data; how
+  export and restore work per space is decided in C2.
 
 ## Slices
 

@@ -319,7 +319,9 @@ them:
     as a later scope: shared spaces with collaborators, per
     [docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md).
     Work starts after cloud sync S6 and S7, one slice at a time, each
-    planned and approved before implementation.)
+    planned and approved before implementation. C0, the sync prototype,
+    is done: go, 2026-11-24, per
+    [docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md).)
 -   Cloud sync and account registration. (Delivered 2026-11-23: Google
     sign-in and cloud sync, released as app 1.2.0 after the S7.2 release
     checklist passed. Deploying, rollback and backups:
@@ -532,9 +534,11 @@ rolling back, outages and backups. The database is at schema v13 and backups
 at format 7. [AGENTS.md](AGENTS.md) summarises the current state, commands
 and pitfalls for any coding agent.
 
-Approved next, one at a time: roadmap task F.1 (name the record on refused
-delete cards, as 1.2.1), then planning shared spaces slice C0
-([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
+F.1 (refused delete cards name the record) is live as 1.2.1. Shared spaces
+slice C0, the sync prototype, is done with a go
+([docs/SHARED_SPACES_C0_FINDINGS.md](docs/SHARED_SPACES_C0_FINDINGS.md)).
+Approved next: planning shared spaces slice C1, only when the product owner
+asks ([docs/SHARED_SPACES_PROPOSAL.md](docs/SHARED_SPACES_PROPOSAL.md)). The rest
 of Phase 5 in [docs/ROADMAP.md](docs/ROADMAP.md) is a proposal only; the
 product owner must approve any next step before work starts.
 
@@ -1289,5 +1293,27 @@ suggestions as approved decisions.
                           no detail lines on
                           deletes. No schema or
                           backup change.
+
+  2026-11-24              Shared spaces C0 (sync  Confirmed
+                          prototype): go. One
+                          device store per space,
+                          with a membership-
+                          checked stream, works
+                          on iOS and Chrome
+                          (self-hosted PowerSync,
+                          stand-in tables).
+                          Findings for C1-C3: a
+                          space is ready when it
+                          is in the member's
+                          spaces list; refused
+                          uploads are logged,
+                          never retried; release
+                          stream subscriptions on
+                          switch; different
+                          spaces in different
+                          tabs allowed. C0
+                          environment removed;
+                          files kept as the
+                          record.
 
   -----------------------------------------------------------------------

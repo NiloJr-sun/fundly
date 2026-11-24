@@ -1,5 +1,9 @@
 # Shared spaces C0: local environment
 
+**Removed 2026-11-24** after the owner's go (Decision C0-3). These files are
+the record; `up.sh` recreates the environment from scratch if it is needed
+again.
+
 Setup for the C0 sync prototype ([plan](../../../../docs/SHARED_SPACES_C0_PLAN.md),
 approved 2026-11-24). Everything runs **locally on the Mac** (Decision C0-1,
 local fallback: the PowerSync free plan allows one instance, which is
@@ -65,3 +69,4 @@ own `postgres:postgres`.
 | 2026-11-24 | After C0.2 | No c0 spaces, members or entries left; probe `flutter test` 19 passed, 7 skipped (live checks without credentials); probe analyze clean; Fundly root format, analyze and 1156 tests pass |
 | 2026-11-24 | C0.3 `c0_switching_test.dart` on the VM, the iPhone 16 Plus simulator and Chrome (`--platform chrome`, probe asset prefix) | 2 of 2 passed on each. Chrome first failed because two users in one page share one Supabase session; B now signs in under `localhost`. C0.2 checks rerun after the shared-code refactor: 6 of 6 |
 | 2026-11-24 | C0.3 manual round with `lib/c0_main.dart` on the simulator and in Chrome (owner) | All steps passed: stored copy reused on switching back; B sees only the shared space; edits cross devices; data kept after a reload; two tabs on different spaces stay separate |
+| 2026-11-24 | `down.sh --wipe` after the go decision; probe app uninstalled from the simulator | No C0 containers, volumes, config or test-user files left; Fundly's local database still running. Docker images kept (PowerSync 1.29.1, postgres 17.6-alpine) |
