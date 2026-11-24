@@ -19,6 +19,7 @@ or replication password into this repository, a config file or a chat.
 | `../tool/cloud_checks/api_isolation.py` | Hosted API isolation check (standard-library Python) |
 | `../tool/sync_probe/test/fundly_stream_test.dart` | Live stream isolation check (reuses the probe's pinned SDKs) |
 | `../tool/sync_probe/test/c2_space_streams_test.dart` | Shared spaces C2: the legacy stream carries only Personal; each `fundly_space_data` subscription only its space; a non-member gets nothing |
+| `../tool/sync_probe/test/c3_sharing_streams_test.dart` | Shared spaces C3: invite and accept bring a space to the member's device with members' names; their writes reach the owner; removal and deletion take it off |
 | `../tool/sync_probe/cloud/fundly-local/` | Self-hosted PowerSync on the local Supabase stack with this `sync-config.yaml`, to rehearse sync changes |
 
 ## Public configuration (owner fills in; no secrets)

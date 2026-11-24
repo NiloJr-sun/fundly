@@ -119,6 +119,9 @@ their user id. Wherever these documents say "owner" or "the caller's", read
 
 ### Creating and renaming spaces (C2, online only)
 
+All space and member management, including C3's invites, roles, leaving and
+deleting, is in [SPACES_API.md](SPACES_API.md).
+
 ```sql
 select public.fundly_create_space(space_id uuid, name text);
 select public.fundly_rename_space(space_id uuid, name text, expected_revision text);

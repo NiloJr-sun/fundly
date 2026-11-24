@@ -11,7 +11,8 @@
 # App 1.3.0 turns it off (includeDefaultStreams: false) and subscribes to the two
 # opt-in streams below: fundly_spaces, and fundly_space_data once per store with
 # that store's space_id. The membership subquery means a subscription for a
-# space the user is not a member of matches nothing.
+# space the user is not a member of matches nothing. Since C3 members see each
+# other's email and display name (space_members), nothing else about each other.
 config:
   edition: 3
 streams:
@@ -37,7 +38,7 @@ streams:
     queries:
       - SELECT id, name, personal_of, created_by, created_at, updated_at, revision
         FROM spaces WHERE id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
-      - SELECT id, space_id, user_id, role, created_at, updated_at
+      - SELECT id, space_id, user_id, role, email, display_name, created_at, updated_at
         FROM space_members WHERE space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
   fundly_space_data:
     auto_subscribe: false

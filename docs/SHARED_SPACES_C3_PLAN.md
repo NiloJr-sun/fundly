@@ -2,7 +2,8 @@
 
 Date: 2026-11-24
 
-Status: **proposed, awaiting approval.** Slice C3 of
+Status: **approved 2026-11-24** (Decisions C3-1 to C3-10, all as
+recommended). **C3.1 done 2026-11-24**; C3.2 next. Slice C3 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C2 (released as
 1.3.0). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner, and app changes reach `main` only
@@ -124,7 +125,7 @@ through the system share sheet (Messages, email…); the app sends no email
 
 ## Sub-slices
 
-### C3.1: Server (agent, local)
+### C3.1: Server (agent, local) ✅ Done 2026-11-24
 
 Migration (invites table and RPCs, member names, management RPCs, deletion,
 limits), rollback file, docs (WRITE_API.md, a new SPACES_API.md). Tests:
@@ -135,6 +136,41 @@ revoke, two owners changing one member); local sync rehearsal with
 fundly-local: an accepted member's devices get the space, a removed member's
 devices lose it, a deleted space leaves every member's devices, names reach
 other members.
+
+**Result** (local only; nothing deployed):
+
+- Migration `20261124040000_sharing.sql`: `space_invites` (hashed secrets,
+  7-day single-use, email-bound), members' `email` and `display_name`
+  (filled when they join, backfilled), and ten RPCs: create, list, revoke,
+  preview, accept and decline invites; set role, remove, leave; delete a
+  space. Membership changes take the space's write lock; every refusal is a
+  `P0001` message. New [supabase/SPACES_API.md](../supabase/SPACES_API.md).
+  `fundly_spaces` now also syncs members' email and display name.
+- New `tests/database/sharing_test.sql`, 77 checks: invites (secret once,
+  trimmed lower-case email, never listed, Personal refused, invalid email and
+  role, already a member, outsider and editor refused), preview and accept
+  only for the named email (another email learns nothing), single use,
+  decline, replace, revoke, expiry, roles and the last owner, a viewer who
+  joined cannot write, members see each other, leaving and removal (Personal,
+  last owner), both limits, re-inviting, deleting (owner only, typed name,
+  Personal refused, tombstones for every record). With the email check
+  disabled, the tests fail.
+- New `tests/concurrency/sharing_test.py`, 3 checks: an accept waiting behind
+  a revoke is refused and nobody joins; two owners changing one member are
+  serialized; two owners leaving at once leave one owner.
+- **Sync, with the real config on local sync:** new
+  `tool/sync_probe/test/c3_sharing_streams_test.dart` passes (twice): B sees
+  nothing before accepting, then the space and A's name and email; B's write
+  reaches A; removing B takes the space off B's store but not A's; deleting
+  it takes it off both.
+- Rollback `supabase/rollback/20261124_c3_rollback.sql` (removes invites and
+  the sharing functions, keeps every record and membership), rehearsed by new
+  `tests/migration/c3_rollback_test.py`: everything unchanged, the C2-era
+  suites pass afterwards.
+- Unchanged and passing: 1064 pgTAP in total, lint (after marking
+  `invite_hash` STABLE), all concurrency suites, the contract, import timing,
+  the backfill and all three rollback rehearsals, the isolation and stream
+  checks, the probe, and the app (1192 tests).
 
 ### C3.2: App data layer (agent, local)
 

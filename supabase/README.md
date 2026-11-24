@@ -47,13 +47,19 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   Personal records (null elsewhere), and the online `fundly_create_space` and
   `fundly_rename_space` RPCs ([WRITE_API.md](WRITE_API.md), Spaces). Grants the
   PowerSync replication role read access to `spaces` and `space_members`.
+- `migrations/20261124040000_sharing.sql` (C3.1): invites bound to an email,
+  members' names and emails, role changes, removing, leaving and deleting
+  spaces ([SPACES_API.md](SPACES_API.md)).
+- `rollback/20261124_c3_rollback.sql`: **not a migration.** Removes invites and
+  the sharing functions, keeping every record and membership; rehearsed by
+  `tests/migration/c3_rollback_test.py`.
 - `rollback/20261124_c2_rollback.sql`: **not a migration.** Restores the C1
   rules while no record lives outside a Personal space (refuses otherwise);
   rehearsed by `tests/migration/c2_rollback_test.py`.
 - `rollback/20261124_c1_rollback.sql`: **not a migration.** Restores the pre-C1
   API and rules without touching data; rehearsed by
   `tests/migration/c1_rollback_test.py`.
-- `tests/database/`: **982 pgTAP assertions**, run in
+- `tests/database/`: **1064 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -85,12 +91,14 @@ python3 supabase/tests/concurrency/sync_protocol_test.py
 python3 supabase/tests/concurrency/dataset_import_test.py
 python3 supabase/tests/concurrency/dataset_initialize_test.py
 python3 supabase/tests/concurrency/space_write_api_test.py
+python3 supabase/tests/concurrency/sharing_test.py
 python3 supabase/tests/client_contract_test.py
 python3 supabase/tests/performance/dataset_import_timing.py
 # These two RESET the local database (and leave it reset, fully migrated):
 python3 supabase/tests/migration/spaces_backfill_test.py
 python3 supabase/tests/migration/c1_rollback_test.py
 python3 supabase/tests/migration/c2_rollback_test.py
+python3 supabase/tests/migration/c3_rollback_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
