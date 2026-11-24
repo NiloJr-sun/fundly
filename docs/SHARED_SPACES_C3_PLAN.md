@@ -238,7 +238,17 @@ with an unsent change.
   sync config is the hotfix branch's (F.2); C3.4 deploys `main`'s, which keeps
   the F.2 condition.
 
-### C3.3: App UI (agent; owner reviews with two accounts)
+### C3.3: App UI (agent; owner reviews with two accounts) — code done 2026-11-24, owner review pending
+
+Built on branch `c3` in four parts (A: view-only gate and the role in
+titles; B: ⋮ menu per space, Members, invites with shown-once links, leave
+and delete; C: Join a space by pasted link, web `/join#secret` kept in the
+tab's session storage across sign-in, `vercel.json` rewrite, viewers skip
+first-time setup; D: the notice when a space leaves, Removed spaces kept
+read-only with Remove from this device). 1266 app tests pass; web release
+build compiles. Not yet checked in a real browser: the address bar losing
+the secret before Flutter reads it, and the invite surviving the Google
+sign-in redirect (release rows 13 and C3.3 review).
 
 Sheet actions, Members screen, invite dialog with share, Join a space (paste
 on iOS, link on the web), leave, remove and delete confirmations, "View
