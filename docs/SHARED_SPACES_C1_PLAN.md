@@ -2,7 +2,8 @@
 
 Date: 2026-11-24
 
-Status: **proposed, awaiting approval.** Slice C1 of
+Status: **approved 2026-11-24** (Decisions C1-1 to C1-6, all as
+recommended). **C1.1 done 2026-11-24**; C1.2 next. Slice C1 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after the C0 go
 ([findings](SHARED_SPACES_C0_FINDINGS.md)). The agent stops after each
 sub-slice and never commits or pushes. Production writes (`db push --remote`)
@@ -138,7 +139,7 @@ records the C1 decisions.
 
 ## Sub-slices
 
-### C1.1: Spaces, space_id and per-space rules (agent, local)
+### C1.1: Spaces, space_id and per-space rules (agent, local) ✅ Done 2026-11-24
 
 One migration: `spaces`, `space_members`, Personal spaces for every Auth
 user, `space_id`/`created_by`/`updated_by` on the five tables and the three
@@ -151,6 +152,52 @@ Tests: pgTAP schema tests (every constraint per space; backfill keeps every
 value and revision; Personal space and owner membership per user; reads by a
 non-member return nothing). All existing pgTAP, concurrency and contract
 tests still pass. `make-migrations` is not involved (server only).
+
+**Result** (migration `supabase/migrations/20261124010000_spaces.sql`, local
+stack only, nothing deployed):
+
+- New `supabase/tests/database/spaces_test.sql`: 34 checks pass (bridge
+  fills, Personal space on first write, immutable space and creator, revisions
+  as before, per-space names, keys and foreign keys, owners kept, reads by
+  membership for owner, member and non-member, no client writes to spaces or
+  members, tombstone space, user deletion as before).
+- New `supabase/tests/migration/spaces_backfill_test.py`: resets the local
+  database to the migration before C1.1, writes data through the current
+  write API for three users (edits up to revision 3, a delete, receipts),
+  migrates and checks every existing value in all eight tables is identical,
+  revisions included; each user has exactly one Personal space with owner
+  membership; every constraint validated. With the revision step removed, the
+  migration refuses to run at all (the new immutability rule).
+- Unchanged and passing: all other pgTAP (832 in total), `db lint` (now also
+  `fundly_access`), all six concurrency suites, the client contract (14),
+  import timing, and the app (format, analyze, 1156 tests).
+
+Adjustments made while building (no decision changed):
+
+1. **Personal spaces on first use come from the bridge trigger**
+   (`fundly_private.ensure_personal_space`), not from the RPCs, so every
+   path (old functions, initialize, import, tests) is covered in one place.
+   This is how Decision C1-5 is implemented.
+2. **Deleting an Auth user with no records still works**: their Personal
+   space and memberships go with them (`on delete cascade`;
+   `spaces.created_by` is cleared). A user with records still cannot be
+   deleted, as before. Without this, every test cleanup, and deleting a test
+   user in the dashboard, would fail.
+3. **Import's column lists.** `fundly_import_dataset` unnests arrays of whole
+   table rows with explicit column lists, so they had to include the three
+   new columns in C1.1 (otherwise imports fail). Only those lists changed.
+4. **One existing test changed**: the import test's "downloads exactly as
+   imported" check now removes the three server-only columns as well as
+   `owner_id`, since the stream downloads none of them.
+5. **Write responses include the new columns** (they already include
+   `owner_id`). Apps never read the returned record, so nothing changes for
+   them; C1.2 decides whether to leave them out.
+6. The read rule uses `space_id in (select fundly_access.my_space_ids())`,
+   evaluated once per query, with the helper in its own schema so clients get
+   no access to `fundly_private`.
+
+For C1.4: the runbook's lint command gains `fundly_access`, and its full
+local suite gains `spaces_backfill_test.py`.
 
 ### C1.2: Write API per space (agent, local)
 

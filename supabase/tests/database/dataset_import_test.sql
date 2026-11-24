@@ -326,7 +326,9 @@ select results_eq(
     ('Old card debt','spending',true,false,false,'liability',pg_temp.id('a','A4')),
     ('Salary','inflow',false,false,false,'spending',null)$$,
   'categories keep their flags, groups and links');
-select is((select fundly_private.transaction_wire(t) - 'owner_id' from public.transactions t
+-- Server-only columns are never downloaded (powersync/sync-config.yaml).
+select is((select fundly_private.transaction_wire(t) - array['owner_id','space_id','created_by','updated_by']
+    from public.transactions t
     where id = pg_temp.id('a','X1')::uuid),
   jsonb_build_object('id',pg_temp.id('a','X1'),'type','spending','amount_minor','150','currency_code','PHP',
     'date','2026-11-20','payee','Shop','category_id',pg_temp.id('a','C1'),
