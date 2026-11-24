@@ -2,9 +2,11 @@
 
 Date: 2026-11-24
 
-Status: **proposed**, waiting for the product owner's decisions (F.2-1 to
-F.2-3). The agent stops after each step, never commits or pushes, and does not
-touch production; production writes and deploys are run by the owner.
+Status: **approved 2026-11-24** (Decisions F.2-1 to F.2-3, all as
+recommended). **Complete 2026-11-24: the web separates spaces again**; see
+[Outcome](#outcome), which corrects parts of the release plan below. The
+agent stops after each step, never commits or pushes, and does not touch
+production; production writes and deploys are run by the owner.
 
 ## Problem
 
@@ -182,3 +184,35 @@ number (`app_version`), which invites version logic in the config.
   stays harmless after an upstream fix.
 - When done: a row in the CLAUDE.md decisions log, F.2 in ROADMAP.md, and the
   config deploy in `powersync/README.md`'s log.
+
+## Outcome
+
+Done 2026-11-24.
+
+- **Code:** `hotfix/1.3.1` was branched from `9cf1bd3` with steps 1–3 (commit
+  `f14e882`), then merged into `main` (`a3a1176`); the only conflict was the
+  sync config's header comment, and both paragraphs were kept. App tests, the
+  legacy, C2 and C3 stream probes on the local stack, and CI all passed.
+- **Correction to Decision F.2-1:** the web was already running `main`.
+  Vercel had deployed every push, so C3.2 (sharing data layer, synced schema
+  v4) had been live on the web since its push, still labelled 1.3.0 (5). The
+  earlier check missed it because it looked for C3.2's invite calls, which the
+  web build leaves out while no screen uses them; C3.2's refused-change
+  wording was in the live bundle. The push of `a3a1176` put the app change on
+  the web, so the hotfix branch was not deployed to Vercel.
+- **Sync config:** the owner deployed the **hotfix branch's** config to the
+  hosted PowerSync instance (`main`'s selects `space_members.email` and
+  `display_name`, which need the C3.1 migration). The owner then confirmed in
+  Chrome that Household shows only its own records, without clearing site
+  data.
+- **Decision F.2-3:** the read-only query found one non-Personal space without
+  categories: "C2 check" (`ed847d08-…`), the test space that
+  `c2_space_streams_test.dart` created on the hosted services during the 1.3.0
+  release (checklist row 6). The probe never initializes it; it is unrelated
+  to the leak. No real space needed repair. Delete it once C3 can delete
+  spaces.
+- **Deferred:** no 1.3.1 version bump and no iOS release (iOS was never
+  affected); both go out with C3. The 1.3.0 release check "Household's records
+  only in Household" (C2.4) tested one direction only; future space checks
+  also look for Personal records inside other spaces, on the web.
+- **Not done:** reporting the upstream bug to PowerSync.

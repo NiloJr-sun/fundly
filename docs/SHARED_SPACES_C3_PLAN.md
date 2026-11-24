@@ -230,6 +230,13 @@ with an unsent change.
 - **Not yet checked:** web store deletion with a second tab open (C3.3
   review in Chrome), and that existing members' names appear after an
   upgrade from 1.3.0 on a real device.
+- **Already on the web (found during F.2):** Vercel deploys every push to
+  `main`, so C3.2 has been live on the web since its push, still labelled
+  1.3.0 (5), against a server without C3.1. Its sharing services are not
+  reachable from any screen yet. Until C3.4, every push to `main` is a web
+  release: keep `main` releasable, or hold pushes. Before C3.4, the hosted
+  sync config is the hotfix branch's (F.2); C3.4 deploys `main`'s, which keeps
+  the F.2 condition.
 
 ### C3.3: App UI (agent; owner reviews with two accounts)
 
