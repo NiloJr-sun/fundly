@@ -12,6 +12,7 @@ import '../../accounts/domain/account.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/presentation/categories_screen.dart';
 import '../../categories/presentation/category_display.dart';
+import '../../spaces/presentation/screen_title.dart';
 import '../../spending/presentation/spending_providers.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
@@ -82,7 +83,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
     final summaries = ref.watch(planSummariesProvider(month));
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plans'),
+        title: const ScreenTitle('Plans'),
         actions: [
           IconButton(
             tooltip: 'Archived plans',

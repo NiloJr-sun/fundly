@@ -8,11 +8,13 @@ import '../../auth/domain/auth_identity.dart';
 import '../../auth/domain/greeting.dart';
 import '../../auth/presentation/google_sign_in_button.dart';
 import '../../auth/presentation/sign_in_actions.dart';
+import '../../spaces/presentation/space_sheet.dart';
 import '../../sync/presentation/sync_status_line.dart';
 
 /// The top of the Profile tab: a time-of-day greeting.
 ///
-/// Signed in: "Good evening, Nilo", "Signed in as …" and the sync status.
+/// Signed in: "Good evening, Nilo", "Signed in as …", the sync status and the
+/// active space, which opens the spaces sheet (shared spaces C2).
 /// As a guest: "Good evening", "Using Fundly as a guest" and, in builds that
 /// can sign in, Continue with Google.
 class ProfileGreetingCard extends ConsumerStatefulWidget {
@@ -94,6 +96,11 @@ class _ProfileGreetingCardState extends ConsumerState<ProfileGreetingCard> {
               ),
             ],
           ),
+          if (identity is SignedIn) ...[
+            const SizedBox(height: Spacing.sm),
+            const Divider(height: 1),
+            const SpaceSwitcherRow(),
+          ],
           if (identity is! SignedIn && canSignIn) ...[
             const SizedBox(height: Spacing.md),
             GoogleSignInButton(

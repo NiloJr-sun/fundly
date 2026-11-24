@@ -13,6 +13,8 @@ import '../../backup/presentation/copy_device_data_screen.dart';
 import '../../backup/presentation/export_backup.dart';
 import '../../backup/presentation/reset_data.dart';
 import '../../backup/presentation/restore_backup.dart';
+import '../../spaces/data/active_space.dart';
+import '../../spaces/presentation/space_providers.dart';
 import 'profile_greeting_card.dart';
 
 /// The Profile tab: who is using Fundly, their data backups, and signing out.
@@ -21,7 +23,13 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final signedIn = ref.watch(authIdentityProvider) is SignedIn;
+    final identity = ref.watch(authIdentityProvider);
+    final signedIn = identity is SignedIn;
+    // Shared spaces C2: actions name the active space when there are several.
+    final space = ref.watch(shownSpaceNameProvider);
+    final personalShown =
+        identity is SignedIn &&
+        ref.watch(activeSpaceIdProvider) == identity.userId;
     final deviceHasData =
         signedIn && (ref.watch(deviceHasDataProvider).value ?? false);
     final lastCopy = signedIn
@@ -43,7 +51,8 @@ class ProfileScreen extends ConsumerWidget {
           if (lastCopy != null) _CopiedNote(lastCopy),
           _ActionGroup(
             children: [
-              if (deviceHasData)
+              // Device data only ever goes into Personal (Decision C2-8).
+              if (deviceHasData && (!signedIn || personalShown))
                 _ActionTile(
                   icon: Icons.drive_folder_upload,
                   title: "Copy this device's data",
@@ -53,21 +62,27 @@ class ProfileScreen extends ConsumerWidget {
               _ActionTile(
                 icon: Icons.ios_share,
                 title: 'Export backup',
-                subtitle: 'Save all your records to a file',
+                subtitle: space == null
+                    ? 'Save all your records to a file'
+                    : 'Save all records in $space to a file',
                 onTap: (origin) => exportBackup(context, ref, origin: origin),
               ),
               _ActionTile(
                 icon: Icons.restore,
                 title: 'Restore from backup',
-                subtitle: 'Replace all records with a backup file',
+                subtitle: space == null
+                    ? 'Replace all records with a backup file'
+                    : 'Replace all records in $space with a backup file',
                 onTap: (origin) => restoreBackup(context, ref, origin: origin),
               ),
               _ActionTile(
                 icon: Icons.delete_forever,
                 title: 'Reset all data',
-                subtitle: signedIn
+                subtitle: !signedIn
+                    ? 'Delete every record on this phone'
+                    : space == null
                     ? 'Delete every record in your account'
-                    : 'Delete every record on this phone',
+                    : 'Delete every record in $space',
                 destructive: true,
                 onTap: (origin) => resetData(context, ref, origin: origin),
               ),

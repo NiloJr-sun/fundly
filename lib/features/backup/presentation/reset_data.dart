@@ -7,6 +7,7 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
+import '../../spaces/presentation/space_providers.dart';
 import '../data/backup_exporter.dart';
 import '../data/backup_importer.dart';
 import '../data/cloud_data_resetter.dart';
@@ -107,6 +108,8 @@ Future<void> _resetAccount(
 
   final store = ref.read(syncedStoreProvider);
   final resetter = ref.read(cloudDataResetterProvider);
+  // Reset acts on the active space (shared spaces C2, Decision C2-8).
+  final space = ref.read(shownSpaceNameProvider);
   if (store == null || resetter == null) {
     tell('Resetting your account is not available in this version.');
     return;
@@ -130,9 +133,10 @@ Future<void> _resetAccount(
     context,
     ref,
     current: current,
-    heading: 'In your account',
+    heading: 'In ${space ?? 'your account'}',
     consequence:
-        'Everything in your account is deleted on every device signed in as '
+        'Everything in ${space ?? 'your account'} is deleted on every device '
+        'signed in as '
         '${identity.email}, and Fundly starts fresh with its default '
         "categories. This can't be undone.",
     origin: origin,

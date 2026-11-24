@@ -8,6 +8,7 @@ import '../../../core/money/money.dart';
 import '../../../core/sync/synced_store.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/domain/auth_identity.dart';
+import '../../spaces/presentation/space_providers.dart';
 import '../data/backup_exporter.dart';
 import '../data/backup_importer.dart';
 import '../data/backup_source.dart';
@@ -340,11 +341,14 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
       await showDialog<bool>(
         context: context,
         builder: (_) => CheckpointConfirmDialog(
-          title: "Replace your account's data?",
-          heading: 'In your account now',
+          title: _space == null
+              ? "Replace your account's data?"
+              : 'Replace the data in $_space?',
+          heading: 'In ${_space ?? 'your account'} now',
           current: preview.account,
           consequence:
-              'Everything in your account is deleted on every device signed '
+              'Everything in ${_space ?? 'your account'} is deleted on every '
+              'device signed '
               'in as ${identity.email}, then replaced with '
               '${_words.replacedWith}',
           phrase: replaceConfirmationPhrase,
@@ -362,6 +366,9 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text)));
 
+  /// The active space's name when the user has several (shared spaces C2).
+  String? get _space => ref.read(shownSpaceNameProvider);
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(_words.title)),
@@ -373,6 +380,7 @@ class _CopyDeviceDataScreenState extends ConsumerState<CopyDeviceDataScreen> {
           preview,
           words: _words,
           email: _identity?.email ?? '',
+          space: ref.watch(shownSpaceNameProvider),
           onCopy: () => _copy(preview),
         ),
         _Checked(:final check) => _CheckedView(check, words: _words),
@@ -426,12 +434,16 @@ class _PreviewView extends StatelessWidget {
     this.preview, {
     required this.words,
     required this.email,
+    required this.space,
     required this.onCopy,
   });
 
   final CopyPreview preview;
   final _Words words;
   final String email;
+
+  /// The active space's name when the user has several (shared spaces C2).
+  final String? space;
   final VoidCallback onCopy;
 
   @override
@@ -445,15 +457,19 @@ class _PreviewView extends StatelessWidget {
         Text(words.source, style: theme.textTheme.titleSmall),
         Text(describeCounts(preview.sourceCounts)),
         const SizedBox(height: Spacing.md),
-        Text('In your account ($email)', style: theme.textTheme.titleSmall),
+        Text(
+          'In ${space ?? 'your account'} ($email)',
+          style: theme.textTheme.titleSmall,
+        ),
         Text(describeCounts(preview.account)),
         const SizedBox(height: Spacing.lg),
         Text(
           replace
-              ? 'Your account already has data. Replacing deletes it on every '
-                    'device signed in as $email, ${words.replaces}'
-              : 'Your account has only the default categories. '
-                    '${words.fillsEmpty}',
+              ? '${space ?? 'Your account'} already has data. Replacing '
+                    'deletes it on every device signed in as $email, '
+                    '${words.replaces}'
+              : '${space ?? 'Your account'} has only the default '
+                    'categories. ${words.fillsEmpty}',
         ),
         const SizedBox(height: Spacing.sm),
         Text(
@@ -470,7 +486,11 @@ class _PreviewView extends StatelessWidget {
               foregroundColor: colors.onError,
             ),
             onPressed: onCopy,
-            child: const Text("Replace my account's data"),
+            child: Text(
+              space == null
+                  ? "Replace my account's data"
+                  : 'Replace the data in $space',
+            ),
           )
         else
           FilledButton(onPressed: onCopy, child: Text(words.go)),

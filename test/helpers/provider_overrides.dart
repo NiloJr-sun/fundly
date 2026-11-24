@@ -13,6 +13,8 @@ import 'package:fundly/features/categories/presentation/categories_providers.dar
 import 'package:fundly/features/plans/data/plan_repository.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/presentation/plans_providers.dart';
+import 'package:fundly/features/spaces/data/space_directory.dart';
+import 'package:fundly/features/spaces/domain/space.dart';
 import 'package:fundly/features/transactions/data/transaction_repository.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/presentation/transactions_providers.dart';
@@ -45,6 +47,7 @@ List<Override> fakeAccounts(
   FakeTransactionRepository? transactionRepository,
   List<CustomAccountType> customTypes = const [],
   FakeCustomAccountTypeRepository? customTypeRepository,
+  List<Space> spaces = const [],
 }) {
   final everyAccount = [...accounts, ...archived];
   Account? accountById(String id) {
@@ -67,6 +70,9 @@ List<Override> fakeAccounts(
       (identity, spaceId) => FakeSyncedStore(identity, spaceId: spaceId),
     ),
     unsafeSyncedRowCountProvider.overrideWith((ref) => Stream.value(0)),
+    // The spaces list (shared spaces C2) without opening the store's
+    // database; empty means screens look as they did before spaces.
+    spacesProvider.overrideWith((ref) => Stream.value(spaces)),
     refusedChangesProvider.overrideWith((ref) => Stream.value(const [])),
     activeAccountsProvider.overrideWith((ref) => Stream.value(accounts)),
     archivedAccountsProvider.overrideWith((ref) => Stream.value(archived)),

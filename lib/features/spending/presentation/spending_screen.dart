@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/spacing.dart';
+import '../../spaces/presentation/screen_title.dart';
 import '../../transactions/presentation/all_transactions_screen.dart';
 import '../../transactions/presentation/transaction_form_screen.dart';
 import '../../transactions/presentation/transaction_type_picker.dart';
@@ -26,7 +27,7 @@ class SpendingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Spending'),
+        title: const ScreenTitle('Spending'),
         actions: [
           IconButton(
             tooltip: 'All transactions',

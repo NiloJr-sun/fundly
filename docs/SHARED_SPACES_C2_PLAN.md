@@ -3,7 +3,7 @@
 Date: 2026-11-24
 
 Status: **approved 2026-11-24** (Decisions C2-1 to C2-10, all as
-recommended). **C2.1 and C2.2 done 2026-11-24**; C2.3 next. Slice C2 of
+recommended). **C2.1–C2.3 done 2026-11-24**; C2.4 (release 1.3.0) next. Slice C2 of
 [SHARED_SPACES_PROPOSAL.md](SHARED_SPACES_PROPOSAL.md), after C0 (go) and C1
 (deployed). The agent stops after each sub-slice and never commits or pushes;
 production writes are run by the owner.
@@ -235,11 +235,46 @@ remembered space, readiness, envelopes; the existing app suite unchanged.
   moment after the store reports synced (queued, then uploaded), as for
   Personal on a first sign-in.
 
-### C2.3: App UI (agent; owner reviews on the simulator and Chrome)
+### C2.3: App UI (agent; owner reviews on the simulator and Chrome) ✅ Done 2026-11-24
 
 The Profile card row and bottom sheet, Create and Rename dialogs (name rules,
 online-only message), the space name on Spending and Plans, per-space wording
 on backup and reset. Widget tests for the sheet, dialogs and headers.
+
+**Result:**
+
+- **Profile card (option A):** a row under the sync status shows the active
+  space and role ("Personal · Owner"); it opens a sheet listing the spaces
+  (active ticked, role, "Personal" marked), Rename for owners, and Create
+  space ("Needs a connection").
+- **Create and Rename dialogs:** the server's name rules checked first
+  (empty, over 40, a name you already own, ignoring case), then the server;
+  messages for no connection, the 10-space limit, a rename from another
+  device and non-owners. A retry after a lost connection reuses the same id,
+  so it cannot create two spaces. Creating switches to the new space.
+- **Which space you are in:** with more than one space, Spending and Plans
+  show its name under the title, and Profile's export, restore and reset
+  rows, the reset confirmation and the restore screen name it; with only
+  Personal every text is unchanged. "Copy this device's data" appears only
+  while Personal is shown.
+- Tests: 14 widget tests (card row, sheet, switching, loading state, both
+  dialogs with their checks and errors, retry id, titles, Profile wording and
+  the copy row). The shared test overrides now supply an empty spaces list,
+  so widget tests do not open the store's database for it (a first run left
+  Drift timers pending in five Profile tests). All 1191 app tests pass.
+- **Development entry point** `tool/dev/local_main.dart` (with
+  `local_defines.sh` and a README): runs the real app against local sync,
+  signing in with a local test user; refuses any non-local server.
+- **Owner review, 2026-11-24, on the iPhone 16 Plus simulator and in Chrome
+  against local sync: every step passed** (the card and sheet; switching
+  between Personal and Business showing only each one's records and naming
+  the space on Spending, Plans and Profile; creating a space that then got
+  its default categories and appeared on the other device; renaming seen on
+  the other device; a transaction added in Business staying in Business;
+  Chrome returning to its last space after a reload).
+- The simulator now has this development build installed (its earlier
+  production store is untouched); reinstall a release build there before
+  using it against production again.
 
 ### C2.4: Release 1.3.0 (owner and agent)
 
