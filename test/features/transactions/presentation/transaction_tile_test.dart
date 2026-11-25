@@ -93,7 +93,8 @@ void main() {
     expect(find.textContaining('RCBC Credit · Not in Plans'), findsOneWidget);
 
     await shown(tester, saved(spending(from: rcbcCardId), id: recordIdOf(2)));
-    expect(find.textContaining('Food · RCBC Credit'), findsOneWidget);
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.textContaining('RCBC Credit'), findsOneWidget);
     expect(find.textContaining('Not in Plans'), findsNothing);
 
     await shown(tester, saved(spending(), id: recordIdOf(3)));
@@ -115,6 +116,52 @@ void main() {
     expect(find.text('Transfer'), findsOneWidget);
     expect(find.byIcon(Icons.swap_horiz), findsOneWidget);
     expect(find.textContaining('BDO Savings → Cash Wallet'), findsOneWidget);
+  });
+
+  group('R.20: Spending and Inflow are titled by their category', () {
+    testWidgets('the payee moves to the details line', (tester) async {
+      await shown(tester, saved(spending(), id: recordIdOf(1)));
+      expect(find.text('Food'), findsOneWidget);
+      expect(
+        find.text('Nov 16, 2026 · SM Supermarket · BDO Savings'),
+        findsOneWidget,
+      );
+
+      await shown(tester, saved(inflow(), id: recordIdOf(2)));
+      expect(find.text('Salary'), findsOneWidget);
+      expect(find.textContaining('Employer'), findsOneWidget);
+    });
+
+    testWidgets('without a payee, only the date and account', (tester) async {
+      await shown(tester, saved(spending(payee: ''), id: recordIdOf(3)));
+      expect(find.text('Food'), findsOneWidget);
+      expect(find.text('Nov 16, 2026 · BDO Savings'), findsOneWidget);
+    });
+
+    testWidgets('without a category, the payee, else the type name', (
+      tester,
+    ) async {
+      await shown(
+        tester,
+        saved(spending(from: rcbcCardId, category: null), id: recordIdOf(4)),
+      );
+      expect(find.text('SM Supermarket'), findsOneWidget);
+
+      await shown(
+        tester,
+        saved(
+          spending(from: rcbcCardId, category: null, payee: ''),
+          id: recordIdOf(5),
+        ),
+      );
+      expect(find.text('Spending'), findsOneWidget);
+
+      await shown(
+        tester,
+        saved(inflow(category: null, payee: ''), id: recordIdOf(6)),
+      );
+      expect(find.text('Inflow'), findsOneWidget);
+    });
   });
 
   group('a debt payment without a payee is titled by the account paid', () {

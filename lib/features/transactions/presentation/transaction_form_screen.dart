@@ -318,7 +318,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           const SizedBox(height: Spacing.md),
           TextFormField(
             controller: _payeeController,
-            decoration: InputDecoration(labelText: payeeLabel(_type)),
+            decoration: InputDecoration(labelText: payeeFieldLabel(_type)),
             textCapitalization: TextCapitalization.words,
             maxLength: maxPayeeLength,
             validator: (_) => _errorFor(TransactionField.payee),

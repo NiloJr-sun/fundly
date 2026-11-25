@@ -88,8 +88,6 @@ from (values
   ($$update public.transactions set currency_code = 'USD'$$, '23514', 'non-PHP transaction'),
   ($$update public.transactions set destination_account_id = source_account_id where type = 'transfer'$$, '23514', 'self transfer is rejected'),
   ($$update public.transactions set payee = repeat('x',61)$$, '23514', 'payee length limit'),
-  ($$update public.transactions set payee = '  ' where type = 'spending'$$, '23514', 'spending requires payee'),
-  ($$update public.transactions set payee = '' where type = 'inflow'$$, '23514', 'inflow requires payee'),
   ($$update public.transactions set note = repeat('x',501)$$, '23514', 'note length limit'),
   ($$update public.transactions set date = '2026-02-30'$$, '22008', 'invalid calendar day'),
   ($$update public.transactions set date = 'infinity'$$, '23514', 'infinite date rejected'),
@@ -115,6 +113,14 @@ from (values
   ($$update public.monthly_plans set category_id = '30000000-0000-4000-8000-000000000004' where id = '50000000-0000-4000-8000-000000000001'$$, '23503', 'plan category must share owner'),
   ($$insert into public.monthly_plans(id,owner_id,month,category_id,assigned_amount_minor) values(gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','2026-11','30000000-0000-4000-8000-000000000001',0)$$, '23505', 'one monthly plan per owner/category/month')
 ) as cases(statement, state, description);
+-- R.20: Spending and Inflow may have no payee. Undone inside the block, so the
+-- later checks see the original rows.
+select lives_ok($test$do $block$ begin
+    update public.transactions set payee = '' where type in ('spending', 'inflow');
+    raise exception 'undo' using errcode = 'P0099';
+  exception when sqlstate 'P0099' then null;
+  end $block$$test$,
+  'R.20: spending and inflow without a payee are accepted');
 select lives_ok($$insert into public.accounts(id,owner_id,name,type,opening_balance_minor,is_budget_account) values(gen_random_uuid(),'a0000000-0000-4000-8000-000000000001','Another budget','savingsCash',0,true)$$,
   'several budget accounts per owner');
 

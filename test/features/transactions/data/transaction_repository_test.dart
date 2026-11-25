@@ -145,7 +145,6 @@ void main() {
           throwsValidation({
             TransactionValidationError.amountNotPositive,
             TransactionValidationError.sourceAccountWrongType,
-            TransactionValidationError.payeeMissing,
             TransactionValidationError.categoryWrongKind,
           }),
         );

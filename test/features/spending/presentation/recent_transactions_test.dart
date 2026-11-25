@@ -80,7 +80,7 @@ void main() {
   testWidgets('tapping a transaction opens its details', (tester) async {
     await pump(tester, newestFirst(2));
 
-    await tester.tap(find.text('Shop 2'));
+    await tester.tap(find.textContaining('Shop 2'));
     await tester.pumpAndSettle();
 
     expect(find.byType(TransactionDetailScreen), findsOneWidget);

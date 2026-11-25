@@ -142,7 +142,7 @@ void main() {
       expect(find.text(hint), findsOneWidget);
       expect(find.text('Category (optional)'), findsOneWidget);
       await tester.enterText(field('Amount'), '100');
-      await tester.enterText(field('Paid to'), '7/11');
+      await tester.enterText(field('Paid to (optional)'), '7/11');
       await save(tester);
 
       final draft = repository.created.single;
@@ -154,7 +154,7 @@ void main() {
       await openForm(tester, TransactionKind.spending);
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
       await tester.enterText(field('Amount'), '100');
-      await tester.enterText(field('Paid to'), '7/11');
+      await tester.enterText(field('Paid to (optional)'), '7/11');
       await save(tester);
 
       expect(repository.created, isEmpty);
@@ -168,7 +168,7 @@ void main() {
 
       await tester.enterText(field('Amount'), '1,250.50');
       await choose(tester, 'Paid from', 'RCBC Credit · Credit');
-      await tester.enterText(field('Paid to'), ' Jollibee ');
+      await tester.enterText(field('Paid to (optional)'), ' Jollibee ');
       // Optional for a card purchase (R.18), but still saved when chosen.
       await choose(tester, 'Category (optional)', 'Food');
       await tester.enterText(field('Note (optional)'), 'Lunch');
@@ -187,6 +187,18 @@ void main() {
       expect(find.text('Spending saved'), findsOneWidget);
     });
 
+    testWidgets('saves without a payee (R.20)', (tester) async {
+      await openForm(tester, TransactionKind.spending);
+
+      await tester.enterText(field('Amount'), '120');
+      await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'Category', 'Food');
+      await save(tester);
+
+      expect(repository.created.single.payee, '');
+      expect(repository.created.single.categoryId, foodId);
+    });
+
     testWidgets('shows every missing field at once and saves nothing', (
       tester,
     ) async {
@@ -196,7 +208,7 @@ void main() {
 
       expect(find.text('Enter an amount.'), findsOneWidget);
       expect(find.text('Choose an account.'), findsOneWidget);
-      expect(find.text('Enter who you paid.'), findsOneWidget);
+      expect(find.text('Enter who you paid.'), findsNothing, reason: 'R.20');
       expect(find.text('Choose a category.'), findsOneWidget);
       expect(repository.created, isEmpty);
     });
@@ -259,7 +271,7 @@ void main() {
 
       await tester.enterText(field('Amount'), '10');
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
-      await tester.enterText(field('Paid to'), 'Grab');
+      await tester.enterText(field('Paid to (optional)'), 'Grab');
       await choose(tester, 'Category', 'Food');
       await save(tester);
 
@@ -285,7 +297,7 @@ void main() {
 
       await tester.enterText(field('Amount'), '10');
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
-      await tester.enterText(field('Paid to'), 'Grab');
+      await tester.enterText(field('Paid to (optional)'), 'Grab');
       await choose(tester, 'Category', 'Food');
       await save(tester);
 
@@ -301,7 +313,7 @@ void main() {
 
       await tester.enterText(field('Amount'), '30000');
       await choose(tester, 'Deposited to', 'BDO Savings · Savings / Cash');
-      await tester.enterText(field('Received from'), 'Employer');
+      await tester.enterText(field('Received from (optional)'), 'Employer');
       await save(tester);
 
       final draft = repository.created.single;
@@ -318,20 +330,23 @@ void main() {
 
       await tester.enterText(field('Amount'), '100');
       await choose(tester, 'Deposited to', 'BDO Savings · Savings / Cash');
-      await tester.enterText(field('Received from'), 'Employer');
+      await tester.enterText(field('Received from (optional)'), 'Employer');
       await choose(tester, 'Category (optional)', 'Salary');
       await save(tester);
 
       expect(repository.created.single.categoryId, salaryId);
     });
 
-    testWidgets('asks who paid you', (tester) async {
+    testWidgets('saves without a payee (R.20)', (tester) async {
       await openForm(tester, TransactionKind.inflow);
+      expect(field('Received from (optional)'), findsOneWidget);
 
+      await tester.enterText(field('Amount'), '500');
+      await choose(tester, 'Deposited to', 'BDO Savings · Savings / Cash');
       await save(tester);
 
-      expect(find.text('Enter who paid you.'), findsOneWidget);
-      expect(find.text('Choose a category.'), findsNothing);
+      expect(repository.created.single.payee, '');
+      expect(repository.created.single.categoryId, isNull);
     });
   });
 
@@ -710,11 +725,10 @@ void main() {
       await openForm(tester, TransactionKind.spending, editing: original);
 
       await tester.enterText(field('Amount'), '0');
-      await tester.enterText(field('Paid to'), '');
+      await tester.enterText(field('Paid to (optional)'), '');
       await save(tester);
 
       expect(find.text('Enter an amount greater than zero.'), findsOneWidget);
-      expect(find.text('Enter who you paid.'), findsOneWidget);
       expect(repository.updated, isEmpty);
     });
   });

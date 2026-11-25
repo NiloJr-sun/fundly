@@ -38,7 +38,6 @@ enum TransactionValidationError {
   /// Rule 7: money cannot move from an account to itself.
   sameSourceAndDestination,
 
-  payeeMissing,
   payeeTooLong,
 
   /// Spending requires a category, unless it is paid from a Credit account
@@ -228,19 +227,12 @@ Account? _checkAccount({
   return account;
 }
 
+/// The payee is optional for every type (R.20); it only has a length limit.
 void _checkPayee(
   TransactionDraft draft,
   Set<TransactionValidationError> errors,
 ) {
-  final payee = draft.payee.trim();
-  final required = switch (draft.type) {
-    TransactionType.spending || TransactionType.inflow => true,
-    TransactionType.transfer || TransactionType.creditCardPayment => false,
-  };
-  if (required && payee.isEmpty) {
-    errors.add(TransactionValidationError.payeeMissing);
-  }
-  if (payee.length > maxPayeeLength) {
+  if (draft.payee.trim().length > maxPayeeLength) {
     errors.add(TransactionValidationError.payeeTooLong);
   }
 }

@@ -64,7 +64,8 @@ void main() {
           .widgetList<ListTile>(find.byType(ListTile))
           .map((tile) => (tile.title! as Text).data)
           .toList();
-      expect(titles, ['Jollibee', 'Transfer', 'Employer']);
+      // Spending and Inflow are titled by their category (R.20).
+      expect(titles, ['Food', 'Transfer', 'Salary']);
     });
 
     testWidgets('shows amounts, categories and accounts', (tester) async {
@@ -73,12 +74,18 @@ void main() {
       expect(find.text('-₱150.00'), findsOneWidget);
       expect(find.text('₱2,000.00'), findsOneWidget);
       expect(find.text('+₱30,000.00'), findsOneWidget);
-      expect(find.text('Nov 16, 2026 · Food · Cash Wallet'), findsOneWidget);
+      expect(
+        find.text('Nov 16, 2026 · Jollibee · Cash Wallet'),
+        findsOneWidget,
+      );
       expect(
         find.text('Nov 16, 2026 · BDO Savings → Cash Wallet'),
         findsOneWidget,
       );
-      expect(find.text('Nov 16, 2026 · Salary · BDO Savings'), findsOneWidget);
+      expect(
+        find.text('Nov 16, 2026 · Employer · BDO Savings'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows an empty state', (tester) async {
@@ -119,10 +126,10 @@ void main() {
       await pump(tester, const AccountDetailScreen(accountId: walletId));
 
       // Wallet: +2,000 transfer in, -150 lunch. Salary went to BDO.
-      expect(find.text('Jollibee'), findsOneWidget);
+      expect(find.textContaining('Jollibee'), findsOneWidget);
       expect(find.text('-₱150.00'), findsOneWidget);
       expect(find.text('+₱2,000.00'), findsOneWidget);
-      expect(find.text('Employer'), findsNothing);
+      expect(find.textContaining('Employer'), findsNothing);
       expect(find.text('₱1,850.00'), findsOneWidget, reason: 'balance');
     });
 
@@ -274,7 +281,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Delete this transaction?'), findsOneWidget);
-      expect(find.textContaining('Jollibee · ₱150.00'), findsOneWidget);
+      expect(find.textContaining('Food · ₱150.00'), findsOneWidget);
 
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();

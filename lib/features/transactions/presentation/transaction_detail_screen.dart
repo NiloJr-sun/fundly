@@ -89,6 +89,7 @@ String _titleOf(WidgetRef ref, Transaction transaction) => transactionTitle(
   destinationName: ref
       .read(accountsByIdProvider)[transaction.destinationAccountId]
       ?.name,
+  categoryName: ref.read(categoriesByIdProvider)[transaction.categoryId]?.name,
 );
 
 /// Deletes [transaction] after confirmation. Balances recalculate on their

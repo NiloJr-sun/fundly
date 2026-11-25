@@ -238,8 +238,10 @@ select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{categories,1,name}','"foo
 -- Transactions.
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,amount_minor}','"0"')),
   'invalid_import transactions[0].amount_minor invalid_value','amounts are positive');
-select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,payee}','"  "')),
-  'invalid_import transactions[0].payee invalid_value','Spending needs a payee');
+select is(pg_temp.try_rolled_back(jsonb_set(pg_temp.dataset('x'),'{transactions,0,payee}','"  "')),
+  'ok','R.20: a Spending may have no payee');
+select is(pg_temp.try_rolled_back(jsonb_set(pg_temp.dataset('x'),'{transactions,1,payee}','""')),
+  'ok','R.20: an Inflow may have no payee');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,payee}',to_jsonb(repeat('p',61)))),
   'invalid_import transactions[0].payee invalid_value','payees are at most 60 characters');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,note}',to_jsonb(repeat('n',501)))),

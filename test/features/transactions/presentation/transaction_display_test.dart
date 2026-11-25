@@ -111,6 +111,27 @@ void main() {
     );
   });
 
+  test('R.20: Spending and Inflow are titled by their category', () {
+    expect(transactionTitle(spending(), categoryName: 'Food'), 'Food');
+    expect(transactionTitle(inflow(), categoryName: 'Salary'), 'Salary');
+    expect(transactionTitle(spending(payee: ''), categoryName: 'Food'), 'Food');
+    expect(
+      transactionTitle(spending(category: null)),
+      'SM Supermarket',
+      reason: 'no category: the payee',
+    );
+    expect(
+      transactionTitle(spending(category: null, payee: '')),
+      'Spending',
+      reason: 'neither: the type name',
+    );
+    expect(
+      transactionTitle(transfer(payee: 'Rent'), categoryName: 'Food'),
+      'Rent',
+      reason: 'transfers are never titled by a category',
+    );
+  });
+
   test('the picker separates Transfer from Loan payment', () {
     expect(
       transactionKindDescription(TransactionKind.transfer),

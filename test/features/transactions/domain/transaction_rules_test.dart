@@ -264,9 +264,9 @@ void main() {
   });
 
   group('payee', () {
-    test('required for spending and inflow', () {
-      expect(validate(spending(payee: '  ')), {E.payeeMissing});
-      expect(validate(inflow(payee: '')), {E.payeeMissing});
+    test('optional for spending and inflow (R.20)', () {
+      expect(validate(spending(payee: '  ')), isEmpty);
+      expect(validate(inflow(payee: '')), isEmpty);
     });
 
     test('optional for transfers and card payments', () {
@@ -370,7 +370,6 @@ void main() {
     expect(validate(draft), {
       E.amountNotPositive,
       E.sourceAccountWrongType,
-      E.payeeMissing,
       E.categoryWrongKind,
     });
   });

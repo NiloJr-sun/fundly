@@ -59,9 +59,16 @@ class TransactionTile extends ConsumerWidget {
     // so the subtitle only needs where the money came from.
     final titledByDestination = isTitledByDestination(transaction, kind);
 
+    final categoryName = categories[transaction.categoryId]?.name;
+    // Spending and Inflow are titled by their category (R.20), so the payee,
+    // when there is one, moves to the details. Without a category the payee
+    // is the title.
+    final payee = transaction.payee.trim();
+    final payeeDetail = categoryName != null && payee.isNotEmpty ? payee : null;
+
     final details = switch (transaction.type) {
       TransactionType.spending => [
-        categories[transaction.categoryId]?.name,
+        payeeDetail,
         accountName(transaction.sourceAccountId),
         // A card purchase without a category moves nothing to the card's
         // Plans row.
@@ -70,7 +77,7 @@ class TransactionTile extends ConsumerWidget {
           'Not in Plans',
       ],
       TransactionType.inflow => [
-        categories[transaction.categoryId]?.name,
+        payeeDetail,
         accountName(transaction.destinationAccountId),
       ],
       TransactionType.transfer || TransactionType.creditCardPayment
@@ -109,6 +116,7 @@ class TransactionTile extends ConsumerWidget {
           transaction,
           kind: kind,
           destinationName: accounts[transaction.destinationAccountId]?.name,
+          categoryName: categoryName,
         ),
       ),
       subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),

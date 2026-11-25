@@ -710,11 +710,13 @@ suggestions as approved decisions.
                           (cash advance added
                           2026-11-23)
 
-  2026-11-16              Payee required for      Confirmed
-                          Spending and Inflow,    
+  2026-11-16              Payee required for      Amended
+                          Spending and Inflow,    2026-11-28 (R.20)
                           optional otherwise; max 
                           60 chars. Note max 500. 
-                          Future dates allowed    
+                          Future dates allowed.
+                          Payee optional for all
+                          types since R.20
 
   2026-11-16              Available money = total Confirmed
                           of active Savings/Cash  
@@ -1538,5 +1540,27 @@ suggestions as approved decisions.
                           guard unchanged. No
                           schema, sync, server or
                           backup change.
+
+  2026-11-28              Payee optional (R.20):  Confirmed
+                          "Paid to" and "Received
+                          from" are optional, max
+                          60 chars. Lists title
+                          Spending and Inflow by
+                          category, the payee in
+                          the details line;
+                          without a category, the
+                          payee, else the type.
+                          Transfers and payments
+                          unchanged. Server
+                          migration
+                          20261128010000 (with
+                          rollback) drops the
+                          table check and the
+                          write API and import
+                          checks. No schema, sync
+                          or backup format change;
+                          older apps show such a
+                          row and ask for a payee
+                          only when editing it.
 
   -----------------------------------------------------------------------

@@ -81,14 +81,23 @@ bool isTitledByDestination(
     (kind == TransactionKind.loanPayment ||
         kind == TransactionKind.creditCardPayment);
 
-/// Payee if given. Otherwise, for a loan or card payment, [destinationName]
-/// (the account paid) when known; else the name of [kind], e.g. "Loan
-/// payment". Without [kind], the stored type's name, e.g. "Transfer".
+/// The title of a transaction in lists and confirmations.
+///
+/// Spending and Inflow are titled by [categoryName] (R.20); without a
+/// category, e.g. a card purchase or an uncategorised inflow, by the payee.
+/// Transfers and card payments are titled by the payee; without one, a loan or
+/// card payment by [destinationName] (the account paid) when known. Otherwise
+/// the name of [kind], e.g. "Loan payment"; without [kind], the stored type's
+/// name, e.g. "Transfer".
 String transactionTitle(
   TransactionDraft transaction, {
   TransactionKind? kind,
   String? destinationName,
+  String? categoryName,
 }) {
+  if (categoryName != null && isTitledByCategory(transaction)) {
+    return categoryName;
+  }
   final payee = transaction.payee.trim();
   if (payee.isNotEmpty) return payee;
   if (destinationName != null && isTitledByDestination(transaction, kind)) {
@@ -99,9 +108,24 @@ String transactionTitle(
       : transactionKindLabel(kind);
 }
 
+/// Whether [transaction] is titled by its category when it has one: Spending
+/// and Inflow (R.20). Its payee then belongs in the details line.
+bool isTitledByCategory(TransactionDraft transaction) =>
+    transaction.type == TransactionType.spending ||
+    transaction.type == TransactionType.inflow;
+
 String payeeLabel(TransactionType type) => switch (type) {
   TransactionType.spending => 'Paid to',
   TransactionType.inflow => 'Received from',
+  TransactionType.transfer ||
+  TransactionType.creditCardPayment => 'Description (optional)',
+};
+
+/// The payee field's label in the form. A payee is optional for every type
+/// (R.20).
+String payeeFieldLabel(TransactionType type) => switch (type) {
+  TransactionType.spending => 'Paid to (optional)',
+  TransactionType.inflow => 'Received from (optional)',
   TransactionType.transfer ||
   TransactionType.creditCardPayment => 'Description (optional)',
 };
@@ -171,12 +195,6 @@ enum TransactionField {
   TransactionValidationError.sameSourceAndDestination => (
     field: TransactionField.destinationAccount,
     message: "Choose a different account from the 'From' account.",
-  ),
-  TransactionValidationError.payeeMissing => (
-    field: TransactionField.payee,
-    message: type == TransactionType.inflow
-        ? 'Enter who paid you.'
-        : 'Enter who you paid.',
   ),
   TransactionValidationError.payeeTooLong => (
     field: TransactionField.payee,
