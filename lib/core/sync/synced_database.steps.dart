@@ -1413,11 +1413,305 @@ i1.GeneratedColumn<int> _column_43(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NULL',
     );
+
+final class Schema6 extends i0.VersionedSchema {
+  Schema6({required super.database}) : super(version: 6);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    customAccountTypes,
+    customBanks,
+    accounts,
+    categories,
+    transactions,
+    monthlyPlans,
+    syncRejections,
+    spaces,
+    spaceMembers,
+  ];
+  late final Shape0 customAccountTypes = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'custom_account_types',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'CHECK(revision > 0)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape10 customBanks = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'custom_banks',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'CHECK(revision > 0)'],
+      columns: [_column_0, _column_1, _column_3, _column_4, _column_5],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape11 accounts = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'accounts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK((type = \'savingsCash\' AND opening_balance_minor >= 0)OR(type IN (\'credit\', \'loan\') AND opening_balance_minor <= 0))',
+        'CHECK(currency_code = \'PHP\')',
+        'CHECK(NOT is_budget_account OR(type = \'savingsCash\' AND NOT is_archived))',
+        'CHECK(revision > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_44,
+        _column_45,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape9 categories = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'categories',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(kind IN (\'spending\', \'inflow\'))',
+        'CHECK(plan_group IN (\'spending\', \'savings\', \'liability\'))',
+        'CHECK(NOT is_plan_deleted OR(is_plan_archived AND kind = \'spending\'))',
+        'CHECK(linked_account_id IS NULL OR(kind = \'spending\' AND plan_group = \'liability\'))',
+        'CHECK(revision > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_12,
+        _column_9,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_43,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 transactions = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'transactions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(type IN (\'spending\', \'inflow\', \'transfer\', \'creditCardPayment\'))',
+        'CHECK(amount_minor > 0)',
+        'CHECK(currency_code = \'PHP\')',
+        'CHECK(source_account_id <> destination_account_id)',
+        'CHECK(revision > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_6,
+        _column_17,
+        _column_8,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 monthlyPlans = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'monthly_plans',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(target_amount_minor IS NULL OR target_amount_minor >= 0)',
+        'CHECK(assigned_amount_minor >= 0)',
+        'CHECK(currency_code = \'PHP\')',
+        'CHECK(revision > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_24,
+        _column_25,
+        _column_26,
+        _column_27,
+        _column_8,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 syncRejections = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'sync_rejections',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(batch_id)',
+        'CHECK(kind IN (\'rejected\', \'dependency_rejected\'))',
+      ],
+      columns: [
+        _column_28,
+        _column_12,
+        _column_29,
+        _column_30,
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+        _column_35,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 spaces = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'spaces',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_36,
+        _column_37,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape8 spaceMembers = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'space_members',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(role IN (\'owner\', \'editor\', \'viewer\'))',
+      ],
+      columns: [
+        _column_0,
+        _column_38,
+        _column_39,
+        _column_40,
+        _column_41,
+        _column_42,
+        _column_3,
+        _column_4,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+}
+
+class Shape10 extends i0.VersionedTable {
+  Shape10({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get revision =>
+      columnsByName['revision']! as i1.GeneratedColumn<int>;
+}
+
+class Shape11 extends i0.VersionedTable {
+  Shape11({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get type =>
+      columnsByName['type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get openingBalanceMinor =>
+      columnsByName['opening_balance_minor']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get currencyCode =>
+      columnsByName['currency_code']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isArchived =>
+      columnsByName['is_archived']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get customTypeId =>
+      columnsByName['custom_type_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isBudgetAccount =>
+      columnsByName['is_budget_account']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get revision =>
+      columnsByName['revision']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get bankKey =>
+      columnsByName['bank_key']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get customBankId =>
+      columnsByName['custom_bank_id']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_44(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'bank_key',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_45(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'custom_bank_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'REFERENCES custom_banks(id)DEFERRABLE INITIALLY DEFERRED CHECK (custom_bank_id IS NULL OR bank_key IS NULL)',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
   required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
+  required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -1441,6 +1735,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from4To5(migrator, schema);
         return 5;
+      case 5:
+        final schema = Schema6(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from5To6(migrator, schema);
+        return 6;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -1452,11 +1751,13 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
   required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
+  required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
     from2To3: from2To3,
     from3To4: from3To4,
     from4To5: from4To5,
+    from5To6: from5To6,
   ),
 );

@@ -19,6 +19,7 @@ class SyncedBackupSource implements BackupSource {
   @override
   Future<BackupRecords> read() => _database.transaction(() async {
     final customTypes = await _all(_database.syncedCustomAccountTypes);
+    final banks = await _all(_database.syncedCustomBanks);
     final accounts = await _all(_database.syncedAccounts);
     final categories = await _all(_database.syncedCategories);
     final transactions = await _all(_database.syncedTransactions);
@@ -33,6 +34,14 @@ class SyncedBackupSource implements BackupSource {
             createdAt: parseSyncedTimestamp(type.createdAt),
           ),
       ],
+      customBanks: [
+        for (final bank in banks)
+          (
+            id: bank.id,
+            name: bank.name,
+            createdAt: parseSyncedTimestamp(bank.createdAt),
+          ),
+      ],
       accounts: [
         for (final account in accounts)
           (
@@ -45,6 +54,8 @@ class SyncedBackupSource implements BackupSource {
             createdAt: parseSyncedTimestamp(account.createdAt),
             isArchived: account.isArchived,
             isBudgetAccount: account.isBudgetAccount,
+            bankKey: account.bankKey,
+            customBankId: account.customBankId,
           ),
       ],
       categories: [

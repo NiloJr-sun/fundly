@@ -7,6 +7,7 @@ import 'package:fundly/core/sync/sync_queue.dart' show newRecordId;
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
+import 'package:fundly/features/accounts/data/synced_custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
@@ -194,6 +195,36 @@ void main() {
     await accounts.clearBudgetAccount(gcash.id);
     final g2 = await types.create(name: 'Temp', baseType: AccountType.loan);
     await types.delete(g2.id);
+    // Banks (docs/BANKS_PLAN.md): custom banks, and accounts with a built-in
+    // bank, a custom bank, a switch, an edit that keeps it, and a clear.
+    final banks = SyncedCustomBankRepository(db);
+    final coop = await banks.create('Town Coop');
+    await banks.rename(coop.id, 'Town Coop Bank');
+    final tempBank = await banks.create('Temp bank');
+    final maya = await accounts.create(
+      name: 'Maya wallet',
+      type: AccountType.savingsCash,
+      enteredOpeningAmount: php(2500),
+      bankKey: 'maya',
+    );
+    await accounts.create(
+      name: 'Coop savings',
+      type: AccountType.savingsCash,
+      enteredOpeningAmount: php(0),
+      customBankId: coop.id,
+    );
+    await accounts.update(
+      maya.id,
+      bank: (bankKey: null, customBankId: coop.id),
+    );
+    await accounts.update(card.id, bank: (bankKey: 'bpi', customBankId: null));
+    await accounts.update(card.id, name: 'BPI Platinum');
+    await accounts.update(
+      gcash.id,
+      bank: (bankKey: 'gcash', customBankId: null),
+    );
+    await accounts.update(gcash.id, bank: (bankKey: null, customBankId: null));
+    await banks.delete(tempBank.id);
 
     final batches = [
       for (final b in await store.queuedBatches())
@@ -202,6 +233,7 @@ void main() {
     final state = <String, Object?>{};
     for (final table in [
       'custom_account_types',
+      'custom_banks',
       'accounts',
       'categories',
       'transactions',
@@ -259,7 +291,7 @@ void main() {
       );
     }
     // Setting BDO again while it is already a budget account queues nothing.
-    expect(batches, hasLength(44));
+    expect(batches, hasLength(55));
     await store.close();
   });
 }

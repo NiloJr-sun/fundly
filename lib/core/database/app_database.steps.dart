@@ -2125,6 +2125,219 @@ i1.GeneratedColumn<int> _column_29(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NULL CHECK (default_target_minor IS NULL OR(default_target_minor >= 0 AND kind = \'spending\')AND linked_account_id IS NULL)',
     );
+
+final class Schema15 extends i0.VersionedSchema {
+  Schema15({required super.database}) : super(version: 15);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    customAccountTypes,
+    customBanks,
+    accounts,
+    categories,
+    transactions,
+    monthlyPlans,
+    transactionsDate,
+    transactionsSourceAccount,
+    transactionsDestinationAccount,
+  ];
+  late final Shape6 customAccountTypes = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'custom_account_types',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(length(name) BETWEEN 1 AND 40)',
+        'CHECK(base_type IN (\'savingsCash\', \'credit\', \'loan\'))',
+      ],
+      columns: [_column_0, _column_1, _column_22, _column_5],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape14 customBanks = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'custom_banks',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['CHECK(length(name) BETWEEN 1 AND 40)'],
+      columns: [_column_0, _column_1, _column_5],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape15 accounts = Shape15(
+    source: i0.VersionedTable(
+      entityName: 'accounts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(length(name) BETWEEN 1 AND 40)',
+        'CHECK((type = \'savingsCash\' AND opening_balance_minor >= 0)OR(type IN (\'credit\', \'loan\') AND opening_balance_minor <= 0))',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_23,
+        _column_25,
+        _column_30,
+        _column_31,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 categories = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'categories',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(length(name) BETWEEN 1 AND 40)',
+        'CHECK(linked_account_id IS NULL OR(kind = \'spending\' AND plan_group = \'liability\'))',
+        'CHECK(kind IN (\'spending\', \'inflow\'))',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_7,
+        _column_6,
+        _column_27,
+        _column_28,
+        _column_24,
+        _column_26,
+        _column_29,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 transactions = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'transactions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(amount_minor > 0)',
+        'CHECK(source_account_id <> destination_account_id)',
+        'CHECK(date GLOB \'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\')',
+        'CHECK(length(payee) <= 60)',
+        'CHECK(length(note) <= 500)',
+        'CHECK((type = \'spending\' AND source_account_id IS NOT NULL AND destination_account_id IS NULL AND category_id IS NOT NULL)OR(type = \'inflow\' AND source_account_id IS NULL AND destination_account_id IS NOT NULL)OR(type IN (\'transfer\', \'creditCardPayment\') AND source_account_id IS NOT NULL AND destination_account_id IS NOT NULL AND category_id IS NULL))',
+      ],
+      columns: [
+        _column_0,
+        _column_2,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_5,
+        _column_16,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 monthlyPlans = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'monthly_plans',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(month, category_id)',
+        'CHECK(target_amount_minor IS NULL OR target_amount_minor >= 0)',
+        'CHECK(assigned_amount_minor >= 0)',
+        'CHECK(month GLOB \'[0-9][0-9][0-9][0-9]-[0-9][0-9]\' AND substr(month, 6, 2) BETWEEN \'01\' AND \'12\')',
+      ],
+      columns: [
+        _column_0,
+        _column_17,
+        _column_18,
+        _column_20,
+        _column_21,
+        _column_9,
+        _column_5,
+        _column_16,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index transactionsDate = i1.Index(
+    'transactions_date',
+    'CREATE INDEX transactions_date ON transactions (date)',
+  );
+  final i1.Index transactionsSourceAccount = i1.Index(
+    'transactions_source_account',
+    'CREATE INDEX transactions_source_account ON transactions (source_account_id)',
+  );
+  final i1.Index transactionsDestinationAccount = i1.Index(
+    'transactions_destination_account',
+    'CREATE INDEX transactions_destination_account ON transactions (destination_account_id)',
+  );
+}
+
+class Shape14 extends i0.VersionedTable {
+  Shape14({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<int> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<String>;
+}
+
+class Shape15 extends i0.VersionedTable {
+  Shape15({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<int> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get type =>
+      columnsByName['type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get openingBalanceMinor =>
+      columnsByName['opening_balance_minor']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get currencyCode =>
+      columnsByName['currency_code']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isArchived =>
+      columnsByName['is_archived']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get customTypeId =>
+      columnsByName['custom_type_id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get isBudgetAccount =>
+      columnsByName['is_budget_account']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get bankKey =>
+      columnsByName['bank_key']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get customBankId =>
+      columnsByName['custom_bank_id']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_30(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'bank_key',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'CHECK (bank_key IS NULL OR(length(bank_key) BETWEEN 1 AND 32 AND bank_key NOT GLOB \'*[^a-z0-9]*\'))',
+    );
+i1.GeneratedColumn<int> _column_31(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'custom_bank_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL CHECK (custom_bank_id IS NULL OR bank_key IS NULL) REFERENCES custom_banks(id)ON DELETE RESTRICT',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
@@ -2139,6 +2352,7 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
   required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
   required Future<void> Function(i1.Migrator m, Schema14 schema) from13To14,
+  required Future<void> Function(i1.Migrator m, Schema15 schema) from14To15,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -2207,6 +2421,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from13To14(migrator, schema);
         return 14;
+      case 14:
+        final schema = Schema15(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from14To15(migrator, schema);
+        return 15;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -2227,6 +2446,7 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
   required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
   required Future<void> Function(i1.Migrator m, Schema14 schema) from13To14,
+  required Future<void> Function(i1.Migrator m, Schema15 schema) from14To15,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
@@ -2242,5 +2462,6 @@ i1.OnUpgrade stepByStep({
     from11To12: from11To12,
     from12To13: from12To13,
     from13To14: from13To14,
+    from14To15: from14To15,
   ),
 );

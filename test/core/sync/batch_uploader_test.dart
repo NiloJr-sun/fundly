@@ -14,6 +14,7 @@ import 'package:fundly/core/sync/sync_rejections.dart';
 import 'package:fundly/core/sync/synced_database.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
+import 'package:fundly/features/accounts/data/synced_custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/categories/data/synced_category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
@@ -481,6 +482,47 @@ void main() {
           removed: 'Internet',
         });
         expect(await database.watchRejections().first, hasLength(3));
+      });
+
+      test('custom banks download; a refused rename and delete are named '
+          'and undone (banks)', () async {
+        const coop = '00000000-0000-4000-8000-000000000021';
+        expect(
+          await download([
+            {
+              'id': coop,
+              'name': 'Town Coop',
+              'created_at': '2026-11-16 09:30:00+00',
+              'updated_at': '2026-11-16 09:30:00+00',
+              'revision': 1,
+            },
+          ], 'custom_banks'),
+          isTrue,
+        );
+        final banks = SyncedCustomBankRepository(database);
+        expect((await banks.watchAll().first).single.name, 'Town Coop');
+
+        await banks.rename(coop, 'Coop Bank');
+        await refuseAll();
+        requestWriteCheckpoint();
+        expect(await download(), isTrue);
+        expect((await banks.watchAll().first).single.name, 'Town Coop');
+
+        await banks.delete(coop);
+        expect(await banks.watchAll().first, isEmpty);
+        await refuseAll();
+        requestWriteCheckpoint();
+        expect(await download(), isTrue);
+        expect((await banks.watchAll().first).single.name, 'Town Coop');
+
+        final entries = await database.watchRejections().first;
+        expect(
+          {for (final e in entries) e.items.single['operation']: e.labels},
+          {
+            'bank.update': {coop: 'Coop Bank'},
+            'bank.delete': {coop: 'Town Coop'},
+          },
+        );
       });
 
       group('a refused delete still names its record (F.1)', () {

@@ -22,6 +22,10 @@
 # the client, so it only ever narrows what is sent: access is decided by
 # auth.user_id() and the membership subqueries, never by it.
 #
+# Banks (B.1, docs/BANKS_PLAN.md): fundly_space_data also sends custom_banks and
+# the accounts' bank_key and custom_bank_id. Apps before 1.5.0 do not know them
+# and ignore them. fundly_user_data (1.2.x) is unchanged.
+#
 # 1.4.0: categories carry default_target_minor, the default Target for months
 # without their own plan. Older apps ignore the column.
 config:
@@ -60,12 +64,16 @@ streams:
   fundly_space_data:
     auto_subscribe: false
     queries:
+      - SELECT id, name, created_at, updated_at, revision
+        FROM custom_banks
+        WHERE space_id = subscription.parameter('space_id')
+          AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
       - SELECT id, name, base_type, created_at, updated_at, revision
         FROM custom_account_types
         WHERE space_id = subscription.parameter('space_id')
           AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())
       - SELECT id, name, type, opening_balance_minor, currency_code, is_archived,
-          custom_type_id, is_budget_account, created_at, updated_at, revision
+          custom_type_id, is_budget_account, bank_key, custom_bank_id, created_at, updated_at, revision
         FROM accounts
         WHERE space_id = subscription.parameter('space_id')
           AND space_id IN (SELECT space_id FROM space_members WHERE user_id = auth.user_id())

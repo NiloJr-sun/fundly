@@ -3,6 +3,7 @@ import '../../../core/database/record_id.dart';
 import '../../../core/money/money.dart';
 import '../domain/account.dart';
 import '../domain/custom_account_type.dart';
+import '../domain/custom_bank.dart';
 
 extension AccountRowMapping on AccountRow {
   Account toDomain() => Account(
@@ -17,6 +18,8 @@ extension AccountRowMapping on AccountRow {
     isArchived: isArchived,
     customTypeId: recordIdOrNull(customTypeId),
     isBudgetAccount: isBudgetAccount,
+    bankKey: bankKey,
+    customBankId: recordIdOrNull(customBankId),
   );
 }
 
@@ -27,4 +30,9 @@ extension CustomAccountTypeRowMapping on CustomAccountTypeRow {
     baseType: baseType,
     createdAt: createdAt.toUtc(),
   );
+}
+
+extension CustomBankRowMapping on CustomBankRow {
+  CustomBank toDomain() =>
+      CustomBank(id: recordIdOf(id), name: name, createdAt: createdAt.toUtc());
 }

@@ -15,13 +15,14 @@ import 'store_files.dart';
 import 'synced_database.dart';
 import 'synced_store.dart';
 
-/// The five tables PowerSync fills (public for tests). Their columns are inferred from the
+/// The tables PowerSync fills (public for tests). Their columns are inferred from the
 /// tables Drift creates, so the two cannot drift apart.
 final syncedRawSchema = ps.Schema(
   const [],
   rawTables: [
     for (final table in [
       'custom_account_types',
+      'custom_banks',
       'accounts',
       'categories',
       'transactions',

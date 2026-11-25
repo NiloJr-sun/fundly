@@ -4,7 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../categories/data/default_categories.dart';
 
 /// Deletes every record on this device's signed-out database, leaving it as a
-/// fresh install: no accounts, account types, transactions or plans, and only
+/// fresh install: no accounts, account types, banks, transactions or plans, and only
 /// the default categories.
 class DataResetter {
   DataResetter(this._database);
@@ -20,6 +20,7 @@ class DataResetter {
     await _database.delete(_database.categories).go();
     await _database.delete(_database.accounts).go();
     await _database.delete(_database.customAccountTypes).go();
+    await _database.delete(_database.customBanks).go();
     await addCurrentDefaultCategories(_database);
   });
 }

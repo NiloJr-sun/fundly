@@ -418,6 +418,367 @@ class SyncedCustomAccountTypesCompanion
   }
 }
 
+class $SyncedCustomBanksTable extends SyncedCustomBanks
+    with TableInfo<$SyncedCustomBanksTable, SyncedCustomBankRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncedCustomBanksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    createdAt,
+    updatedAt,
+    revision,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_banks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncedCustomBankRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_revisionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncedCustomBankRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncedCustomBankRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncedCustomBanksTable createAlias(String alias) {
+    return $SyncedCustomBanksTable(attachedDatabase, alias);
+  }
+}
+
+class SyncedCustomBankRow extends DataClass
+    implements Insertable<SyncedCustomBankRow> {
+  final String id;
+  final String name;
+  final String createdAt;
+  final String updatedAt;
+  final int revision;
+  const SyncedCustomBankRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.revision,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    map['revision'] = Variable<int>(revision);
+    return map;
+  }
+
+  SyncedCustomBanksCompanion toCompanion(bool nullToAbsent) {
+    return SyncedCustomBanksCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      revision: Value(revision),
+    );
+  }
+
+  factory SyncedCustomBankRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncedCustomBankRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'revision': serializer.toJson<int>(revision),
+    };
+  }
+
+  SyncedCustomBankRow copyWith({
+    String? id,
+    String? name,
+    String? createdAt,
+    String? updatedAt,
+    int? revision,
+  }) => SyncedCustomBankRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    revision: revision ?? this.revision,
+  );
+  SyncedCustomBankRow copyWithCompanion(SyncedCustomBanksCompanion data) {
+    return SyncedCustomBankRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedCustomBankRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('revision: $revision')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, updatedAt, revision);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncedCustomBankRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.revision == this.revision);
+}
+
+class SyncedCustomBanksCompanion extends UpdateCompanion<SyncedCustomBankRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> revision;
+  final Value<int> rowid;
+  const SyncedCustomBanksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncedCustomBanksCompanion.insert({
+    required String id,
+    required String name,
+    required String createdAt,
+    required String updatedAt,
+    required int revision,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       revision = Value(revision);
+  static Insertable<SyncedCustomBankRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? revision,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (revision != null) 'revision': revision,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncedCustomBanksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<int>? revision,
+    Value<int>? rowid,
+  }) {
+    return SyncedCustomBanksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      revision: revision ?? this.revision,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncedCustomBanksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('revision: $revision, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncedAccountsTable extends SyncedAccounts
     with TableInfo<$SyncedAccountsTable, SyncedAccountRow> {
   @override
@@ -544,6 +905,29 @@ class $SyncedAccountsTable extends SyncedAccounts
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _bankKeyMeta = const VerificationMeta(
+    'bankKey',
+  );
+  @override
+  late final GeneratedColumn<String> bankKey = GeneratedColumn<String>(
+    'bank_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _customBankIdMeta = const VerificationMeta(
+    'customBankId',
+  );
+  @override
+  late final GeneratedColumn<String> customBankId = GeneratedColumn<String>(
+    'custom_bank_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'REFERENCES custom_banks (id) DEFERRABLE INITIALLY DEFERRED CHECK (custom_bank_id IS NULL OR bank_key IS NULL)',
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -557,6 +941,8 @@ class $SyncedAccountsTable extends SyncedAccounts
     createdAt,
     updatedAt,
     revision,
+    bankKey,
+    customBankId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -665,6 +1051,21 @@ class $SyncedAccountsTable extends SyncedAccounts
     } else if (isInserting) {
       context.missing(_revisionMeta);
     }
+    if (data.containsKey('bank_key')) {
+      context.handle(
+        _bankKeyMeta,
+        bankKey.isAcceptableOrUnknown(data['bank_key']!, _bankKeyMeta),
+      );
+    }
+    if (data.containsKey('custom_bank_id')) {
+      context.handle(
+        _customBankIdMeta,
+        customBankId.isAcceptableOrUnknown(
+          data['custom_bank_id']!,
+          _customBankIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -718,6 +1119,14 @@ class $SyncedAccountsTable extends SyncedAccounts
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
       )!,
+      bankKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_key'],
+      ),
+      customBankId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_bank_id'],
+      ),
     );
   }
 
@@ -740,6 +1149,15 @@ class SyncedAccountRow extends DataClass
   final String createdAt;
   final String updatedAt;
   final int revision;
+
+  /// The built-in bank's key (banks, v6), or null. Its shape is the server's
+  /// to check.
+  final String? bankKey;
+
+  /// The custom bank (banks, v6), or null. Column-level constraints, so the
+  /// v6 migration can add the column to existing tables; a literal, since
+  /// drift ignores a custom constraint built with interpolation.
+  final String? customBankId;
   const SyncedAccountRow({
     required this.id,
     required this.name,
@@ -752,6 +1170,8 @@ class SyncedAccountRow extends DataClass
     required this.createdAt,
     required this.updatedAt,
     required this.revision,
+    this.bankKey,
+    this.customBankId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -769,6 +1189,12 @@ class SyncedAccountRow extends DataClass
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || bankKey != null) {
+      map['bank_key'] = Variable<String>(bankKey);
+    }
+    if (!nullToAbsent || customBankId != null) {
+      map['custom_bank_id'] = Variable<String>(customBankId);
+    }
     return map;
   }
 
@@ -787,6 +1213,12 @@ class SyncedAccountRow extends DataClass
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       revision: Value(revision),
+      bankKey: bankKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankKey),
+      customBankId: customBankId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customBankId),
     );
   }
 
@@ -809,6 +1241,8 @@ class SyncedAccountRow extends DataClass
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       revision: serializer.fromJson<int>(json['revision']),
+      bankKey: serializer.fromJson<String?>(json['bankKey']),
+      customBankId: serializer.fromJson<String?>(json['customBankId']),
     );
   }
   @override
@@ -826,6 +1260,8 @@ class SyncedAccountRow extends DataClass
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'revision': serializer.toJson<int>(revision),
+      'bankKey': serializer.toJson<String?>(bankKey),
+      'customBankId': serializer.toJson<String?>(customBankId),
     };
   }
 
@@ -841,6 +1277,8 @@ class SyncedAccountRow extends DataClass
     String? createdAt,
     String? updatedAt,
     int? revision,
+    Value<String?> bankKey = const Value.absent(),
+    Value<String?> customBankId = const Value.absent(),
   }) => SyncedAccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -853,6 +1291,8 @@ class SyncedAccountRow extends DataClass
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     revision: revision ?? this.revision,
+    bankKey: bankKey.present ? bankKey.value : this.bankKey,
+    customBankId: customBankId.present ? customBankId.value : this.customBankId,
   );
   SyncedAccountRow copyWithCompanion(SyncedAccountsCompanion data) {
     return SyncedAccountRow(
@@ -877,6 +1317,10 @@ class SyncedAccountRow extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       revision: data.revision.present ? data.revision.value : this.revision,
+      bankKey: data.bankKey.present ? data.bankKey.value : this.bankKey,
+      customBankId: data.customBankId.present
+          ? data.customBankId.value
+          : this.customBankId,
     );
   }
 
@@ -893,7 +1337,9 @@ class SyncedAccountRow extends DataClass
           ..write('isBudgetAccount: $isBudgetAccount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('revision: $revision')
+          ..write('revision: $revision, ')
+          ..write('bankKey: $bankKey, ')
+          ..write('customBankId: $customBankId')
           ..write(')'))
         .toString();
   }
@@ -911,6 +1357,8 @@ class SyncedAccountRow extends DataClass
     createdAt,
     updatedAt,
     revision,
+    bankKey,
+    customBankId,
   );
   @override
   bool operator ==(Object other) =>
@@ -926,7 +1374,9 @@ class SyncedAccountRow extends DataClass
           other.isBudgetAccount == this.isBudgetAccount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.revision == this.revision);
+          other.revision == this.revision &&
+          other.bankKey == this.bankKey &&
+          other.customBankId == this.customBankId);
 }
 
 class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
@@ -941,6 +1391,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<int> revision;
+  final Value<String?> bankKey;
+  final Value<String?> customBankId;
   final Value<int> rowid;
   const SyncedAccountsCompanion({
     this.id = const Value.absent(),
@@ -954,6 +1406,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.revision = const Value.absent(),
+    this.bankKey = const Value.absent(),
+    this.customBankId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncedAccountsCompanion.insert({
@@ -968,6 +1422,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
     required String createdAt,
     required String updatedAt,
     required int revision,
+    this.bankKey = const Value.absent(),
+    this.customBankId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -991,6 +1447,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<int>? revision,
+    Expression<String>? bankKey,
+    Expression<String>? customBankId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1006,6 +1464,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (revision != null) 'revision': revision,
+      if (bankKey != null) 'bank_key': bankKey,
+      if (customBankId != null) 'custom_bank_id': customBankId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1022,6 +1482,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<int>? revision,
+    Value<String?>? bankKey,
+    Value<String?>? customBankId,
     Value<int>? rowid,
   }) {
     return SyncedAccountsCompanion(
@@ -1036,6 +1498,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       revision: revision ?? this.revision,
+      bankKey: bankKey ?? this.bankKey,
+      customBankId: customBankId ?? this.customBankId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1076,6 +1540,12 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
+    if (bankKey.present) {
+      map['bank_key'] = Variable<String>(bankKey.value);
+    }
+    if (customBankId.present) {
+      map['custom_bank_id'] = Variable<String>(customBankId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1096,6 +1566,8 @@ class SyncedAccountsCompanion extends UpdateCompanion<SyncedAccountRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('revision: $revision, ')
+          ..write('bankKey: $bankKey, ')
+          ..write('customBankId: $customBankId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4785,6 +5257,8 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
   $SyncedDatabaseManager get managers => $SyncedDatabaseManager(this);
   late final $SyncedCustomAccountTypesTable syncedCustomAccountTypes =
       $SyncedCustomAccountTypesTable(this);
+  late final $SyncedCustomBanksTable syncedCustomBanks =
+      $SyncedCustomBanksTable(this);
   late final $SyncedAccountsTable syncedAccounts = $SyncedAccountsTable(this);
   late final $SyncedCategoriesTable syncedCategories = $SyncedCategoriesTable(
     this,
@@ -4803,6 +5277,7 @@ abstract class _$SyncedDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     syncedCustomAccountTypes,
+    syncedCustomBanks,
     syncedAccounts,
     syncedCategories,
     syncedTransactions,
@@ -5066,6 +5541,327 @@ typedef $$SyncedCustomAccountTypesTableProcessedTableManager =
       SyncedCustomAccountTypeRow,
       PrefetchHooks Function()
     >;
+typedef $$SyncedCustomBanksTableCreateCompanionBuilder =
+    SyncedCustomBanksCompanion Function({
+      required String id,
+      required String name,
+      required String createdAt,
+      required String updatedAt,
+      required int revision,
+      Value<int> rowid,
+    });
+typedef $$SyncedCustomBanksTableUpdateCompanionBuilder =
+    SyncedCustomBanksCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+
+final class $$SyncedCustomBanksTableReferences
+    extends
+        BaseReferences<
+          _$SyncedDatabase,
+          $SyncedCustomBanksTable,
+          SyncedCustomBankRow
+        > {
+  $$SyncedCustomBanksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$SyncedAccountsTable, List<SyncedAccountRow>>
+  _syncedAccountsRefsTable(_$SyncedDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.syncedAccounts,
+        aliasName: 'custom_banks__id__accounts__custom_bank_id',
+      );
+
+  $$SyncedAccountsTableProcessedTableManager get syncedAccountsRefs {
+    final manager = $$SyncedAccountsTableTableManager(
+      $_db,
+      $_db.syncedAccounts,
+    ).filter((f) => f.customBankId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_syncedAccountsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SyncedCustomBanksTableFilterComposer
+    extends Composer<_$SyncedDatabase, $SyncedCustomBanksTable> {
+  $$SyncedCustomBanksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> syncedAccountsRefs(
+    Expression<bool> Function($$SyncedAccountsTableFilterComposer f) f,
+  ) {
+    final $$SyncedAccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.syncedAccounts,
+      getReferencedColumn: (t) => t.customBankId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SyncedAccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.syncedAccounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SyncedCustomBanksTableOrderingComposer
+    extends Composer<_$SyncedDatabase, $SyncedCustomBanksTable> {
+  $$SyncedCustomBanksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncedCustomBanksTableAnnotationComposer
+    extends Composer<_$SyncedDatabase, $SyncedCustomBanksTable> {
+  $$SyncedCustomBanksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  Expression<T> syncedAccountsRefs<T extends Object>(
+    Expression<T> Function($$SyncedAccountsTableAnnotationComposer a) f,
+  ) {
+    final $$SyncedAccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.syncedAccounts,
+      getReferencedColumn: (t) => t.customBankId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SyncedAccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.syncedAccounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SyncedCustomBanksTableTableManager
+    extends
+        RootTableManager<
+          _$SyncedDatabase,
+          $SyncedCustomBanksTable,
+          SyncedCustomBankRow,
+          $$SyncedCustomBanksTableFilterComposer,
+          $$SyncedCustomBanksTableOrderingComposer,
+          $$SyncedCustomBanksTableAnnotationComposer,
+          $$SyncedCustomBanksTableCreateCompanionBuilder,
+          $$SyncedCustomBanksTableUpdateCompanionBuilder,
+          (SyncedCustomBankRow, $$SyncedCustomBanksTableReferences),
+          SyncedCustomBankRow,
+          PrefetchHooks Function({bool syncedAccountsRefs})
+        > {
+  $$SyncedCustomBanksTableTableManager(
+    _$SyncedDatabase db,
+    $SyncedCustomBanksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncedCustomBanksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncedCustomBanksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncedCustomBanksTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedCustomBanksCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                revision: revision,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String createdAt,
+                required String updatedAt,
+                required int revision,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncedCustomBanksCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                revision: revision,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncedCustomBanksTable, SyncedCustomBankRow>(
+                    table,
+                  ),
+                  $$SyncedCustomBanksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({syncedAccountsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (syncedAccountsRefs) db.syncedAccounts,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (syncedAccountsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      SyncedCustomBankRow,
+                      $SyncedCustomBanksTable,
+                      SyncedAccountRow,
+                      $SyncedAccountsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$SyncedCustomBanksTableReferences
+                          ._syncedAccountsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$SyncedCustomBanksTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).syncedAccountsRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'custom_bank_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SyncedCustomBanksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$SyncedDatabase,
+      $SyncedCustomBanksTable,
+      SyncedCustomBankRow,
+      $$SyncedCustomBanksTableFilterComposer,
+      $$SyncedCustomBanksTableOrderingComposer,
+      $$SyncedCustomBanksTableAnnotationComposer,
+      $$SyncedCustomBanksTableCreateCompanionBuilder,
+      $$SyncedCustomBanksTableUpdateCompanionBuilder,
+      (SyncedCustomBankRow, $$SyncedCustomBanksTableReferences),
+      SyncedCustomBankRow,
+      PrefetchHooks Function({bool syncedAccountsRefs})
+    >;
 typedef $$SyncedAccountsTableCreateCompanionBuilder =
     SyncedAccountsCompanion Function({
       required String id,
@@ -5079,6 +5875,8 @@ typedef $$SyncedAccountsTableCreateCompanionBuilder =
       required String createdAt,
       required String updatedAt,
       required int revision,
+      Value<String?> bankKey,
+      Value<String?> customBankId,
       Value<int> rowid,
     });
 typedef $$SyncedAccountsTableUpdateCompanionBuilder =
@@ -5094,8 +5892,42 @@ typedef $$SyncedAccountsTableUpdateCompanionBuilder =
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<int> revision,
+      Value<String?> bankKey,
+      Value<String?> customBankId,
       Value<int> rowid,
     });
+
+final class $$SyncedAccountsTableReferences
+    extends
+        BaseReferences<
+          _$SyncedDatabase,
+          $SyncedAccountsTable,
+          SyncedAccountRow
+        > {
+  $$SyncedAccountsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SyncedCustomBanksTable _customBankIdTable(_$SyncedDatabase db) => db
+      .syncedCustomBanks
+      .createAlias('accounts__custom_bank_id__custom_banks__id');
+
+  $$SyncedCustomBanksTableProcessedTableManager? get customBankId {
+    final $_column = $_itemColumn<String>('custom_bank_id');
+    if ($_column == null) return null;
+    final manager = $$SyncedCustomBanksTableTableManager(
+      $_db,
+      $_db.syncedCustomBanks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_customBankIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$SyncedAccountsTableFilterComposer
     extends Composer<_$SyncedDatabase, $SyncedAccountsTable> {
@@ -5160,6 +5992,34 @@ class $$SyncedAccountsTableFilterComposer
     column: $table.revision,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get bankKey => $composableBuilder(
+    column: $table.bankKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SyncedCustomBanksTableFilterComposer get customBankId {
+    final $$SyncedCustomBanksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customBankId,
+      referencedTable: $db.syncedCustomBanks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SyncedCustomBanksTableFilterComposer(
+            $db: $db,
+            $table: $db.syncedCustomBanks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SyncedAccountsTableOrderingComposer
@@ -5225,6 +6085,34 @@ class $$SyncedAccountsTableOrderingComposer
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get bankKey => $composableBuilder(
+    column: $table.bankKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SyncedCustomBanksTableOrderingComposer get customBankId {
+    final $$SyncedCustomBanksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customBankId,
+      referencedTable: $db.syncedCustomBanks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SyncedCustomBanksTableOrderingComposer(
+            $db: $db,
+            $table: $db.syncedCustomBanks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$SyncedAccountsTableAnnotationComposer
@@ -5278,6 +6166,33 @@ class $$SyncedAccountsTableAnnotationComposer
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<String> get bankKey =>
+      $composableBuilder(column: $table.bankKey, builder: (column) => column);
+
+  $$SyncedCustomBanksTableAnnotationComposer get customBankId {
+    final $$SyncedCustomBanksTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.customBankId,
+          referencedTable: $db.syncedCustomBanks,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SyncedCustomBanksTableAnnotationComposer(
+                $db: $db,
+                $table: $db.syncedCustomBanks,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$SyncedAccountsTableTableManager
@@ -5291,16 +6206,9 @@ class $$SyncedAccountsTableTableManager
           $$SyncedAccountsTableAnnotationComposer,
           $$SyncedAccountsTableCreateCompanionBuilder,
           $$SyncedAccountsTableUpdateCompanionBuilder,
-          (
-            SyncedAccountRow,
-            BaseReferences<
-              _$SyncedDatabase,
-              $SyncedAccountsTable,
-              SyncedAccountRow
-            >,
-          ),
+          (SyncedAccountRow, $$SyncedAccountsTableReferences),
           SyncedAccountRow,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool customBankId})
         > {
   $$SyncedAccountsTableTableManager(
     _$SyncedDatabase db,
@@ -5328,6 +6236,8 @@ class $$SyncedAccountsTableTableManager
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
+                Value<String?> bankKey = const Value.absent(),
+                Value<String?> customBankId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncedAccountsCompanion(
                 id: id,
@@ -5341,6 +6251,8 @@ class $$SyncedAccountsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 revision: revision,
+                bankKey: bankKey,
+                customBankId: customBankId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5356,6 +6268,8 @@ class $$SyncedAccountsTableTableManager
                 required String createdAt,
                 required String updatedAt,
                 required int revision,
+                Value<String?> bankKey = const Value.absent(),
+                Value<String?> customBankId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncedAccountsCompanion.insert(
                 id: id,
@@ -5369,21 +6283,57 @@ class $$SyncedAccountsTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 revision: revision,
+                bankKey: bankKey,
+                customBankId: customBankId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
                   e.readTable<$SyncedAccountsTable, SyncedAccountRow>(table),
-                  BaseReferences<
-                    _$SyncedDatabase,
-                    $SyncedAccountsTable,
-                    SyncedAccountRow
-                  >(db, table, e),
+                  $$SyncedAccountsTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({customBankId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (customBankId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.customBankId,
+                        referencedTable: $$SyncedAccountsTableReferences
+                            ._customBankIdTable(db),
+                        referencedColumn: $$SyncedAccountsTableReferences
+                            ._customBankIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -5398,16 +6348,9 @@ typedef $$SyncedAccountsTableProcessedTableManager =
       $$SyncedAccountsTableAnnotationComposer,
       $$SyncedAccountsTableCreateCompanionBuilder,
       $$SyncedAccountsTableUpdateCompanionBuilder,
-      (
-        SyncedAccountRow,
-        BaseReferences<
-          _$SyncedDatabase,
-          $SyncedAccountsTable,
-          SyncedAccountRow
-        >,
-      ),
+      (SyncedAccountRow, $$SyncedAccountsTableReferences),
       SyncedAccountRow,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool customBankId})
     >;
 typedef $$SyncedCategoriesTableCreateCompanionBuilder =
     SyncedCategoriesCompanion Function({
@@ -7311,6 +8254,8 @@ class $SyncedDatabaseManager {
         _db,
         _db.syncedCustomAccountTypes,
       );
+  $$SyncedCustomBanksTableTableManager get syncedCustomBanks =>
+      $$SyncedCustomBanksTableTableManager(_db, _db.syncedCustomBanks);
   $$SyncedAccountsTableTableManager get syncedAccounts =>
       $$SyncedAccountsTableTableManager(_db, _db.syncedAccounts);
   $$SyncedCategoriesTableTableManager get syncedCategories =>

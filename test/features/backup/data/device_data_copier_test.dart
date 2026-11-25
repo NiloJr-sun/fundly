@@ -121,6 +121,7 @@ void main() {
       final note = 'x' * 500;
       final big = (
         customAccountTypes: records.customAccountTypes,
+        customBanks: records.customBanks,
         accounts: records.accounts,
         categories: records.categories,
         monthlyPlans: records.monthlyPlans,

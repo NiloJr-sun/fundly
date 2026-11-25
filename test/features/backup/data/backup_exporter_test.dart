@@ -8,6 +8,7 @@ import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
+import 'package:fundly/features/accounts/data/custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
@@ -36,10 +37,11 @@ void main() {
       final backup = await exporter().export();
 
       expect(backup['app'], 'fundly');
-      expect(backup['formatVersion'], 8);
+      expect(backup['formatVersion'], 9);
       expect(backup['schemaVersion'], database.schemaVersion);
       expect(backup['exportedAt'], '2026-11-17T01:02:03.000Z');
       expect(backup['customAccountTypes'], isEmpty);
+      expect(backup['customBanks'], isEmpty);
       expect(backup['accounts'], isEmpty);
       expect(backup['transactions'], isEmpty);
       expect(backup['monthlyPlans'], isEmpty);
@@ -63,17 +65,23 @@ void main() {
       database,
       clock: () => createdAt,
     ).create(name: 'E-wallet', baseType: AccountType.savingsCash);
+    final coop = await CustomBankRepository(
+      database,
+      clock: () => createdAt,
+    ).create('Town Coop');
     final accounts = AccountRepository(database, clock: () => createdAt);
     final bdo = await accounts.create(
       name: 'BDO Savings',
       type: AccountType.savingsCash,
       enteredOpeningAmount: php(1500000),
+      bankKey: 'bdo',
     );
     final gcash = await accounts.create(
       name: 'GCash',
       type: AccountType.savingsCash,
       enteredOpeningAmount: php(0),
       customTypeId: eWallet.id,
+      customBankId: coop.id,
     );
     final card = await accounts.create(
       name: 'RCBC Credit',
@@ -128,6 +136,13 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
       },
     ]);
+    expect(backup['customBanks'], [
+      {
+        'id': coop.id,
+        'name': 'Town Coop',
+        'createdAt': '2026-11-16T09:30:00.000Z',
+      },
+    ]);
     expect(backup['accounts'], [
       {
         'id': bdo.id,
@@ -139,6 +154,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
         'isBudgetAccount': true,
+        'bankKey': 'bdo',
+        'customBankId': null,
       },
       {
         'id': gcash.id,
@@ -150,6 +167,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': true,
         'isBudgetAccount': false,
+        'bankKey': null,
+        'customBankId': coop.id,
       },
       {
         'id': card.id,
@@ -162,6 +181,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
         'isBudgetAccount': false,
+        'bankKey': null,
+        'customBankId': null,
       },
     ]);
     expect((backup['categories']! as List).last, {

@@ -55,7 +55,10 @@ and every count, delete and insert are per space (WRITE_API.md, Spaces).
 - `expected` holds the counts the user saw before confirming. It is required
   for `replace` and optional for `into_empty`, where it is ignored. Each count
   is a non-negative integer.
-- `dataset` holds all five arrays; any of them may be empty.
+- `dataset` holds all five arrays; any of them may be empty. Since the banks
+  migration (app 1.5.0) it may also hold `custom_banks`, and `expected` its
+  count; apps before 1.5.0 send neither, and a `replace` then compares only the
+  counts sent (it still removes the space's custom banks).
 - The whole request may be at most 8 MiB (8,388,608 bytes of JSON).
 
 ### Records
@@ -63,12 +66,15 @@ and every count, delete and insert are per space (WRITE_API.md, Spaces).
 Records use the download wire shape, without `owner_id` or `revision`. Every
 field is required except `created_at`, `updated_at` and the category's
 `default_target_minor` (a nonnegative decimal string or null, only on unlinked
-spending categories; refused otherwise as `invalid_value`), and unknown fields
-are refused.
+spending categories; refused otherwise as `invalid_value`), and the account's
+`bank_key` and `custom_bank_id` (null or missing for no bank; at most one set,
+else `custom_bank_id` `invalid_value`; a key must match `^[a-z0-9]{1,32}$`).
+Unknown fields are refused.
 
 | Table | Fields |
 |---|---|
 | `custom_account_types` | `id`, `name`, `base_type` |
+| `custom_banks` | `id`, `name` (account-name rules; not a built-in bank's name, else `name_taken`) |
 | `accounts` | `id`, `name`, `type`, `opening_balance_minor`, `currency_code`, `is_archived`, `custom_type_id`, `is_budget_account` |
 | `categories` | `id`, `name`, `kind`, `is_archived`, `is_plan_archived`, `is_plan_deleted`, `plan_group`, `linked_account_id` |
 | `transactions` | `id`, `type`, `amount_minor`, `currency_code`, `date`, `payee`, `category_id`, `source_account_id`, `destination_account_id`, `note` |
@@ -154,8 +160,11 @@ All of these steps run in one transaction:
 ```json
 { "version": 1, "import_id": "…", "mode": "into_empty",
   "counts": { "custom_account_types": 1, "accounts": 4, "categories": 6,
-              "transactions": 5, "monthly_plans": 2 } }
+              "transactions": 5, "monthly_plans": 2, "custom_banks": 0 } }
 ```
+
+`custom_banks` is in every result since the banks migration; older apps read
+only the five counts they know.
 
 ## Errors
 

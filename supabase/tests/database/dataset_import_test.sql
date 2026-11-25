@@ -303,7 +303,7 @@ select is(public.fundly_import_dataset('76100000-0000-4000-8000-000000000001',
     pg_temp.request('into_empty', pg_temp.dataset('a'))),
   jsonb_build_object('version',1,'import_id','76100000-0000-4000-8000-000000000001','mode','into_empty',
     'counts',jsonb_build_object('custom_account_types',1,'accounts',4,'categories',6,'transactions',5,
-      'monthly_plans',2)),
+      'monthly_plans',2,'custom_banks',0)),
   'an empty account accepts the import and returns its counts');
 
 reset role;

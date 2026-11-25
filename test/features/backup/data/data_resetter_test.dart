@@ -110,6 +110,7 @@ void main() {
         categories: defaultCategories.length,
         transactions: 0,
         monthlyPlans: 0,
+        customBanks: 0,
       ),
     );
     final categories = await CategoryRepository(database).watchAll().first;

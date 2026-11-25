@@ -109,6 +109,7 @@ BackupRecords sampleDeviceRecords() {
     customAccountTypes: [
       (id: 1, name: 'E-wallet', baseType: 'savingsCash', createdAt: at),
     ],
+    customBanks: [(id: 1, name: 'Town Coop', createdAt: at)],
     accounts: [
       (
         id: 1,
@@ -120,6 +121,8 @@ BackupRecords sampleDeviceRecords() {
         createdAt: at,
         isArchived: false,
         isBudgetAccount: true,
+        bankKey: 'bdo',
+        customBankId: null,
       ),
       (
         id: 2,
@@ -131,6 +134,8 @@ BackupRecords sampleDeviceRecords() {
         createdAt: at,
         isArchived: false,
         isBudgetAccount: false,
+        bankKey: 'gcash',
+        customBankId: null,
       ),
       (
         id: 3,
@@ -142,6 +147,8 @@ BackupRecords sampleDeviceRecords() {
         createdAt: at,
         isArchived: false,
         isBudgetAccount: false,
+        bankKey: 'rcbc',
+        customBankId: null,
       ),
       (
         id: 4,
@@ -153,6 +160,8 @@ BackupRecords sampleDeviceRecords() {
         createdAt: at,
         isArchived: true,
         isBudgetAccount: false,
+        bankKey: null,
+        customBankId: 1,
       ),
     ],
     categories: [

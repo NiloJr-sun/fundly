@@ -20,6 +20,7 @@ class FakeCountsImporter implements BackupImporter {
     categories: 12,
     transactions: 131,
     monthlyPlans: 2,
+    customBanks: 0,
   );
 
   @override

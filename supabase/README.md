@@ -56,6 +56,18 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `migrations/20261124040000_sharing.sql` (C3.1): invites bound to an email,
   members' names and emails, role changes, removing, leaving and deleting
   spaces ([SPACES_API.md](SPACES_API.md)).
+- `migrations/20261126010000_banks.sql` (banks B.1, app 1.5.0): `custom_banks`
+  per space, `accounts.bank_key` and `accounts.custom_bank_id` (at most one),
+  the `bank.create`/`bank.update`/`bank.delete` operations, and bank fields on
+  `account.create`/`account.update` and imports ([ACCOUNT_API.md](ACCOUNT_API.md),
+  Banks; [docs/BANKS_PLAN.md](../docs/BANKS_PLAN.md)). Replaces `item_entity`,
+  `apply_operation`, `apply_account`, `apply_item`, `dataset_counts`,
+  `dataset_is_empty`, `fundly_delete_space` and `fundly_import_dataset` with only
+  those changes. Grants the PowerSync replication role read access to `custom_banks`.
+- `rollback/20261126_banks_rollback.sql`: **not a migration.** Restores the
+  1.4.0 server, removing custom banks and every account's bank (balances and
+  other records untouched); rehearsed by `tests/migration/banks_rollback_test.py`
+  inside one rolled-back transaction, so it does not reset the database.
 - `rollback/20261124_c3_rollback.sql`: **not a migration.** Removes invites and
   the sharing functions, keeping every record and membership; rehearsed by
   `tests/migration/c3_rollback_test.py`.
@@ -65,7 +77,7 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `rollback/20261124_c1_rollback.sql`: **not a migration.** Restores the pre-C1
   API and rules without touching data; rehearsed by
   `tests/migration/c1_rollback_test.py`.
-- `tests/database/`: **1088 pgTAP assertions**, run in
+- `tests/database/`: **1161 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -105,6 +117,8 @@ python3 supabase/tests/migration/spaces_backfill_test.py
 python3 supabase/tests/migration/c1_rollback_test.py
 python3 supabase/tests/migration/c2_rollback_test.py
 python3 supabase/tests/migration/c3_rollback_test.py
+# Rolled back in one transaction; leaves the local database as it was:
+python3 supabase/tests/migration/banks_rollback_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing

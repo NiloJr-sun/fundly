@@ -14,6 +14,8 @@ typedef BackupCustomType = ({
   DateTime createdAt,
 });
 
+typedef BackupCustomBank = ({Object id, String name, DateTime createdAt});
+
 typedef BackupAccount = ({
   Object id,
   String name,
@@ -24,6 +26,8 @@ typedef BackupAccount = ({
   DateTime createdAt,
   bool isArchived,
   bool isBudgetAccount,
+  String? bankKey,
+  Object? customBankId,
 });
 
 typedef BackupCategory = ({
@@ -67,6 +71,7 @@ typedef BackupPlan = ({
 /// Every record of one store, each list in ID order.
 typedef BackupRecords = ({
   List<BackupCustomType> customAccountTypes,
+  List<BackupCustomBank> customBanks,
   List<BackupAccount> accounts,
   List<BackupCategory> categories,
   List<BackupTransaction> transactions,
@@ -94,6 +99,7 @@ class LocalBackupSource implements BackupSource {
   @override
   Future<BackupRecords> read() => _database.transaction(() async {
     final customTypes = await _all(_database.customAccountTypes);
+    final banks = await _all(_database.customBanks);
     final accounts = await _all(_database.accounts);
     final categories = await _all(_database.categories);
     final transactions = await _all(_database.transactions);
@@ -108,6 +114,10 @@ class LocalBackupSource implements BackupSource {
             createdAt: type.createdAt,
           ),
       ],
+      customBanks: [
+        for (final bank in banks)
+          (id: bank.id, name: bank.name, createdAt: bank.createdAt),
+      ],
       accounts: [
         for (final account in accounts)
           (
@@ -120,6 +130,8 @@ class LocalBackupSource implements BackupSource {
             createdAt: account.createdAt,
             isArchived: account.isArchived,
             isBudgetAccount: account.isBudgetAccount,
+            bankKey: account.bankKey,
+            customBankId: account.customBankId,
           ),
       ],
       categories: [

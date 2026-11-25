@@ -157,6 +157,8 @@ abstract final class SyncedRows {
     bool budget = false,
     String? customTypeId,
     String createdAt = _at,
+    String? bankKey,
+    String? customBankId,
   }) => {
     'id': id,
     'name': name,
@@ -169,6 +171,8 @@ abstract final class SyncedRows {
     'created_at': createdAt,
     'updated_at': createdAt,
     'revision': 1,
+    'bank_key': bankKey,
+    'custom_bank_id': customBankId,
   };
 
   static Map<String, Object?> category(
@@ -251,5 +255,17 @@ abstract final class SyncedRows {
     'created_at': _at,
     'updated_at': _at,
     'revision': 1,
+  };
+
+  static Map<String, Object?> customBank(
+    String id,
+    String name, {
+    int revision = 1,
+  }) => {
+    'id': id,
+    'name': name,
+    'created_at': _at,
+    'updated_at': _at,
+    'revision': revision,
   };
 }

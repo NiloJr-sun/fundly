@@ -39,6 +39,25 @@ class SyncedCustomAccountTypes extends Table {
   ];
 }
 
+/// Custom banks (banks B.2, docs/BANKS_PLAN.md).
+@DataClassName('SyncedCustomBankRow')
+class SyncedCustomBanks extends Table {
+  @override
+  String get tableName => 'custom_banks';
+
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+  IntColumn get revision => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => ['CHECK (revision > 0)'];
+}
+
 @DataClassName('SyncedAccountRow')
 class SyncedAccounts extends Table {
   @override
@@ -55,6 +74,18 @@ class SyncedAccounts extends Table {
   TextColumn get createdAt => text()();
   TextColumn get updatedAt => text()();
   IntColumn get revision => integer()();
+
+  /// The built-in bank's key (banks, v6), or null. Its shape is the server's
+  /// to check.
+  TextColumn get bankKey => text().nullable()();
+
+  /// The custom bank (banks, v6), or null. Column-level constraints, so the
+  /// v6 migration can add the column to existing tables; a literal, since
+  /// drift ignores a custom constraint built with interpolation.
+  TextColumn get customBankId => text().nullable().customConstraint(
+    'REFERENCES custom_banks (id) DEFERRABLE INITIALLY DEFERRED '
+    'CHECK (custom_bank_id IS NULL OR bank_key IS NULL)',
+  )();
 
   @override
   Set<Column> get primaryKey => {id};

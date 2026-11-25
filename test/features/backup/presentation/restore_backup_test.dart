@@ -26,6 +26,7 @@ class FakeBackupImporter implements BackupImporter {
     categories: 9,
     transactions: 131,
     monthlyPlans: 2,
+    customBanks: 0,
   );
 
   @override

@@ -23,6 +23,7 @@ const seen = BackupCounts(
   categories: 12,
   transactions: 131,
   monthlyPlans: 2,
+  customBanks: 3,
 );
 
 Map<String, Object?> serverResult() => {
@@ -35,6 +36,7 @@ Map<String, Object?> serverResult() => {
     'categories': 9,
     'transactions': 0,
     'monthly_plans': 0,
+    'custom_banks': 0,
   },
 };
 
@@ -94,10 +96,12 @@ void main() {
       'categories': 12,
       'transactions': 131,
       'monthly_plans': 2,
+      'custom_banks': 3,
     });
     final dataset = request['dataset']! as Map<String, Object?>;
     for (final table in [
       'custom_account_types',
+      'custom_banks',
       'accounts',
       'transactions',
       'monthly_plans',
@@ -220,8 +224,9 @@ void main() {
     addTearDown(store.close);
     await store.download({
       'custom_account_types': [SyncedRows.customType('t1', 'E-wallet')],
+      'custom_banks': [SyncedRows.customBank('b1', 'Town Coop')],
       'accounts': [
-        SyncedRows.account('a1', 'BDO'),
+        SyncedRows.account('a1', 'BDO', customBankId: 'b1'),
         SyncedRows.account('a2', 'GCash', customTypeId: 't1'),
       ],
       'categories': [SyncedRows.category('c1', 'Food')],
@@ -239,6 +244,7 @@ void main() {
         categories: 1,
         transactions: 1,
         monthlyPlans: 1,
+        customBanks: 1,
       ),
     );
   });

@@ -21,6 +21,7 @@ const user = SignedIn(
 
 // Readable stand-ins for server UUIDs.
 const wallet = 'c0000000-0000-4000-8000-000000000001';
+const coop = 'f0000000-0000-4000-8000-000000000001';
 const bdo = 'a0000000-0000-4000-8000-000000000001';
 const card = 'a0000000-0000-4000-8000-000000000002';
 const gcash = 'a0000000-0000-4000-8000-000000000003';
@@ -38,12 +39,14 @@ void main() {
     store = FakeSyncedStore(user);
     await store.download({
       'custom_account_types': [SyncedRows.customType(wallet, 'E-wallet')],
+      'custom_banks': [SyncedRows.customBank(coop, 'Town Coop')],
       'accounts': [
         SyncedRows.account(
           bdo,
           'BDO Savings',
           openingMinor: 1500000,
           budget: true,
+          bankKey: 'bdo',
         ),
         SyncedRows.account(
           card,
@@ -56,6 +59,7 @@ void main() {
           'GCash',
           customTypeId: wallet,
           archived: true,
+          customBankId: coop,
         ),
       ],
       'categories': [
@@ -121,7 +125,7 @@ void main() {
     final backup = await export();
 
     expect(backup['app'], 'fundly');
-    expect(backup['formatVersion'], 8);
+    expect(backup['formatVersion'], 9);
     expect(backup['schemaVersion'], store.database.schemaVersion);
     expect(backup['exportedAt'], '2026-11-22T06:30:00.000Z');
   });
@@ -137,6 +141,13 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
       },
     ]);
+    expect(backup['customBanks'], [
+      {
+        'id': coop,
+        'name': 'Town Coop',
+        'createdAt': '2026-11-16T09:30:00.000Z',
+      },
+    ]);
     expect(backup['accounts'], [
       {
         'id': bdo,
@@ -148,6 +159,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
         'isBudgetAccount': true,
+        'bankKey': 'bdo',
+        'customBankId': null,
       },
       {
         'id': card,
@@ -159,6 +172,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': false,
         'isBudgetAccount': false,
+        'bankKey': null,
+        'customBankId': null,
       },
       {
         'id': gcash,
@@ -170,6 +185,8 @@ void main() {
         'createdAt': '2026-11-16T09:30:00.000Z',
         'isArchived': true,
         'isBudgetAccount': false,
+        'bankKey': null,
+        'customBankId': coop,
       },
     ]);
     expect(backup['categories'], [
@@ -284,7 +301,7 @@ void main() {
     expect(backup.fileName, 'fundly-backup-2026-11-22.json');
     expect(checkpoint.fileName, '2026-11-22_1430_reset_checkpoint.json');
     final decoded = jsonDecode(backup.contents) as Map<String, Object?>;
-    expect(decoded['formatVersion'], 8);
+    expect(decoded['formatVersion'], 9);
     expect(backup.contents, startsWith('{\n  "app": "fundly",'));
   });
 
@@ -297,6 +314,7 @@ void main() {
 
     for (final key in [
       'customAccountTypes',
+      'customBanks',
       'accounts',
       'categories',
       'transactions',
@@ -320,7 +338,7 @@ void main() {
 
       final backup = await container.read(backupExporterProvider).export();
 
-      expect(backup['formatVersion'], 8);
+      expect(backup['formatVersion'], 9);
       expect((backup['accounts']! as List<Object?>), hasLength(3));
     });
 
@@ -339,7 +357,7 @@ void main() {
 
       final backup = await container.read(backupExporterProvider).export();
 
-      expect(backup['formatVersion'], 8);
+      expect(backup['formatVersion'], 9);
     });
   });
 }

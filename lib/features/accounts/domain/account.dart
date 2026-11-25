@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../../core/money/money.dart';
 import 'account_type.dart';
 
+/// The bank an account belongs to: a built-in bank's key, a custom bank's ID,
+/// or neither (no bank). Never both.
+typedef AccountBank = ({String? bankKey, String? customBankId});
+
 /// A financial account owned by the user.
 ///
 /// [openingBalance] is signed (CLAUDE.md §11, D1): asset accounts are usually
@@ -20,6 +24,8 @@ final class Account {
     this.isArchived = false,
     this.customTypeId,
     this.isBudgetAccount = false,
+    this.bankKey,
+    this.customBankId,
   });
 
   /// Currency for every account in the MVP (CLAUDE.md §11, G6).
@@ -46,10 +52,22 @@ final class Account {
   /// At most one account is the budget account, and it is Savings/Cash.
   final bool isBudgetAccount;
 
+  /// The built-in bank the account belongs to (`Bank.key`), or `null`. A key
+  /// this app does not know, from a later version, is shown as no bank.
+  final String? bankKey;
+
+  /// The custom bank the account belongs to, or `null`. At most one of
+  /// [bankKey] and [customBankId] is set. Presentation only (BANKS_PLAN.md).
+  final String? customBankId;
+
+  /// The account's bank as one value.
+  AccountBank get bank => (bankKey: bankKey, customBankId: customBankId);
+
   String get currencyCode => openingBalance.currencyCode;
 
   /// Returns a copy with the editable fields replaced. [id], [type] and
-  /// [createdAt] cannot change after creation; [customTypeId] is kept.
+  /// [createdAt] cannot change after creation; [customTypeId] and the bank
+  /// are kept.
   Account copyWith({String? name, Money? openingBalance, bool? isArchived}) {
     return Account(
       id: id,
@@ -60,6 +78,8 @@ final class Account {
       isArchived: isArchived ?? this.isArchived,
       customTypeId: customTypeId,
       isBudgetAccount: isBudgetAccount,
+      bankKey: bankKey,
+      customBankId: customBankId,
     );
   }
 
@@ -73,7 +93,9 @@ final class Account {
       other.createdAt == createdAt &&
       other.isArchived == isArchived &&
       other.customTypeId == customTypeId &&
-      other.isBudgetAccount == isBudgetAccount;
+      other.isBudgetAccount == isBudgetAccount &&
+      other.bankKey == bankKey &&
+      other.customBankId == customBankId;
 
   @override
   int get hashCode => Object.hash(
@@ -85,6 +107,8 @@ final class Account {
     isArchived,
     customTypeId,
     isBudgetAccount,
+    bankKey,
+    customBankId,
   );
 
   @override
@@ -92,6 +116,8 @@ final class Account {
       'Account($id, "$name", ${type.name}'
       '${customTypeId == null ? '' : ' (custom type $customTypeId)'}, '
       '$openingBalance'
+      '${bankKey == null ? '' : ', bank $bankKey'}'
+      '${customBankId == null ? '' : ', custom bank $customBankId'}'
       '${isBudgetAccount ? ', budget account' : ''}'
       '${isArchived ? ', archived' : ''})';
 }

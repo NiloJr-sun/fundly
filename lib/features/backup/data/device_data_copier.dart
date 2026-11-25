@@ -191,6 +191,7 @@ Future<bool> accountHoldsOnlyDefaults(SyncedDatabase database) async {
   final others = await database
       .customSelect(
         'SELECT (SELECT count(*) FROM custom_account_types) '
+        '+ (SELECT count(*) FROM custom_banks) '
         '+ (SELECT count(*) FROM accounts) '
         '+ (SELECT count(*) FROM transactions) '
         '+ (SELECT count(*) FROM monthly_plans) AS n',

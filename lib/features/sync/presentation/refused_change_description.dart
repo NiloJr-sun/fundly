@@ -8,6 +8,7 @@ import '../../../core/time/calendar_date.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/domain/account_type.dart';
+import '../../accounts/domain/bank.dart';
 import '../../accounts/presentation/account_display.dart';
 import '../../categories/domain/category.dart';
 import '../../categories/presentation/category_display.dart';
@@ -61,6 +62,7 @@ String refusalReason(SyncRejection rejection) => switch (rejection) {
   SyncRejection(
     code: 'category_in_use' ||
         'custom_type_in_use' ||
+        'custom_bank_in_use' ||
         'account_has_transactions',
   ) =>
     'Still in use, possibly after changes on another device',
@@ -95,6 +97,9 @@ String _title(Map<String, Object?> item, SyncRejection rejection) {
     'custom_type.create' => 'Add account type',
     'custom_type.update' => 'Edit account type',
     'custom_type.delete' => 'Delete account type',
+    'bank.create' => 'Add bank',
+    'bank.update' => 'Rename bank',
+    'bank.delete' => 'Delete bank',
     'category.create' => 'Add category',
     'category.update' => 'Edit category',
     'category.set_archived' =>
@@ -203,6 +208,13 @@ List<(String, String)> _details(
         'source_account_id' => ('From', record(value)),
         'destination_account_id' => ('To', record(value)),
         'custom_type_id' => ('Account type', record(value)),
+        // The two bank fields travel together; one line for both.
+        'bank_key' when value != null => (
+          'Bank',
+          builtInBankByKey(value as String)?.name ?? value,
+        ),
+        'custom_bank_id' when value != null => ('Bank', record(value)),
+        'custom_bank_id' when data['bank_key'] == null => ('Bank', 'None'),
         _ => null,
       },
   ];

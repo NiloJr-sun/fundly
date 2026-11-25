@@ -56,8 +56,9 @@ class BackupExporter {
   /// accounts. Format 4 adds category `linkedAccountId`; 5 adds
   /// `isPlanArchived`; 6 adds `isPlanDeleted`; 7 writes every ID and
   /// reference as text (cloud sync S6, Decision 6); 8 adds category
-  /// `defaultTargetMinor`.
-  static const int formatVersion = 8;
+  /// `defaultTargetMinor`; 9 adds `customBanks` and account `bankKey` and
+  /// `customBankId` (docs/BANKS_PLAN.md).
+  static const int formatVersion = 9;
 
   final BackupSource _source;
   final DateTime Function() _now;
@@ -79,6 +80,14 @@ class BackupExporter {
             'createdAt': _timestamp(type.createdAt),
           },
       ],
+      'customBanks': [
+        for (final bank in records.customBanks)
+          {
+            'id': _id(bank.id),
+            'name': bank.name,
+            'createdAt': _timestamp(bank.createdAt),
+          },
+      ],
       'accounts': [
         for (final account in records.accounts)
           {
@@ -91,6 +100,8 @@ class BackupExporter {
             'createdAt': _timestamp(account.createdAt),
             'isArchived': account.isArchived,
             'isBudgetAccount': account.isBudgetAccount,
+            'bankKey': account.bankKey,
+            'customBankId': _id(account.customBankId),
           },
       ],
       'categories': [

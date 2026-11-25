@@ -110,6 +110,8 @@ class CloudDatasetImport {
       categories: count('categories'),
       transactions: count('transactions'),
       monthlyPlans: count('monthly_plans'),
+      // Reported since the banks migration; a server without it has none.
+      customBanks: (counts['custom_banks'] as num?)?.toInt() ?? 0,
     );
   }
 }

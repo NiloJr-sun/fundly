@@ -221,6 +221,9 @@ void main() {
     expect(title('custom_type.create'), 'Add account type');
     expect(title('custom_type.update'), 'Edit account type');
     expect(title('custom_type.delete'), 'Delete account type');
+    expect(title('bank.create'), 'Add bank');
+    expect(title('bank.update'), 'Rename bank');
+    expect(title('bank.delete'), 'Delete bank');
     expect(title('category.create'), 'Add category');
     expect(title('category.update'), 'Edit category');
     expect(
@@ -233,6 +236,28 @@ void main() {
     expect(title('plan.delete_permanently'), 'Delete plan permanently');
     expect(title('dataset.initialize'), 'Add default categories');
     expect(title('something.new'), 'something.new');
+  });
+
+  test("an account's bank is one line: built-in, custom or none", () {
+    List<(String, String)> details(Map<String, Object?> data) =>
+        describeRefusedChange(
+          rejection(
+            [item('account.update', data)],
+            labels: {record: 'Savings', category: 'Town Coop'},
+          ),
+        ).details;
+
+    expect(details({'bank_key': 'bdo', 'custom_bank_id': null}), [
+      ('Bank', 'BDO'),
+    ]);
+    expect(details({'bank_key': null, 'custom_bank_id': category}), [
+      ('Bank', 'Town Coop'),
+    ]);
+    expect(details({'bank_key': null, 'custom_bank_id': null}), [
+      ('Bank', 'None'),
+    ]);
+    // A key from a later app version is shown as sent.
+    expect(details({'bank_key': 'newbank'}), [('Bank', 'newbank')]);
   });
 
   test('a batch of several items says how many more', () {
@@ -279,6 +304,7 @@ void main() {
     for (final code in [
       'category_in_use',
       'custom_type_in_use',
+      'custom_bank_in_use',
       'account_has_transactions',
     ]) {
       expect(

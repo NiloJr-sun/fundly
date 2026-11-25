@@ -314,6 +314,258 @@ class CustomAccountTypesCompanion
   }
 }
 
+class $CustomBanksTable extends CustomBanks
+    with TableInfo<$CustomBanksTable, CustomBankRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CustomBanksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE COLLATE NOCASE',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'custom_banks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CustomBankRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CustomBankRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CustomBankRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CustomBanksTable createAlias(String alias) {
+    return $CustomBanksTable(attachedDatabase, alias);
+  }
+}
+
+class CustomBankRow extends DataClass implements Insertable<CustomBankRow> {
+  final int id;
+  final String name;
+
+  /// UTC instant.
+  final DateTime createdAt;
+  const CustomBankRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CustomBanksCompanion toCompanion(bool nullToAbsent) {
+    return CustomBanksCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CustomBankRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CustomBankRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CustomBankRow copyWith({int? id, String? name, DateTime? createdAt}) =>
+      CustomBankRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  CustomBankRow copyWithCompanion(CustomBanksCompanion data) {
+    return CustomBankRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomBankRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CustomBankRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt);
+}
+
+class CustomBanksCompanion extends UpdateCompanion<CustomBankRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  const CustomBanksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CustomBanksCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required DateTime createdAt,
+  }) : name = Value(name),
+       createdAt = Value(createdAt);
+  static Insertable<CustomBankRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CustomBanksCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+  }) {
+    return CustomBanksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CustomBanksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AccountsTable extends Accounts
     with TableInfo<$AccountsTable, AccountRow> {
   @override
@@ -432,6 +684,33 @@ class $AccountsTable extends Accounts
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _bankKeyMeta = const VerificationMeta(
+    'bankKey',
+  );
+  @override
+  late final GeneratedColumn<String> bankKey = GeneratedColumn<String>(
+    'bank_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'CHECK (bank_key IS NULL OR (length(bank_key) BETWEEN 1 AND 32 AND bank_key NOT GLOB \'*[^a-z0-9]*\'))',
+  );
+  static const VerificationMeta _customBankIdMeta = const VerificationMeta(
+    'customBankId',
+  );
+  @override
+  late final GeneratedColumn<int> customBankId = GeneratedColumn<int>(
+    'custom_bank_id',
+    aliasedName,
+    true,
+    check: () => customBankId.isNull() | bankKey.isNull(),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES custom_banks (id) ON DELETE RESTRICT',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -443,6 +722,8 @@ class $AccountsTable extends Accounts
     isArchived,
     customTypeId,
     isBudgetAccount,
+    bankKey,
+    customBankId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -519,6 +800,21 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('bank_key')) {
+      context.handle(
+        _bankKeyMeta,
+        bankKey.isAcceptableOrUnknown(data['bank_key']!, _bankKeyMeta),
+      );
+    }
+    if (data.containsKey('custom_bank_id')) {
+      context.handle(
+        _customBankIdMeta,
+        customBankId.isAcceptableOrUnknown(
+          data['custom_bank_id']!,
+          _customBankIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -566,6 +862,14 @@ class $AccountsTable extends Accounts
         DriftSqlType.bool,
         data['${effectivePrefix}is_budget_account'],
       )!,
+      bankKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bank_key'],
+      ),
+      customBankId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}custom_bank_id'],
+      ),
     );
   }
 
@@ -602,6 +906,16 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   /// Whether money coming into this account funds Ready to assign on Plans.
   /// Any number of Savings/Cash accounts can be budget accounts.
   final bool isBudgetAccount;
+
+  /// The built-in bank the account belongs to (`Bank.key`), or null. Same
+  /// shape as the server's check, `^[a-z0-9]{1,32}$`, which SQLite has no
+  /// regular expressions for.
+  final String? bankKey;
+
+  /// The custom bank the account belongs to, or null; never together with
+  /// [bankKey]. Column-level, so the v15 migration can add it to existing
+  /// tables.
+  final int? customBankId;
   const AccountRow({
     required this.id,
     required this.name,
@@ -612,6 +926,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.isArchived,
     this.customTypeId,
     required this.isBudgetAccount,
+    this.bankKey,
+    this.customBankId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -629,6 +945,12 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       map['custom_type_id'] = Variable<int>(customTypeId);
     }
     map['is_budget_account'] = Variable<bool>(isBudgetAccount);
+    if (!nullToAbsent || bankKey != null) {
+      map['bank_key'] = Variable<String>(bankKey);
+    }
+    if (!nullToAbsent || customBankId != null) {
+      map['custom_bank_id'] = Variable<int>(customBankId);
+    }
     return map;
   }
 
@@ -645,6 +967,12 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ? const Value.absent()
           : Value(customTypeId),
       isBudgetAccount: Value(isBudgetAccount),
+      bankKey: bankKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bankKey),
+      customBankId: customBankId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customBankId),
     );
   }
 
@@ -667,6 +995,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       customTypeId: serializer.fromJson<int?>(json['customTypeId']),
       isBudgetAccount: serializer.fromJson<bool>(json['isBudgetAccount']),
+      bankKey: serializer.fromJson<String?>(json['bankKey']),
+      customBankId: serializer.fromJson<int?>(json['customBankId']),
     );
   }
   @override
@@ -684,6 +1014,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'isArchived': serializer.toJson<bool>(isArchived),
       'customTypeId': serializer.toJson<int?>(customTypeId),
       'isBudgetAccount': serializer.toJson<bool>(isBudgetAccount),
+      'bankKey': serializer.toJson<String?>(bankKey),
+      'customBankId': serializer.toJson<int?>(customBankId),
     };
   }
 
@@ -697,6 +1029,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     bool? isArchived,
     Value<int?> customTypeId = const Value.absent(),
     bool? isBudgetAccount,
+    Value<String?> bankKey = const Value.absent(),
+    Value<int?> customBankId = const Value.absent(),
   }) => AccountRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -707,6 +1041,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     isArchived: isArchived ?? this.isArchived,
     customTypeId: customTypeId.present ? customTypeId.value : this.customTypeId,
     isBudgetAccount: isBudgetAccount ?? this.isBudgetAccount,
+    bankKey: bankKey.present ? bankKey.value : this.bankKey,
+    customBankId: customBankId.present ? customBankId.value : this.customBankId,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
     return AccountRow(
@@ -729,6 +1065,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       isBudgetAccount: data.isBudgetAccount.present
           ? data.isBudgetAccount.value
           : this.isBudgetAccount,
+      bankKey: data.bankKey.present ? data.bankKey.value : this.bankKey,
+      customBankId: data.customBankId.present
+          ? data.customBankId.value
+          : this.customBankId,
     );
   }
 
@@ -743,7 +1083,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('createdAt: $createdAt, ')
           ..write('isArchived: $isArchived, ')
           ..write('customTypeId: $customTypeId, ')
-          ..write('isBudgetAccount: $isBudgetAccount')
+          ..write('isBudgetAccount: $isBudgetAccount, ')
+          ..write('bankKey: $bankKey, ')
+          ..write('customBankId: $customBankId')
           ..write(')'))
         .toString();
   }
@@ -759,6 +1101,8 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     isArchived,
     customTypeId,
     isBudgetAccount,
+    bankKey,
+    customBankId,
   );
   @override
   bool operator ==(Object other) =>
@@ -772,7 +1116,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.createdAt == this.createdAt &&
           other.isArchived == this.isArchived &&
           other.customTypeId == this.customTypeId &&
-          other.isBudgetAccount == this.isBudgetAccount);
+          other.isBudgetAccount == this.isBudgetAccount &&
+          other.bankKey == this.bankKey &&
+          other.customBankId == this.customBankId);
 }
 
 class AccountsCompanion extends UpdateCompanion<AccountRow> {
@@ -785,6 +1131,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<bool> isArchived;
   final Value<int?> customTypeId;
   final Value<bool> isBudgetAccount;
+  final Value<String?> bankKey;
+  final Value<int?> customBankId;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -795,6 +1143,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.isArchived = const Value.absent(),
     this.customTypeId = const Value.absent(),
     this.isBudgetAccount = const Value.absent(),
+    this.bankKey = const Value.absent(),
+    this.customBankId = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -806,6 +1156,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.isArchived = const Value.absent(),
     this.customTypeId = const Value.absent(),
     this.isBudgetAccount = const Value.absent(),
+    this.bankKey = const Value.absent(),
+    this.customBankId = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        openingBalanceMinor = Value(openingBalanceMinor),
@@ -820,6 +1172,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<bool>? isArchived,
     Expression<int>? customTypeId,
     Expression<bool>? isBudgetAccount,
+    Expression<String>? bankKey,
+    Expression<int>? customBankId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -832,6 +1186,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (isArchived != null) 'is_archived': isArchived,
       if (customTypeId != null) 'custom_type_id': customTypeId,
       if (isBudgetAccount != null) 'is_budget_account': isBudgetAccount,
+      if (bankKey != null) 'bank_key': bankKey,
+      if (customBankId != null) 'custom_bank_id': customBankId,
     });
   }
 
@@ -845,6 +1201,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<bool>? isArchived,
     Value<int?>? customTypeId,
     Value<bool>? isBudgetAccount,
+    Value<String?>? bankKey,
+    Value<int?>? customBankId,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -856,6 +1214,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       isArchived: isArchived ?? this.isArchived,
       customTypeId: customTypeId ?? this.customTypeId,
       isBudgetAccount: isBudgetAccount ?? this.isBudgetAccount,
+      bankKey: bankKey ?? this.bankKey,
+      customBankId: customBankId ?? this.customBankId,
     );
   }
 
@@ -891,6 +1251,12 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (isBudgetAccount.present) {
       map['is_budget_account'] = Variable<bool>(isBudgetAccount.value);
     }
+    if (bankKey.present) {
+      map['bank_key'] = Variable<String>(bankKey.value);
+    }
+    if (customBankId.present) {
+      map['custom_bank_id'] = Variable<int>(customBankId.value);
+    }
     return map;
   }
 
@@ -905,7 +1271,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('createdAt: $createdAt, ')
           ..write('isArchived: $isArchived, ')
           ..write('customTypeId: $customTypeId, ')
-          ..write('isBudgetAccount: $isBudgetAccount')
+          ..write('isBudgetAccount: $isBudgetAccount, ')
+          ..write('bankKey: $bankKey, ')
+          ..write('customBankId: $customBankId')
           ..write(')'))
         .toString();
   }
@@ -2813,6 +3181,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CustomAccountTypesTable customAccountTypes =
       $CustomAccountTypesTable(this);
+  late final $CustomBanksTable customBanks = $CustomBanksTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
@@ -2835,6 +3204,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     customAccountTypes,
+    customBanks,
     accounts,
     categories,
     transactions,
@@ -3159,6 +3529,259 @@ typedef $$CustomAccountTypesTableProcessedTableManager =
       CustomAccountTypeRow,
       PrefetchHooks Function({bool accountsRefs})
     >;
+typedef $$CustomBanksTableCreateCompanionBuilder =
+    CustomBanksCompanion Function({
+      Value<int> id,
+      required String name,
+      required DateTime createdAt,
+    });
+typedef $$CustomBanksTableUpdateCompanionBuilder =
+    CustomBanksCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+    });
+
+final class $$CustomBanksTableReferences
+    extends BaseReferences<_$AppDatabase, $CustomBanksTable, CustomBankRow> {
+  $$CustomBanksTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AccountsTable, List<AccountRow>>
+  _accountsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.accounts,
+    aliasName: 'custom_banks__id__accounts__custom_bank_id',
+  );
+
+  $$AccountsTableProcessedTableManager get accountsRefs {
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.customBankId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_accountsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CustomBanksTableFilterComposer
+    extends Composer<_$AppDatabase, $CustomBanksTable> {
+  $$CustomBanksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> accountsRefs(
+    Expression<bool> Function($$AccountsTableFilterComposer f) f,
+  ) {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.customBankId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CustomBanksTableOrderingComposer
+    extends Composer<_$AppDatabase, $CustomBanksTable> {
+  $$CustomBanksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CustomBanksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CustomBanksTable> {
+  $$CustomBanksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> accountsRefs<T extends Object>(
+    Expression<T> Function($$AccountsTableAnnotationComposer a) f,
+  ) {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.customBankId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CustomBanksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CustomBanksTable,
+          CustomBankRow,
+          $$CustomBanksTableFilterComposer,
+          $$CustomBanksTableOrderingComposer,
+          $$CustomBanksTableAnnotationComposer,
+          $$CustomBanksTableCreateCompanionBuilder,
+          $$CustomBanksTableUpdateCompanionBuilder,
+          (CustomBankRow, $$CustomBanksTableReferences),
+          CustomBankRow,
+          PrefetchHooks Function({bool accountsRefs})
+        > {
+  $$CustomBanksTableTableManager(_$AppDatabase db, $CustomBanksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CustomBanksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CustomBanksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CustomBanksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) => CustomBanksCompanion(id: id, name: name, createdAt: createdAt),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required DateTime createdAt,
+              }) => CustomBanksCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CustomBanksTable, CustomBankRow>(table),
+                  $$CustomBanksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({accountsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (accountsRefs) db.accounts],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (accountsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      CustomBankRow,
+                      $CustomBanksTable,
+                      AccountRow,
+                      $AccountsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$CustomBanksTableReferences
+                          ._accountsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$CustomBanksTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).accountsRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'custom_bank_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CustomBanksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CustomBanksTable,
+      CustomBankRow,
+      $$CustomBanksTableFilterComposer,
+      $$CustomBanksTableOrderingComposer,
+      $$CustomBanksTableAnnotationComposer,
+      $$CustomBanksTableCreateCompanionBuilder,
+      $$CustomBanksTableUpdateCompanionBuilder,
+      (CustomBankRow, $$CustomBanksTableReferences),
+      CustomBankRow,
+      PrefetchHooks Function({bool accountsRefs})
+    >;
 typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
   required String name,
@@ -3169,6 +3792,8 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<bool> isArchived,
   Value<int?> customTypeId,
   Value<bool> isBudgetAccount,
+  Value<String?> bankKey,
+  Value<int?> customBankId,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
@@ -3180,6 +3805,8 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<bool> isArchived,
   Value<int?> customTypeId,
   Value<bool> isBudgetAccount,
+  Value<String?> bankKey,
+  Value<int?> customBankId,
 });
 
 final class $$AccountsTableReferences
@@ -3198,6 +3825,23 @@ final class $$AccountsTableReferences
       $_db.customAccountTypes,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_customTypeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CustomBanksTable _customBankIdTable(_$AppDatabase db) =>
+      db.customBanks.createAlias('accounts__custom_bank_id__custom_banks__id');
+
+  $$CustomBanksTableProcessedTableManager? get customBankId {
+    final $_column = $_itemColumn<int>('custom_bank_id');
+    if ($_column == null) return null;
+    final manager = $$CustomBanksTableTableManager(
+      $_db,
+      $_db.customBanks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_customBankIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -3273,6 +3917,11 @@ class $$AccountsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get bankKey => $composableBuilder(
+    column: $table.bankKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CustomAccountTypesTableFilterComposer get customTypeId {
     final $$CustomAccountTypesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -3287,6 +3936,29 @@ class $$AccountsTableFilterComposer
           }) => $$CustomAccountTypesTableFilterComposer(
             $db: $db,
             $table: $db.customAccountTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CustomBanksTableFilterComposer get customBankId {
+    final $$CustomBanksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customBankId,
+      referencedTable: $db.customBanks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomBanksTableFilterComposer(
+            $db: $db,
+            $table: $db.customBanks,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3371,6 +4043,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get bankKey => $composableBuilder(
+    column: $table.bankKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomAccountTypesTableOrderingComposer get customTypeId {
     final $$CustomAccountTypesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3385,6 +4062,29 @@ class $$AccountsTableOrderingComposer
           }) => $$CustomAccountTypesTableOrderingComposer(
             $db: $db,
             $table: $db.customAccountTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CustomBanksTableOrderingComposer get customBankId {
+    final $$CustomBanksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customBankId,
+      referencedTable: $db.customBanks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomBanksTableOrderingComposer(
+            $db: $db,
+            $table: $db.customBanks,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3436,6 +4136,9 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get bankKey =>
+      $composableBuilder(column: $table.bankKey, builder: (column) => column);
+
   $$CustomAccountTypesTableAnnotationComposer get customTypeId {
     final $$CustomAccountTypesTableAnnotationComposer composer =
         $composerBuilder(
@@ -3457,6 +4160,29 @@ class $$AccountsTableAnnotationComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return composer;
+  }
+
+  $$CustomBanksTableAnnotationComposer get customBankId {
+    final $$CustomBanksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customBankId,
+      referencedTable: $db.customBanks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomBanksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.customBanks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return composer;
   }
 
@@ -3499,7 +4225,11 @@ class $$AccountsTableTableManager
           $$AccountsTableUpdateCompanionBuilder,
           (AccountRow, $$AccountsTableReferences),
           AccountRow,
-          PrefetchHooks Function({bool customTypeId, bool categoriesRefs})
+          PrefetchHooks Function({
+            bool customTypeId,
+            bool customBankId,
+            bool categoriesRefs,
+          })
         > {
   $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
     : super(
@@ -3523,6 +4253,8 @@ class $$AccountsTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<int?> customTypeId = const Value.absent(),
                 Value<bool> isBudgetAccount = const Value.absent(),
+                Value<String?> bankKey = const Value.absent(),
+                Value<int?> customBankId = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -3533,6 +4265,8 @@ class $$AccountsTableTableManager
                 isArchived: isArchived,
                 customTypeId: customTypeId,
                 isBudgetAccount: isBudgetAccount,
+                bankKey: bankKey,
+                customBankId: customBankId,
               ),
           createCompanionCallback:
               ({
@@ -3545,6 +4279,8 @@ class $$AccountsTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<int?> customTypeId = const Value.absent(),
                 Value<bool> isBudgetAccount = const Value.absent(),
+                Value<String?> bankKey = const Value.absent(),
+                Value<int?> customBankId = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -3555,6 +4291,8 @@ class $$AccountsTableTableManager
                 isArchived: isArchived,
                 customTypeId: customTypeId,
                 isBudgetAccount: isBudgetAccount,
+                bankKey: bankKey,
+                customBankId: customBankId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3565,7 +4303,11 @@ class $$AccountsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({customTypeId = false, categoriesRefs = false}) {
+              ({
+                customTypeId = false,
+                customBankId = false,
+                categoriesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [if (categoriesRefs) db.categories],
@@ -3593,6 +4335,17 @@ class $$AccountsTableTableManager
                                 ._customTypeIdTable(db),
                             referencedColumn: $$AccountsTableReferences
                                 ._customTypeIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (customBankId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.customBankId,
+                            referencedTable: $$AccountsTableReferences
+                                ._customBankIdTable(db),
+                            referencedColumn: $$AccountsTableReferences
+                                ._customBankIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -3641,7 +4394,11 @@ typedef $$AccountsTableProcessedTableManager =
       $$AccountsTableUpdateCompanionBuilder,
       (AccountRow, $$AccountsTableReferences),
       AccountRow,
-      PrefetchHooks Function({bool customTypeId, bool categoriesRefs})
+      PrefetchHooks Function({
+        bool customTypeId,
+        bool customBankId,
+        bool categoriesRefs,
+      })
     >;
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
@@ -5240,6 +5997,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$CustomAccountTypesTableTableManager get customAccountTypes =>
       $$CustomAccountTypesTableTableManager(_db, _db.customAccountTypes);
+  $$CustomBanksTableTableManager get customBanks =>
+      $$CustomBanksTableTableManager(_db, _db.customBanks);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
   $$CategoriesTableTableManager get categories =>

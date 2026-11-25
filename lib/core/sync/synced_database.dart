@@ -15,6 +15,7 @@ part 'synced_database.g.dart';
 @DriftDatabase(
   tables: [
     SyncedCustomAccountTypes,
+    SyncedCustomBanks,
     SyncedAccounts,
     SyncedCategories,
     SyncedTransactions,
@@ -28,7 +29,7 @@ class SyncedDatabase extends _$SyncedDatabase {
   SyncedDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +64,17 @@ class SyncedDatabase extends _$SyncedDatabase {
         );
         await _redownload('categories');
       },
+      // v6 (banks, docs/BANKS_PLAN.md): custom banks and the accounts' bank.
+      // Accounts downloaded earlier are written again with the new columns.
+      // An older app already downloaded custom banks into PowerSync's log
+      // without a table to apply them to, so those are applied again too.
+      from5To6: (migrator, schema) async {
+        await migrator.createTable(schema.customBanks);
+        await migrator.addColumn(schema.accounts, schema.accounts.bankKey);
+        await migrator.addColumn(schema.accounts, schema.accounts.customBankId);
+        await _redownload('accounts');
+        await _redownloadLogged('custom_banks');
+      },
     ),
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
@@ -83,12 +95,26 @@ class SyncedDatabase extends _$SyncedDatabase {
     );
   }
 
+  /// Like [_redownload], for rows of [table] that only PowerSync's download
+  /// log holds: those downloaded while this app had no such table.
+  Future<void> _redownloadLogged(String table) async {
+    final hasLog = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE name = 'ps_oplog'",
+    ).getSingleOrNull();
+    if (hasLog == null) return;
+    await customStatement(
+      'INSERT OR IGNORE INTO ps_updated_rows (row_type, row_id) '
+      "SELECT DISTINCT row_type, row_id FROM ps_oplog WHERE row_type = '$table'",
+    );
+  }
+
   /// How many downloaded rows hold a number that Flutter web cannot represent
   /// exactly. Repositories skip those rows everywhere, so every platform shows
   /// the same records; the sync status reports the count.
   Stream<int> watchUnsafeNumberCount() => customSelect(
     'SELECT '
     '(SELECT count(*) FROM custom_account_types WHERE ${unsafe('revision')}) + '
+    '(SELECT count(*) FROM custom_banks WHERE ${unsafe('revision')}) + '
     '(SELECT count(*) FROM accounts WHERE ${unsafeAccount('accounts')}) + '
     '(SELECT count(*) FROM categories WHERE ${unsafeCategory('categories')}) + '
     '(SELECT count(*) FROM transactions WHERE ${unsafeTransaction('transactions')}) + '

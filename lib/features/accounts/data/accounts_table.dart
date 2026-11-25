@@ -2,15 +2,18 @@ import 'package:drift/drift.dart';
 
 import '../domain/account_type.dart';
 import 'custom_account_types_table.dart';
+import 'custom_banks_table.dart';
 
 /// SQLite table for [Account]s (schema v1; `custom_type_id` in v7;
-/// `is_budget_account` in v9; several budget accounts from v13).
+/// `is_budget_account` in v9; several budget accounts from v13; `bank_key`
+/// and `custom_bank_id` in v15).
 ///
 /// The database enforces the integrity rules too, so a bug in Dart code cannot
 /// store an invalid account:
 /// - names are unique ignoring ASCII case and 1-40 characters long;
 /// - the opening balance sign matches the account type (CLAUDE.md §11, D1);
-/// - only Savings/Cash accounts can be budget accounts.
+/// - only Savings/Cash accounts can be budget accounts;
+/// - an account has at most one bank, and a key has the server's shape.
 @DataClassName('AccountRow')
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -51,6 +54,24 @@ class Accounts extends Table {
         // ignore: recursive_getters
         isBudgetAccount.not() | type.equals('savingsCash'),
       )();
+
+  /// The built-in bank the account belongs to (`Bank.key`), or null. Same
+  /// shape as the server's check, `^[a-z0-9]{1,32}$`, which SQLite has no
+  /// regular expressions for.
+  TextColumn get bankKey => text().nullable().customConstraint(
+    'CHECK (bank_key IS NULL OR (length(bank_key) BETWEEN 1 AND 32 '
+    "AND bank_key NOT GLOB '*[^a-z0-9]*'))",
+  )();
+
+  /// The custom bank the account belongs to, or null; never together with
+  /// [bankKey]. Column-level, so the v15 migration can add it to existing
+  /// tables.
+  IntColumn get customBankId => integer()
+      .nullable()
+      .references(CustomBanks, #id, onDelete: KeyAction.restrict)
+      // Refers to another column, like isBudgetAccount's check.
+      // ignore: recursive_getters
+      .check(customBankId.isNull() | bankKey.isNull())();
 
   @override
   List<String> get customConstraints => [

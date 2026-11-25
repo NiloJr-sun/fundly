@@ -35,7 +35,9 @@ from write_api_test import authenticated, execute, literal  # noqa: E402
 
 COLUMNS = {
     'custom_account_types': 'id,name,base_type,revision',
-    'accounts': 'id,name,type,opening_balance_minor,is_archived,custom_type_id,is_budget_account,revision',
+    'custom_banks': 'id,name,revision',
+    'accounts': 'id,name,type,opening_balance_minor,is_archived,custom_type_id,is_budget_account,'
+                'bank_key,custom_bank_id,revision',
     'categories': 'id,name,kind,is_archived,is_plan_archived,is_plan_deleted,plan_group,linked_account_id,'
                   'default_target_minor,revision',
     'transactions': 'id,type,amount_minor,date,payee,category_id,source_account_id,destination_account_id,note,revision',
@@ -118,6 +120,12 @@ def server_rows(actor, table):
         f'WHERE owner_id={literal(actor)}) t;'))
 
 
+def with_banks(counts):
+    """The counts the server reports for a request with these counts: since
+    the banks migration it always reports custom_banks, 0 when not sent."""
+    return {'custom_banks': 0, **counts}
+
+
 def check_reset(actor, data):
     reset = data['reset']
     fresh = {'custom_account_types': 0, 'accounts': 0, 'categories': 9,
@@ -127,7 +135,7 @@ def check_reset(actor, data):
     assert expected == {table: len(ids) for table, ids in before.items()}, expected
 
     result = import_dataset(actor, reset['importId'], reset['request'])
-    assert result['mode'] == 'replace' and result['counts'] == fresh, result
+    assert result['mode'] == 'replace' and result['counts'] == with_banks(fresh), result
     categories = server_rows(actor, 'categories')
     assert sorted((c['name'], c['kind']) for c in categories) == sorted(
         (c['name'], c['kind']) for c in reset['request']['dataset']['categories'])
@@ -193,7 +201,7 @@ def check_copy(data):
         dataset = copy['request']['dataset']
         result = import_dataset(actor, copy['importId'], copy['request'])
         assert result['mode'] == 'into_empty', result
-        assert result['counts'] == {t: len(rows) for t, rows in dataset.items()}, result
+        assert result['counts'] == with_banks({t: len(rows) for t, rows in dataset.items()}), result
         for table, rows in dataset.items():
             stored = {row['id']: row for row in server_rows(actor, table)}
             for row in rows:
@@ -227,7 +235,7 @@ def check_restores(data):
         try:
             result = import_dataset(actor, str(uuid.uuid4()), request)
             expected = {t: len(rows) for t, rows in request['dataset'].items()}
-            assert result['counts'] == expected, (name, result)
+            assert result['counts'] == with_banks(expected), (name, result)
             for table in expected:
                 assert len(server_rows(actor, table)) == expected[table], (name, table)
         finally:
@@ -244,6 +252,7 @@ def cleanup(actor):
             f'DELETE FROM public.categories WHERE owner_id={literal(actor)}; '
             f'DELETE FROM public.accounts WHERE owner_id={literal(actor)}; '
             f'DELETE FROM public.custom_account_types WHERE owner_id={literal(actor)}; '
+            f'DELETE FROM public.custom_banks WHERE owner_id={literal(actor)}; '
             f'DELETE FROM public.fundly_deleted_records WHERE owner_id={literal(actor)}; '
             f'DELETE FROM auth.users WHERE id={literal(actor)}; COMMIT;')
 

@@ -10,11 +10,24 @@ import 'package:fundly/features/accounts/domain/account_validation_exception.dar
 /// `account_repository_test.dart` against an in-memory database.
 class FakeAccountRepository implements AccountRepository {
   final List<
-    ({String name, AccountType type, Money entered, String? customTypeId})
+    ({
+      String name,
+      AccountType type,
+      Money entered,
+      String? customTypeId,
+      String? bankKey,
+      String? customBankId,
+    })
   >
   created = [];
   final List<
-    ({String id, String? name, Money? entered, ({String? id})? customType})
+    ({
+      String id,
+      String? name,
+      Money? entered,
+      ({String? id})? customType,
+      AccountBank? bank,
+    })
   >
   updated = [];
   final List<({String id, bool archived})> archivedChanges = [];
@@ -32,6 +45,8 @@ class FakeAccountRepository implements AccountRepository {
     required AccountType type,
     required Money enteredOpeningAmount,
     String? customTypeId,
+    String? bankKey,
+    String? customBankId,
   }) async {
     _maybeFail();
     created.add((
@@ -39,6 +54,8 @@ class FakeAccountRepository implements AccountRepository {
       type: type,
       entered: enteredOpeningAmount,
       customTypeId: customTypeId,
+      bankKey: bankKey,
+      customBankId: customBankId,
     ));
     return Account(
       id: '${created.length}',
@@ -47,6 +64,8 @@ class FakeAccountRepository implements AccountRepository {
       openingBalance: openingBalanceFor(type, enteredOpeningAmount),
       createdAt: DateTime.utc(2026, 11, 16),
       customTypeId: customTypeId,
+      bankKey: bankKey,
+      customBankId: customBankId,
     );
   }
 
@@ -56,6 +75,7 @@ class FakeAccountRepository implements AccountRepository {
     String? name,
     Money? enteredOpeningAmount,
     ({String? id})? customType,
+    AccountBank? bank,
   }) async {
     _maybeFail();
     updated.add((
@@ -63,6 +83,7 @@ class FakeAccountRepository implements AccountRepository {
       name: name,
       entered: enteredOpeningAmount,
       customType: customType,
+      bank: bank,
     ));
     return Account(
       id: id,

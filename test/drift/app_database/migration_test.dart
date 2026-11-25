@@ -12,6 +12,7 @@ import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v14.dart' as v14;
+import 'generated/schema_v15.dart' as v15;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1291,6 +1292,111 @@ void main() {
           'UPDATE categories SET default_target_minor = -1 WHERE id = 1',
           'UPDATE categories SET default_target_minor = 100 WHERE id = 2',
           'UPDATE categories SET default_target_minor = 100 WHERE id = 3',
+        ]) {
+          await expectLater(
+            db.customStatement(statement),
+            throwsA(isA<Exception>()),
+            reason: statement,
+          );
+        }
+        expect(
+          await db.customSelect('PRAGMA foreign_key_check').get(),
+          isEmpty,
+        );
+      },
+    );
+  });
+
+  test('v14 to v15 keeps every account and transaction with no bank; an '
+      'account may then have one bank', () async {
+    const customType = v14.CustomAccountTypesData(
+      id: 1,
+      name: 'E-wallet',
+      baseType: 'savingsCash',
+      createdAt: '2026-11-01T00:00:00.000Z',
+    );
+    const accounts = [
+      v14.AccountsData(
+        id: 1,
+        name: 'BDO Savings',
+        type: 'savingsCash',
+        openingBalanceMinor: 1500000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        isArchived: 0,
+        isBudgetAccount: 1,
+      ),
+      v14.AccountsData(
+        id: 2,
+        name: 'GCash',
+        type: 'savingsCash',
+        openingBalanceMinor: 0,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        isArchived: 1,
+        customTypeId: 1,
+        isBudgetAccount: 0,
+      ),
+    ];
+    const transaction = v14.TransactionsData(
+      id: 1,
+      type: 'transfer',
+      amountMinor: 200000,
+      currencyCode: 'PHP',
+      date: '2026-11-10',
+      payee: '',
+      sourceAccountId: 1,
+      destinationAccountId: 2,
+      note: '',
+      createdAt: '2026-11-10T00:00:00.000Z',
+      updatedAt: '2026-11-10T00:00:00.000Z',
+    );
+    await verifier.testWithDataIntegrity(
+      oldVersion: 14,
+      newVersion: 15,
+      createOld: v14.DatabaseAtV14.new,
+      createNew: v15.DatabaseAtV15.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, db) => batch
+        ..insert(db.customAccountTypes, customType)
+        ..insertAll(db.accounts, accounts)
+        ..insert(db.transactions, transaction),
+      validateItems: (db) async {
+        final rows = await (db.select(
+          db.accounts,
+        )..orderBy([(a) => OrderingTerm(expression: a.id)])).get();
+        expect(rows.map((a) => a.toJson()).toList(), [
+          for (final account in accounts)
+            {...account.toJson(), 'bankKey': null, 'customBankId': null},
+        ]);
+        expect(
+          (await db.select(db.transactions).get()).single.toJson(),
+          transaction.toJson(),
+        );
+        expect(await db.select(db.customBanks).get(), isEmpty);
+
+        await db.customStatement('PRAGMA foreign_keys = ON');
+        await db.customStatement(
+          'INSERT INTO custom_banks (id, name, created_at) '
+          "VALUES (1, 'Town Coop', '2026-11-25T00:00:00.000Z')",
+        );
+        await db.customStatement(
+          "UPDATE accounts SET bank_key = 'bdo' WHERE id = 1",
+        );
+        await db.customStatement(
+          'UPDATE accounts SET custom_bank_id = 1 WHERE id = 2',
+        );
+        for (final statement in [
+          // One bank, a key of the server's shape, an existing bank, a
+          // bank in use kept, and names unique ignoring case.
+          'UPDATE accounts SET custom_bank_id = 1 WHERE id = 1',
+          "UPDATE accounts SET bank_key = 'BDO' WHERE id = 2",
+          "UPDATE accounts SET bank_key = 'b-d-o', custom_bank_id = NULL "
+              'WHERE id = 2',
+          'UPDATE accounts SET custom_bank_id = 9 WHERE id = 2',
+          'DELETE FROM custom_banks WHERE id = 1',
+          'INSERT INTO custom_banks (name, created_at) '
+              "VALUES ('town coop', '2026-11-25T00:00:00.000Z')",
         ]) {
           await expectLater(
             db.customStatement(statement),

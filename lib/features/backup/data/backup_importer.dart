@@ -12,6 +12,7 @@ import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/domain/account_rules.dart';
 import '../../accounts/domain/account_type.dart';
+import '../../accounts/domain/bank.dart';
 import '../../accounts/domain/custom_account_type_rules.dart';
 import '../../categories/data/category_row_mapping.dart';
 import '../../categories/data/liability_plan_categories.dart';
@@ -57,6 +58,7 @@ final class BackupCounts {
     required this.categories,
     required this.transactions,
     required this.monthlyPlans,
+    required this.customBanks,
   });
 
   final int customAccountTypes;
@@ -65,6 +67,9 @@ final class BackupCounts {
   final int transactions;
   final int monthlyPlans;
 
+  /// Custom banks (format 9, docs/BANKS_PLAN.md).
+  final int customBanks;
+
   @override
   bool operator ==(Object other) =>
       other is BackupCounts &&
@@ -72,7 +77,8 @@ final class BackupCounts {
       other.accounts == accounts &&
       other.categories == categories &&
       other.transactions == transactions &&
-      other.monthlyPlans == monthlyPlans;
+      other.monthlyPlans == monthlyPlans &&
+      other.customBanks == customBanks;
 
   @override
   int get hashCode => Object.hash(
@@ -81,6 +87,7 @@ final class BackupCounts {
     categories,
     transactions,
     monthlyPlans,
+    customBanks,
   );
 }
 
@@ -90,6 +97,7 @@ final class BackupSnapshot {
   const BackupSnapshot._(
     this.exportedAt,
     this._customAccountTypes,
+    this._customBanks,
     this._accounts,
     this._categories,
     this._transactions,
@@ -100,6 +108,7 @@ final class BackupSnapshot {
   final DateTime exportedAt;
 
   final List<CustomAccountTypesCompanion> _customAccountTypes;
+  final List<CustomBanksCompanion> _customBanks;
   final List<AccountsCompanion> _accounts;
   final List<CategoriesCompanion> _categories;
   final List<TransactionsCompanion> _transactions;
@@ -111,6 +120,7 @@ final class BackupSnapshot {
     categories: _categories.length,
     transactions: _transactions.length,
     monthlyPlans: _monthlyPlans.length,
+    customBanks: _customBanks.length,
   );
 
   /// The checked records, with this restore's local integer IDs, in the shape
@@ -130,6 +140,14 @@ final class BackupSnapshot {
             createdAt: row.createdAt.value,
           ),
       ],
+      customBanks: [
+        for (final row in _customBanks)
+          (
+            id: row.id.value,
+            name: row.name.value,
+            createdAt: row.createdAt.value,
+          ),
+      ],
       accounts: [
         for (final row in _accounts)
           (
@@ -142,6 +160,8 @@ final class BackupSnapshot {
             createdAt: row.createdAt.value,
             isArchived: value(row.isArchived, false),
             isBudgetAccount: value(row.isBudgetAccount, false),
+            bankKey: value(row.bankKey, null),
+            customBankId: value(row.customBankId, null),
           ),
       ],
       categories: [
@@ -192,7 +212,7 @@ final class BackupSnapshot {
   }
 }
 
-/// Restores a backup written by [BackupExporter] (format 1 to 6),
+/// Restores a backup written by [BackupExporter] (format 1 to 9),
 /// replacing all data.
 ///
 /// [parse] checks the whole file before anything is touched: the header,
@@ -217,6 +237,7 @@ class BackupImporter {
     categories: await _count(_database.categories),
     transactions: await _count(_database.transactions),
     monthlyPlans: await _count(_database.monthlyPlans),
+    customBanks: await _count(_database.customBanks),
   );
 
   /// Replaces every record with [snapshot]'s, keeping their IDs. All or
@@ -232,6 +253,7 @@ class BackupImporter {
         await _database.delete(_database.categories).go();
         await _database.delete(_database.accounts).go();
         await _database.delete(_database.customAccountTypes).go();
+        await _database.delete(_database.customBanks).go();
 
         await _database.batch((batch) {
           batch
@@ -239,6 +261,7 @@ class BackupImporter {
               _database.customAccountTypes,
               snapshot._customAccountTypes,
             )
+            ..insertAll(_database.customBanks, snapshot._customBanks)
             ..insertAll(_database.accounts, snapshot._accounts)
             ..insertAll(_database.categories, snapshot._categories)
             ..insertAll(_database.transactions, snapshot._transactions)
@@ -291,7 +314,11 @@ BackupSnapshot parseBackup(String contents) {
 /// For each table of a backup, the fields that refer to another table.
 const _references = {
   'customAccountTypes': <String, String>{},
-  'accounts': {'customTypeId': 'customAccountTypes'},
+  'customBanks': <String, String>{},
+  'accounts': {
+    'customTypeId': 'customAccountTypes',
+    'customBankId': 'customBanks',
+  },
   'categories': {'linkedAccountId': 'accounts'},
   'transactions': {
     'categoryId': 'categories',
@@ -372,11 +399,14 @@ class _Parser {
   /// the default group. Formats 1 and 2 have no `isBudgetAccount`; they
   /// restore with no budget account. Formats 1–4 have no independent Plans
   /// archive flag, which defaults to false. Formats 1–5 have no deletion flag,
-  /// which also defaults to false.
+  /// which also defaults to false. Formats 1–8 have no banks: no custom
+  /// banks, and accounts restore with no bank.
   final int formatVersion;
 
   final _customTypes = <int, AccountType>{};
   final _customTypeNames = <String>{};
+  final _customBankIds = <int>{};
+  final _customBankNames = <String>{};
   final _accounts = <String, Account>{};
   final _categories = <String, Category>{};
   final _seenIds = <String, Set<int>>{};
@@ -386,6 +416,11 @@ class _Parser {
     final customTypes = [
       for (final (i, json) in header.list('customAccountTypes').indexed)
         _customType(_Reader.of(json, 'customAccountTypes[$i]')),
+    ];
+    final customBanks = [
+      if (formatVersion >= 9)
+        for (final (i, json) in header.list('customBanks').indexed)
+          _customBank(_Reader.of(json, 'customBanks[$i]')),
     ];
     final accounts = [
       for (final (i, json) in header.list('accounts').indexed)
@@ -417,6 +452,7 @@ class _Parser {
     return BackupSnapshot._(
       exportedAt,
       customTypes,
+      customBanks,
       accounts,
       categories,
       transactions,
@@ -495,6 +531,18 @@ class _Parser {
     );
   }
 
+  CustomBanksCompanion _customBank(_Reader reader) {
+    final id = _id(reader, 'customBanks');
+    final name = _name(reader, _customBankNames);
+    if (isBuiltInBankName(name)) reader.fail('name', 'is a built-in bank name');
+    _customBankIds.add(id);
+    return CustomBanksCompanion.insert(
+      id: Value(id),
+      name: name,
+      createdAt: reader.timestamp('createdAt'),
+    );
+  }
+
   final _accountNames = <String>{};
 
   AccountsCompanion _account(_Reader reader) {
@@ -517,6 +565,19 @@ class _Parser {
     final isArchived = reader.boolean('isArchived');
     final isBudgetAccount =
         formatVersion >= 3 && reader.boolean('isBudgetAccount');
+    final bankKey = formatVersion >= 9 ? reader.stringOrNull('bankKey') : null;
+    if (bankKey != null && builtInBankByKey(bankKey) == null) {
+      reader.fail('bankKey', 'unknown bank "$bankKey"');
+    }
+    final customBankId = formatVersion >= 9
+        ? reader.integerOrNull('customBankId')
+        : null;
+    if (customBankId != null && !_customBankIds.contains(customBankId)) {
+      reader.fail('customBankId', 'no such bank');
+    }
+    if (bankKey != null && customBankId != null) {
+      reader.fail('customBankId', 'an account has one bank, not two');
+    }
     // Any number of accounts may be budget accounts (schema v13).
     if (isBudgetAccount && (type != AccountType.savingsCash || isArchived)) {
       reader.fail('isBudgetAccount', 'must be an active Savings/Cash account');
@@ -530,6 +591,8 @@ class _Parser {
       isArchived: isArchived,
       customTypeId: recordIdOrNull(customTypeId),
       isBudgetAccount: isBudgetAccount,
+      bankKey: bankKey,
+      customBankId: recordIdOrNull(customBankId),
     );
     return AccountsCompanion.insert(
       id: Value(id),
@@ -541,6 +604,8 @@ class _Parser {
       isArchived: Value(isArchived),
       customTypeId: Value(customTypeId),
       isBudgetAccount: Value(isBudgetAccount),
+      bankKey: Value(bankKey),
+      customBankId: Value(customBankId),
     );
   }
 
@@ -742,6 +807,7 @@ class _Reader {
   int integer(String key) => _field<int>(key, 'a whole number');
   int? integerOrNull(String key) => _field<int?>(key, 'a whole number or null');
   String string(String key) => _field<String>(key, 'text');
+  String? stringOrNull(String key) => _field<String?>(key, 'text or null');
   bool boolean(String key) => _field<bool>(key, 'true or false');
 
   List<Object?> list(String key) => _field<List<Object?>>(key, 'a list');

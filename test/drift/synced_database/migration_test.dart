@@ -11,6 +11,7 @@ import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
+import 'generated/schema_v6.dart' as v6;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -386,6 +387,109 @@ void main() {
           (row.read<String>('row_type'), row.read<String>('row_id')),
       ],
       [('categories', 'c1')],
+    );
+    await db.close();
+  });
+
+  test('v5 to v6 keeps every account with no bank and adds empty custom '
+      'banks', () async {
+    const at = '2026-11-25 09:30:00+00';
+    const accounts = [
+      v5.AccountsData(
+        id: 'acc-bdo',
+        name: 'BDO Savings',
+        type: 'savingsCash',
+        openingBalanceMinor: 1500000,
+        currencyCode: 'PHP',
+        isArchived: 0,
+        isBudgetAccount: 1,
+        createdAt: at,
+        updatedAt: at,
+        revision: 4,
+      ),
+      v5.AccountsData(
+        id: 'acc-card',
+        name: 'RCBC Card',
+        type: 'credit',
+        openingBalanceMinor: -300000,
+        currencyCode: 'PHP',
+        isArchived: 0,
+        isBudgetAccount: 0,
+        createdAt: at,
+        updatedAt: at,
+        revision: 1,
+      ),
+    ];
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 5,
+      newVersion: 6,
+      createOld: v5.DatabaseAtV5.new,
+      createNew: v6.DatabaseAtV6.new,
+      openTestedDatabase: SyncedDatabase.new,
+      createItems: (batch, oldDb) => batch..insertAll(oldDb.accounts, accounts),
+      validateItems: (newDb) async {
+        final rows = await (newDb.select(
+          newDb.accounts,
+        )..orderBy([(a) => OrderingTerm(expression: a.id)])).get();
+        expect(rows.map((row) => row.toJson()).toList(), [
+          for (final account in accounts)
+            {...account.toJson(), 'bankKey': null, 'customBankId': null},
+        ]);
+        expect(await newDb.select(newDb.customBanks).get(), isEmpty);
+        // An account has at most one bank.
+        await newDb.customStatement(
+          "INSERT INTO custom_banks VALUES ('b1', 'Coop', '$at', '$at', 1)",
+        );
+        await newDb.customStatement(
+          "UPDATE accounts SET custom_bank_id = 'b1' WHERE id = 'acc-bdo'",
+        );
+        await expectLater(
+          newDb.customStatement(
+            "UPDATE accounts SET bank_key = 'bdo' WHERE id = 'acc-bdo'",
+          ),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
+  });
+
+  test('v5 to v6 in a PowerSync store marks accounts, and custom banks only '
+      'the download log holds, for the next download to write', () async {
+    final schema = await verifier.schemaAt(5);
+    schema.rawDatabase
+      ..execute(
+        'CREATE TABLE ps_updated_rows (row_type TEXT, row_id TEXT, '
+        'PRIMARY KEY (row_type, row_id))',
+      )
+      ..execute(
+        'CREATE TABLE ps_oplog (bucket INTEGER, op_id INTEGER, '
+        'row_type TEXT, row_id TEXT, key TEXT, data TEXT, hash INTEGER)',
+      )
+      ..execute(
+        'INSERT INTO ps_oplog (bucket, op_id, row_type, row_id, data) VALUES '
+        "(1, 1, 'custom_banks', 'b1', '{}'), (1, 2, 'custom_banks', 'b1', '{}'), "
+        "(1, 3, 'categories', 'c1', '{}')",
+      )
+      ..execute(
+        'INSERT INTO accounts (id, name, type, opening_balance_minor, '
+        'currency_code, is_archived, is_budget_account, created_at, '
+        "updated_at, revision) VALUES ('a1', 'BDO', 'savingsCash', 0, 'PHP', "
+        "0, 0, 'x', 'x', 1)",
+      );
+    final db = SyncedDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 6);
+    final marked = await db
+        .customSelect(
+          'SELECT row_type, row_id FROM ps_updated_rows ORDER BY row_type',
+        )
+        .get();
+    expect(
+      [
+        for (final row in marked)
+          (row.read<String>('row_type'), row.read<String>('row_id')),
+      ],
+      [('accounts', 'a1'), ('custom_banks', 'b1')],
     );
     await db.close();
   });

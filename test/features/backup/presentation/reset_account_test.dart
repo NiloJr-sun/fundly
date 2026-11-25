@@ -180,6 +180,7 @@ void main() {
       'categories': 1,
       'transactions': 1,
       'monthly_plans': 0,
+      'custom_banks': 0,
     });
     // The fake server never downloads, so this phone has not caught up.
     expect(
@@ -202,6 +203,7 @@ void main() {
         categories: 1,
         transactions: 1,
         monthlyPlans: 0,
+        customBanks: 0,
       ),
     );
     await tapReset(tester);

@@ -10,6 +10,7 @@ import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
+import 'package:fundly/features/accounts/data/custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/backup/data/backup_exporter.dart';
 import 'package:fundly/features/backup/data/backup_importer.dart';
@@ -71,17 +72,25 @@ void main() {
       database,
       clock: () => now,
     ).create(name: 'E-wallet', baseType: AccountType.savingsCash);
+    // Banks (format 9): a built-in bank, and a custom bank on an archived
+    // account.
+    final coop = await CustomBankRepository(
+      database,
+      clock: () => now,
+    ).create('Town Coop');
     final accounts = AccountRepository(database, clock: () => now);
     final bdo = await accounts.create(
       name: 'BDO Savings',
       type: AccountType.savingsCash,
       enteredOpeningAmount: php(1500000),
+      bankKey: 'bdo',
     );
     final gcash = await accounts.create(
       name: 'GCash',
       type: AccountType.savingsCash,
       enteredOpeningAmount: php(0),
       customTypeId: eWallet.id,
+      customBankId: coop.id,
     );
     final card = await accounts.create(
       name: 'RCBC Credit',
@@ -292,6 +301,125 @@ void main() {
       },
     );
   }
+
+  group('banks (format 9)', () {
+    List<Map<String, Object?>> accountsOf(Map<String, Object?> backup) =>
+        (backup['accounts']! as List).cast<Map<String, Object?>>();
+    Map<String, Object?> accountNamed(
+      Map<String, Object?> backup,
+      String name,
+    ) => accountsOf(backup).singleWhere((a) => a['name'] == name);
+
+    test('restores custom banks and every account\'s bank', () async {
+      final importer = BackupImporter(target);
+      final snapshot = importer.parse(await exportJson(source));
+      expect(snapshot.counts.customBanks, 1);
+      await importer.replaceAll(snapshot);
+
+      final restored = {
+        for (final account in await AccountRepository(
+          target,
+        ).watchAll(includeArchived: true).first)
+          account.name: account.bank,
+      };
+      final coop = (await CustomBankRepository(target).watchAll().first).single;
+      expect(coop.name, 'Town Coop');
+      expect(restored['BDO Savings'], (bankKey: 'bdo', customBankId: null));
+      expect(restored['GCash'], (bankKey: null, customBankId: coop.id));
+      expect(restored['RCBC Credit'], (bankKey: null, customBankId: null));
+      expect((await importer.currentCounts()).customBanks, 1);
+    });
+
+    test('a format 8 file restores with no banks', () async {
+      final backup = await exportedBackup();
+      backup['formatVersion'] = 8;
+      backup.remove('customBanks');
+      for (final account in accountsOf(backup)) {
+        account
+          ..remove('bankKey')
+          ..remove('customBankId');
+      }
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+      expect(await CustomBankRepository(target).watchAll().first, isEmpty);
+      for (final account in await AccountRepository(
+        target,
+      ).watchAll(includeArchived: true).first) {
+        expect(account.bank, (bankKey: null, customBankId: null));
+      }
+    });
+
+    test('a format 9 file states both bank fields, even as null', () async {
+      for (final field in ['bankKey', 'customBankId']) {
+        final backup = await exportedBackup();
+        accountsOf(backup).first.remove(field);
+        expect(
+          () => parseBackup(jsonEncode(backup)),
+          throwsProblem(BackupImportProblem.invalidData, field),
+          reason: field,
+        );
+      }
+      final backup = await exportedBackup()
+        ..remove('customBanks');
+      expect(
+        () => parseBackup(jsonEncode(backup)),
+        throwsProblem(BackupImportProblem.invalidData, 'customBanks'),
+      );
+    });
+
+    for (final (description, change, detail) in [
+      (
+        'an unknown bank',
+        (Map<String, Object?> b) =>
+            accountNamed(b, 'BDO Savings')['bankKey'] = 'komo',
+        'unknown bank',
+      ),
+      (
+        'two banks',
+        (Map<String, Object?> b) => accountNamed(b, 'GCash')['bankKey'] = 'bdo',
+        'one bank',
+      ),
+      (
+        'a missing custom bank',
+        (Map<String, Object?> b) =>
+            accountNamed(b, 'BDO Savings')['customBankId'] = 'not-there',
+        'no such bank',
+      ),
+      (
+        'a custom bank with a built-in name',
+        (Map<String, Object?> b) =>
+            (b['customBanks']! as List)
+                    .cast<Map<String, Object?>>()
+                    .single['name'] =
+                'gcash',
+        'built-in bank name',
+      ),
+      (
+        'two custom banks with one name',
+        (Map<String, Object?> b) => (b['customBanks']! as List).add({
+          'id': 'second',
+          'name': 'TOWN COOP',
+          'createdAt': '2026-11-17T09:00:00.000Z',
+        }),
+        'used twice',
+      ),
+    ]) {
+      test('rejects $description without changing anything', () async {
+        final before = await exportJson(target);
+        final backup = await exportedBackup();
+        change(backup);
+        final importer = BackupImporter(target);
+        await expectLater(
+          Future<void>(
+            () async => importer.replaceAll(importer.parse(jsonEncode(backup))),
+          ),
+          throwsProblem(BackupImportProblem.invalidData, detail),
+        );
+        expect(await exportJson(target), before);
+      });
+    }
+  });
 
   group('default Target (format 8)', () {
     List<Map<String, Object?>> categoriesOf(Map<String, Object?> backup) =>
@@ -606,6 +734,7 @@ void main() {
         categories: 11,
         transactions: 2,
         monthlyPlans: 1,
+        customBanks: 1,
       ),
     );
   });
@@ -619,6 +748,7 @@ void main() {
         categories: 11,
         transactions: 2,
         monthlyPlans: 1,
+        customBanks: 1,
       ),
     );
   });
@@ -923,6 +1053,7 @@ void main() {
       );
       const references = {
         'customTypeId': 'customAccountTypes',
+        'customBankId': 'customBanks',
         'linkedAccountId': 'accounts',
         'categoryId': 'categories',
         'sourceAccountId': 'accounts',
@@ -953,7 +1084,7 @@ void main() {
       'a signed-out export is format 7 and restores to the same data',
       () async {
         final backup = await exportedBackup();
-        expect(backup['formatVersion'], 8);
+        expect(backup['formatVersion'], 9);
         expect(
           (backup['accounts']! as List).first,
           containsPair('id', isA<String>()),
@@ -1002,6 +1133,9 @@ void main() {
       final identity = <String, Map<String, String>>{
         'custom_account_types': {
           for (final r in records.customAccountTypes) '${r.id}': '${r.id}',
+        },
+        'custom_banks': {
+          for (final r in records.customBanks) '${r.id}': '${r.id}',
         },
         'accounts': {for (final r in records.accounts) '${r.id}': '${r.id}'},
         'categories': {

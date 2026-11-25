@@ -10,6 +10,7 @@ import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
+import '../domain/bank.dart';
 import 'account_row_mapping.dart';
 import 'synced_account_repository.dart';
 
@@ -47,21 +48,25 @@ class AccountRepository {
   /// Creates an account. [enteredOpeningAmount] is the zero or positive amount
   /// the user typed; its sign is set from [type] (D1). With [customTypeId],
   /// the account is shown under that custom type, whose base type must be
-  /// [type].
+  /// [type]. The account belongs to the built-in bank [bankKey], the custom
+  /// bank [customBankId], or neither (never both).
   ///
   /// Throws [AccountValidationException] when a rule is broken, or
   /// [ArgumentError] if the custom type does not exist or has another base
-  /// type.
+  /// type, or the bank is unknown, missing or given twice.
   Future<Account> create({
     required String name,
     required AccountType type,
     required Money enteredOpeningAmount,
     String? customTypeId,
+    String? bankKey,
+    String? customBankId,
   }) => _database.transaction(() async {
     final trimmedName = await _validName(name);
     _requireSupportedCurrency(enteredOpeningAmount);
     final openingBalance = _openingBalance(type, enteredOpeningAmount);
     await _requireMatchingCustomType(customTypeId, type);
+    await _requireValidBank((bankKey: bankKey, customBankId: customBankId));
 
     final row = await _database
         .into(_accounts)
@@ -73,6 +78,8 @@ class AccountRepository {
             currencyCode: Value(openingBalance.currencyCode),
             createdAt: _now().toUtc(),
             customTypeId: Value(rowIdOrNull(customTypeId)),
+            bankKey: Value(bankKey),
+            customBankId: Value(rowIdOrNull(customBankId)),
           ),
         );
     await syncLiabilityPlanCategories(_database);
@@ -85,14 +92,20 @@ class AccountRepository {
   /// type, or back to its built-in type with `(id: null)`; leave it `null` to
   /// keep the current one.
   ///
+  /// [bank] replaces the account's bank (`(bankKey: null, customBankId: null)`
+  /// for none); leave it `null` to keep the current one. A bank is a label
+  /// only: no balance changes.
+  ///
   /// Throws [AccountValidationException] when a rule is broken,
   /// [ArgumentError] if the custom type does not exist or has another base
-  /// type, or [StateError] if the account does not exist.
+  /// type, or the bank is unknown, missing or given twice, or [StateError] if
+  /// the account does not exist.
   Future<Account> update(
     String id, {
     String? name,
     Money? enteredOpeningAmount,
     ({String? id})? customType,
+    AccountBank? bank,
   }) => _database.transaction(() async {
     final existing = await (_database.select(
       _accounts,
@@ -111,6 +124,7 @@ class AccountRepository {
     if (customType != null) {
       await _requireMatchingCustomType(customType.id, type);
     }
+    if (bank != null) await _requireValidBank(bank);
 
     final rows =
         await (_database.update(
@@ -122,6 +136,10 @@ class AccountRepository {
             customTypeId: customType == null
                 ? const Value.absent()
                 : Value(rowIdOrNull(customType.id)),
+            bankKey: bank == null ? const Value.absent() : Value(bank.bankKey),
+            customBankId: bank == null
+                ? const Value.absent()
+                : Value(rowIdOrNull(bank.customBankId)),
           ),
         );
     await syncLiabilityPlanCategories(_database);
@@ -290,6 +308,21 @@ class AccountRepository {
     }
   }
 
+  /// The UI only offers built-in banks and existing custom banks, one at a
+  /// time, so anything else is a programming error.
+  Future<void> _requireValidBank(AccountBank bank) async {
+    checkBankChoice(bank);
+    final customBankId = bank.customBankId;
+    if (customBankId == null) return;
+    final exists =
+        await (_database.select(_database.customBanks)
+              ..where((custom) => custom.id.equals(rowIdOf(customBankId))))
+            .getSingleOrNull();
+    if (exists == null) {
+      throw ArgumentError.value(customBankId, 'customBankId', 'No such bank.');
+    }
+  }
+
   Money _openingBalance(AccountType type, Money enteredAmount) {
     if (enteredAmount.isNegative) {
       throw const AccountValidationException(
@@ -324,3 +357,16 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
       ? AccountRepository(ref.watch(appDatabaseProvider))
       : SyncedAccountRepository(synced.database);
 });
+
+/// Throws [ArgumentError] when [bank] names both a built-in and a custom bank,
+/// or a built-in key this app does not know. Whether a custom bank exists is
+/// for the store to check.
+void checkBankChoice(AccountBank bank) {
+  if (bank.bankKey != null && bank.customBankId != null) {
+    throw ArgumentError('An account belongs to one bank, not two.');
+  }
+  final key = bank.bankKey;
+  if (key != null && builtInBankByKey(key) == null) {
+    throw ArgumentError.value(key, 'bankKey', 'No such bank.');
+  }
+}

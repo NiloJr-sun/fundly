@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/accounts/data/accounts_table.dart';
 import '../../features/accounts/data/custom_account_types_table.dart';
+import '../../features/accounts/data/custom_banks_table.dart';
 import '../../features/accounts/domain/account_type.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/categories/data/categories_table.dart';
@@ -31,6 +32,7 @@ part 'app_database.g.dart';
 @DriftDatabase(
   tables: [
     CustomAccountTypes,
+    CustomBanks,
     Accounts,
     Categories,
     Transactions,
@@ -55,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -150,6 +152,13 @@ class AppDatabase extends _$AppDatabase {
           schema.categories,
           schema.categories.defaultTargetMinor,
         );
+      },
+      // v15: banks on accounts (docs/BANKS_PLAN.md). Existing accounts start
+      // with no bank.
+      from14To15: (m, schema) async {
+        await m.createTable(schema.customBanks);
+        await m.addColumn(schema.accounts, schema.accounts.bankKey);
+        await m.addColumn(schema.accounts, schema.accounts.customBankId);
       },
     ),
     beforeOpen: (details) async {

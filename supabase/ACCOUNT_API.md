@@ -19,8 +19,11 @@ allowlisted; owner, audit timestamps and stored revisions cannot be supplied.
 | `custom_type.create` | Required `name`, `base_type` (`savingsCash`, `credit`, `loan`). |
 | `custom_type.update` | Nonempty partial object containing `name` and/or `base_type`. |
 | `custom_type.delete` | Omitted or `{}`. |
-| `account.create` | Required `name`, `type`, `entered_opening_amount_minor`; optional `currency_code` (PHP only), nullable `custom_type_id`, and liability-only `linked_category_id`. |
-| `account.update` | Nonempty partial object containing `name`, `entered_opening_amount_minor`, and/or nullable `custom_type_id`. Account base type and currency cannot change. |
+| `account.create` | Required `name`, `type`, `entered_opening_amount_minor`; optional `currency_code` (PHP only), nullable `custom_type_id`, liability-only `linked_category_id`, and nullable `bank_key` or `custom_bank_id` (banks, below). |
+| `account.update` | Nonempty partial object containing `name`, `entered_opening_amount_minor`, nullable `custom_type_id`, and/or nullable `bank_key` and `custom_bank_id`. Account base type and currency cannot change. |
+| `bank.create` | Required `name`. |
+| `bank.update` | Required `name` (a rename). |
+| `bank.delete` | Omitted or `{}`. |
 | `account.set_archived` | Required Boolean `archived`. |
 | `account.delete` | Omitted or `{}`; account must be archived and unused by any transaction. |
 | `account.set_budget` | Omitted or `{}`; a `previous_budget` key from app 1.1.0 is accepted and ignored. |
@@ -98,12 +101,34 @@ deletion. Revisions and opening balances are strings; audit times use UTC `Z`.
 Receipt replay returns the original side effects and generated UUIDs unchanged.
 
 Additional `P0001` messages: `invalid_name`, `name_taken`, `invalid_custom_type`,
-`custom_type_in_use`, `invalid_account`, `account_not_archived`,
+`custom_type_in_use`, `custom_bank_in_use`, `invalid_account`, `account_not_archived`,
 `account_has_transactions`, `record_id_unavailable`, and `budget_conflict`.
 Shared request, authentication, inaccessible-record, revision and idempotency
 errors retain the S2.2A contract. Category/Plans operations are in
 [PLANS_API.md](PLANS_API.md).
-Deleted account and custom-type UUIDs are retired; see [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
+Deleted account, custom-type and custom-bank UUIDs are retired; see [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
+
+## Banks (`20261126010000_banks.sql`, app 1.5.0)
+
+An account names the bank it belongs to, or none. Presentation only: no balance
+or transaction rule depends on it ([docs/BANKS_PLAN.md](../docs/BANKS_PLAN.md)).
+
+- `bank_key` is a built-in bank, e.g. `"bdo"`. The app owns the list; the server
+  checks only the shape, `^[a-z0-9]{1,32}$` (otherwise `22023` `invalid_request`).
+- `custom_bank_id` is a custom bank of the same space (otherwise
+  `record_not_accessible`, or `record_deleted` for one this space deleted).
+- At most one is set (`invalid_account`). The two are set together: when an
+  `account.update` carries either field, the account's bank becomes exactly what
+  is sent and a missing one is none, so `{"bank_key":"bpi"}` also clears a custom
+  bank and `{"bank_key":null}` clears the bank. An update with neither field
+  (every app before 1.5.0) keeps it.
+- Custom banks (`custom_banks`: `id`, `name`, audit times, `revision`) follow the
+  custom-type name rules: trimmed, 1-40 UTF-16 units, unique in the space ignoring
+  ASCII case, and not a built-in bank's name (`name_taken`; the list is
+  `fundly_private.builtin_bank_name`, kept equal to the app's). A custom bank used
+  by any account, archived included, cannot be deleted (`custom_bank_in_use`).
+- Results use `entity` `custom_banks`; like every operation, owners and editors
+  may write them and viewers may not.
 
 Tests use only the disposable local database:
 

@@ -180,9 +180,10 @@ Future<String?> dependencyOf(
   return null;
 }
 
-/// The five synchronized tables, as PowerSync names them.
+/// The synchronized record tables, as PowerSync names them.
 const _syncedTables = [
   'custom_account_types',
+  'custom_banks',
   'accounts',
   'categories',
   'transactions',
@@ -256,6 +257,7 @@ Future<Map<String, String>> _labels(
     'WITH wanted(id) AS (SELECT value FROM json_each(?1)) '
     'SELECT id, name AS label FROM custom_account_types '
     'WHERE id IN wanted '
+    'UNION ALL SELECT id, name FROM custom_banks WHERE id IN wanted '
     'UNION ALL SELECT id, name FROM accounts WHERE id IN wanted '
     'UNION ALL SELECT id, name FROM categories WHERE id IN wanted '
     'UNION ALL SELECT p.id, c.name FROM monthly_plans p '
@@ -307,7 +309,10 @@ Future<Map<String, String>> _labels(
           [data['category_id']],
         );
         _addLabel(labels, id, category?['name']);
-      case 'custom_account_types' || 'accounts' || 'categories':
+      case 'custom_account_types' ||
+          'custom_banks' ||
+          'accounts' ||
+          'categories':
         _addLabel(labels, id, data['name']);
     }
   }

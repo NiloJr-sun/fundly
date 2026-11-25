@@ -211,6 +211,7 @@ void main() {
       'categories': 9,
       'transactions': 0,
       'monthly_plans': 0,
+      'custom_banks': 0,
     });
     expect(find.text('Copied and checked'), findsOneWidget);
   });
@@ -296,6 +297,7 @@ void main() {
     final records = sampleDeviceRecords();
     device.records = (
       customAccountTypes: const [],
+      customBanks: const [],
       accounts: const [],
       categories: [
         for (final c in records.categories)
@@ -470,6 +472,7 @@ void main() {
     testWidgets('stays quiet without data on this device', (tester) async {
       device.records = (
         customAccountTypes: const [],
+        customBanks: const [],
         accounts: const [],
         categories: const [],
         transactions: const [],

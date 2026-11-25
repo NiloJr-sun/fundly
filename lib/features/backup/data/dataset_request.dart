@@ -16,9 +16,11 @@ import 'backup_source.dart';
 /// supabase/IMPORT_API.md).
 const maxImportRequestBytes = 8388608;
 
-/// The five tables of an import, in the server's names.
+/// The tables of an import, in the server's names. `custom_banks` since the
+/// banks migration (supabase/IMPORT_API.md).
 const importTables = [
   'custom_account_types',
+  'custom_banks',
   'accounts',
   'categories',
   'transactions',
@@ -66,6 +68,14 @@ DatasetRequest datasetRequestFor(
         'created_at': _timestamp(type.createdAt),
       },
   ];
+  final banks = [
+    for (final bank in records.customBanks)
+      {
+        'id': id('custom_banks', bank.id),
+        'name': bank.name,
+        'created_at': _timestamp(bank.createdAt),
+      },
+  ];
   final accounts = [
     for (final account in records.accounts)
       {
@@ -78,6 +88,10 @@ DatasetRequest datasetRequestFor(
         'custom_type_id': ref('custom_account_types', account.customTypeId),
         'is_budget_account': account.isBudgetAccount,
         'created_at': _timestamp(account.createdAt),
+        // Sent only when set, so an account without a bank is unchanged.
+        'bank_key': ?account.bankKey,
+        if (account.customBankId case final bank?)
+          'custom_bank_id': id('custom_banks', bank),
       },
   ];
   final categories = [
@@ -131,6 +145,7 @@ DatasetRequest datasetRequestFor(
   ];
   return DatasetRequest._({
     'custom_account_types': types,
+    'custom_banks': banks,
     'accounts': accounts,
     'categories': categories,
     'transactions': transactions,
@@ -158,6 +173,7 @@ Map<String, int> countsJson(BackupCounts counts) => {
   'categories': counts.categories,
   'transactions': counts.transactions,
   'monthly_plans': counts.monthlyPlans,
+  'custom_banks': counts.customBanks,
 };
 
 /// The size of [request] as the server measures it (UTF-8 JSON).
@@ -171,6 +187,7 @@ BackupCounts countsOf(BackupRecords records) => BackupCounts(
   categories: records.categories.length,
   transactions: records.transactions.length,
   monthlyPlans: records.monthlyPlans.length,
+  customBanks: records.customBanks.length,
 );
 
 final _defaultNames = {
@@ -184,6 +201,7 @@ final _defaultNames = {
 /// older installs started with the original one.
 bool hasDeviceData(BackupRecords records) =>
     records.customAccountTypes.isNotEmpty ||
+    records.customBanks.isNotEmpty ||
     records.accounts.isNotEmpty ||
     records.transactions.isNotEmpty ||
     records.monthlyPlans.isNotEmpty ||
@@ -215,6 +233,10 @@ String? firstDifference(
         for (final r in source.customAccountTypes) _customType(r, mapped),
       ],
       copy: [for (final r in copy.customAccountTypes) _customType(r, _same)],
+    ),
+    'custom_banks': (
+      source: [for (final r in source.customBanks) _customBank(r, mapped)],
+      copy: [for (final r in copy.customBanks) _customBank(r, _same)],
     ),
     'accounts': (
       source: [for (final r in source.accounts) _account(r, mapped)],
@@ -306,6 +328,12 @@ Map<String, Object?> _customType(BackupCustomType r, _Ref ref) => {
   'createdAt': r.createdAt.microsecondsSinceEpoch,
 };
 
+Map<String, Object?> _customBank(BackupCustomBank r, _Ref ref) => {
+  'id': ref('custom_banks', r.id),
+  'name': r.name,
+  'createdAt': r.createdAt.microsecondsSinceEpoch,
+};
+
 Map<String, Object?> _account(BackupAccount r, _Ref ref) => {
   'id': ref('accounts', r.id),
   'name': r.name,
@@ -316,6 +344,8 @@ Map<String, Object?> _account(BackupAccount r, _Ref ref) => {
   'createdAt': r.createdAt.microsecondsSinceEpoch,
   'isArchived': r.isArchived,
   'isBudgetAccount': r.isBudgetAccount,
+  'bankKey': r.bankKey,
+  'customBankId': ref('custom_banks', r.customBankId),
 };
 
 Map<String, Object?> _category(BackupCategory r, _Ref ref) => {

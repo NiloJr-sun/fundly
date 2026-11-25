@@ -5,8 +5,10 @@ import 'package:fundly/core/sync/sync_queue.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/data/synced_account_repository.dart';
+import 'package:fundly/features/accounts/data/synced_custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
+import 'package:fundly/features/accounts/domain/custom_bank.dart';
 import 'package:fundly/features/auth/domain/auth_identity.dart';
 import 'package:fundly/features/categories/data/synced_category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
@@ -381,6 +383,166 @@ void main() {
         'base_type': 'savingsCash',
       });
       expect(items[2]['expected_revision'], '2');
+    });
+  });
+
+  group('banks (docs/BANKS_PLAN.md)', () {
+    const coop = 'bank-coop';
+
+    setUp(
+      () => store.download({
+        'custom_banks': [SyncedRows.customBank(coop, 'Town Coop')],
+      }),
+    );
+
+    test(
+      'add, rename and delete a custom bank queue their operations',
+      () async {
+        final repository = SyncedCustomBankRepository(store.database);
+        final bank = await repository.create(' Credit Union ');
+        expect(bank.id, matches(_uuid));
+        await repository.rename(bank.id, 'Credit Union');
+        await repository.rename(bank.id, 'Teachers Union');
+        await repository.delete(bank.id);
+
+        final items = await store.queuedItems();
+        expect(items, [
+          {
+            'operation': 'bank.create',
+            'id': bank.id,
+            'data': {'name': 'Credit Union'},
+          },
+          // The unchanged rename queued nothing.
+          {
+            'operation': 'bank.update',
+            'id': bank.id,
+            'expected_revision': '1',
+            'data': {'name': 'Teachers Union'},
+          },
+          {'operation': 'bank.delete', 'id': bank.id, 'expected_revision': '2'},
+        ]);
+      },
+    );
+
+    test('names follow the server rules; a bank in use is kept', () async {
+      final repository = SyncedCustomBankRepository(store.database);
+      for (final name in ['town coop', 'GCash']) {
+        await expectLater(
+          repository.create(name),
+          throwsA(
+            isA<CustomBankValidationException>().having(
+              (e) => e.error,
+              'error',
+              CustomBankValidationError.nameTaken,
+            ),
+          ),
+          reason: name,
+        );
+      }
+      await SyncedAccountRepository(store.database)
+          .update(bdo, bank: (bankKey: null, customBankId: coop));
+      await expectLater(
+        repository.delete(coop),
+        throwsA(isA<CustomBankValidationException>()),
+      );
+      expect(await repository.watchAll().first, hasLength(1));
+    });
+
+    test('a new account sends its bank only when it has one', () async {
+      final accounts = SyncedAccountRepository(store.database);
+      final withKey = await accounts.create(
+        name: 'GCash Wallet',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(0),
+        bankKey: 'gcash',
+      );
+      final withCustom = await accounts.create(
+        name: 'Coop Savings',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(0),
+        customBankId: coop,
+      );
+      await accounts.create(
+        name: 'Cash',
+        type: AccountType.savingsCash,
+        enteredOpeningAmount: php(0),
+      );
+
+      final data = [
+        for (final item in await store.queuedItems())
+          item['data']! as Map<String, Object?>,
+      ];
+      expect(data[0], containsPair('bank_key', 'gcash'));
+      expect(data[0], isNot(contains('custom_bank_id')));
+      expect(data[1], containsPair('custom_bank_id', coop));
+      expect(data[1], isNot(contains('bank_key')));
+      expect(data[2], isNot(contains('bank_key')));
+      expect(data[2], isNot(contains('custom_bank_id')));
+      expect((await row('accounts', withKey.id))['bank_key'], 'gcash');
+      expect((await row('accounts', withCustom.id))['custom_bank_id'], coop);
+    });
+
+    test(
+      'an edit sends both bank fields, and only when the bank changes',
+      () async {
+        final accounts = SyncedAccountRepository(store.database);
+        await accounts.update(bdo, bank: (bankKey: 'bdo', customBankId: null));
+        await accounts.update(bdo, bank: (bankKey: 'bdo', customBankId: null));
+        await accounts.update(bdo, name: 'BDO Payroll');
+        await accounts.update(bdo, bank: (bankKey: null, customBankId: coop));
+        await accounts.update(bdo, bank: (bankKey: null, customBankId: null));
+
+        final items = await store.queuedItems();
+        expect(
+          [for (final item in items) item['data']],
+          [
+            {'bank_key': 'bdo', 'custom_bank_id': null},
+            {'name': 'BDO Payroll'},
+            {'bank_key': null, 'custom_bank_id': coop},
+            {'bank_key': null, 'custom_bank_id': null},
+          ],
+        );
+        expect(
+          [for (final item in items) item['expected_revision']],
+          ['1', '2', '3', '4'],
+        );
+        final account = await row('accounts', bdo);
+        expect(account['bank_key'], isNull);
+        expect(account['custom_bank_id'], isNull);
+        expect(account['opening_balance_minor'], 100000);
+      },
+    );
+
+    test('two banks, an unknown key or a missing bank are refused', () async {
+      final accounts = SyncedAccountRepository(store.database);
+      for (final bank in [
+        (bankKey: 'bdo', customBankId: coop),
+        (bankKey: 'komo', customBankId: null),
+        (bankKey: null, customBankId: 'bank-missing'),
+      ]) {
+        await expectLater(
+          accounts.update(bdo, bank: bank),
+          throwsArgumentError,
+          reason: '$bank',
+        );
+      }
+      expect(await store.queuedBatches(), isEmpty);
+    });
+
+    test('a key this app does not know is kept, not re-sent', () async {
+      await store.download({
+        'accounts': [
+          SyncedRows.account('acc-new', 'New bank', bankKey: 'newbank'),
+        ],
+      });
+      final accounts = SyncedAccountRepository(store.database);
+      final account = await accounts.update(
+        'acc-new',
+        name: 'Renamed',
+        bank: (bankKey: 'newbank', customBankId: null),
+      );
+      expect(account.bankKey, 'newbank');
+      expect((await store.queuedItems()).single['data'], {'name': 'Renamed'});
     });
   });
 

@@ -11,6 +11,7 @@ void main() {
     categories: 5,
     transactions: 5,
     monthlyPlans: 2,
+    customBanks: 0,
   );
   final state = DeviceCopyState(
     copies: [

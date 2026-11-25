@@ -111,9 +111,11 @@ Map<String, Object?> resetRequest({
     'categories': expected.categories,
     'transactions': expected.transactions,
     'monthly_plans': expected.monthlyPlans,
+    'custom_banks': expected.customBanks,
   },
   'dataset': {
     'custom_account_types': <Object>[],
+    'custom_banks': <Object>[],
     'accounts': <Object>[],
     'categories': [
       for (final category in defaultCategories)
@@ -140,6 +142,7 @@ final freshAccountCounts = BackupCounts(
   categories: defaultCategories.length,
   transactions: 0,
   monthlyPlans: 0,
+  customBanks: 0,
 );
 
 /// How many records the synchronized store holds, as the server counts them
@@ -151,9 +154,11 @@ Stream<BackupCounts> watchSyncedCounts(SyncedDatabase database) => database
       '(SELECT count(*) FROM accounts) AS accounts, '
       '(SELECT count(*) FROM categories) AS categories, '
       '(SELECT count(*) FROM transactions) AS transactions, '
-      '(SELECT count(*) FROM monthly_plans) AS monthly_plans',
+      '(SELECT count(*) FROM monthly_plans) AS monthly_plans, '
+      '(SELECT count(*) FROM custom_banks) AS custom_banks',
       readsFrom: {
         database.syncedCustomAccountTypes,
+        database.syncedCustomBanks,
         database.syncedAccounts,
         database.syncedCategories,
         database.syncedTransactions,
@@ -168,6 +173,7 @@ Stream<BackupCounts> watchSyncedCounts(SyncedDatabase database) => database
         categories: row.read<int>('categories'),
         transactions: row.read<int>('transactions'),
         monthlyPlans: row.read<int>('monthly_plans'),
+        customBanks: row.read<int>('custom_banks'),
       ),
     );
 

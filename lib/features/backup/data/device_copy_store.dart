@@ -58,7 +58,8 @@ final class PendingCopyCheck {
 
   static PendingCopyCheck fromJson(Map<String, Object?> json) {
     final counts = json['counts']! as Map<String, Object?>;
-    int count(String key) => counts[key]! as int;
+    // Checks saved before the banks release have no custom_banks count.
+    int count(String key) => counts[key] as int? ?? 0;
     return PendingCopyCheck(
       userId: json['userId']! as String,
       email: json['email']! as String,
@@ -73,6 +74,7 @@ final class PendingCopyCheck {
         categories: count('categories'),
         transactions: count('transactions'),
         monthlyPlans: count('monthly_plans'),
+        customBanks: count('custom_banks'),
       ),
     );
   }

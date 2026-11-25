@@ -31,6 +31,10 @@ BackupRecords copied(BackupRecords records, ImportIdMap ids) {
           createdAt: r.createdAt,
         ),
     ],
+    customBanks: [
+      for (final r in records.customBanks)
+        (id: id('custom_banks', r.id), name: r.name, createdAt: r.createdAt),
+    ],
     accounts: [
       for (final r in records.accounts)
         (
@@ -44,6 +48,8 @@ BackupRecords copied(BackupRecords records, ImportIdMap ids) {
           createdAt: r.createdAt.toLocal(),
           isArchived: r.isArchived,
           isBudgetAccount: r.isBudgetAccount,
+          bankKey: r.bankKey,
+          customBankId: ref('custom_banks', r.customBankId),
         ),
     ],
     categories: [
@@ -100,6 +106,7 @@ BackupRecords withRecords(
   List<BackupTransaction>? transactions,
 }) => (
   customAccountTypes: records.customAccountTypes,
+  customBanks: records.customBanks,
   accounts: accounts ?? records.accounts,
   categories: categories ?? records.categories,
   transactions: transactions ?? records.transactions,
@@ -108,6 +115,7 @@ BackupRecords withRecords(
 
 BackupRecords onlyCategories(List<BackupCategory> categories) => (
   customAccountTypes: const [],
+  customBanks: const [],
   accounts: const [],
   categories: categories,
   transactions: const [],
@@ -165,6 +173,8 @@ void main() {
       final payment = rows('transactions')[3];
       expect(payment['source_account_id'], ids['accounts']!['1']);
       expect(payment['destination_account_id'], ids['accounts']!['3']);
+      final oldCard = rows('accounts')[3];
+      expect(oldCard['custom_bank_id'], ids['custom_banks']!['1']);
       expect(rows('transactions')[0]['category_id'], ids['categories']!['1']);
       expect(rows('monthly_plans')[1]['category_id'], ids['categories']!['3']);
       // No integer ID is left anywhere.
@@ -182,7 +192,16 @@ void main() {
         'custom_type_id': null,
         'is_budget_account': false,
         'created_at': '2026-11-01T08:30:00.000Z',
+        'bank_key': 'rcbc',
       });
+      expect(rows('custom_banks').single, {
+        'id': request.ids['custom_banks']!['1'],
+        'name': 'Town Coop',
+        'created_at': '2026-11-01T08:30:00.000Z',
+      });
+      // The bank fields are sent only when set: a custom bank has no key.
+      expect(rows('accounts')[3].containsKey('bank_key'), isFalse);
+      expect(rows('accounts')[2].containsKey('custom_bank_id'), isFalse);
       expect(rows('transactions')[4]['date'], '0000-01-01');
       expect(rows('transactions')[0]['amount_minor'], '50025');
       expect(rows('monthly_plans')[1]['target_amount_minor'], isNull);
@@ -219,6 +238,7 @@ void main() {
         categories: 9,
         transactions: 3,
         monthlyPlans: 0,
+        customBanks: 1,
       );
       final replace = importRequest(
         replace: true,
@@ -232,6 +252,7 @@ void main() {
         'categories': 9,
         'transactions': 3,
         'monthly_plans': 0,
+        'custom_banks': 1,
       });
       expect(requestBytes(replace), greaterThan(1000));
     });
@@ -277,6 +298,23 @@ void main() {
       );
       expect(hasDeviceData(records), isTrue);
     });
+
+    test('a custom bank alone is data (banks)', () {
+      final defaults = onlyCategories([category('Rent')]);
+      expect(
+        hasDeviceData((
+          customAccountTypes: defaults.customAccountTypes,
+          customBanks: [
+            (id: 1, name: 'Town Coop', createdAt: DateTime.utc(2026)),
+          ],
+          accounts: defaults.accounts,
+          categories: defaults.categories,
+          transactions: defaults.transactions,
+          monthlyPlans: defaults.monthlyPlans,
+        )),
+        isTrue,
+      );
+    });
   });
 
   group('firstDifference', () {
@@ -315,6 +353,30 @@ void main() {
         firstDifference(records, changed, ids),
         'transactions 3: amountMinor',
       );
+    });
+
+    test('notices a different bank (banks)', () {
+      final copy = copied(records, ids);
+      final changed = withRecords(
+        copy,
+        accounts: [
+          for (final a in copy.accounts)
+            (
+              id: a.id,
+              name: a.name,
+              type: a.type,
+              customTypeId: a.customTypeId,
+              openingBalanceMinor: a.openingBalanceMinor,
+              currencyCode: a.currencyCode,
+              createdAt: a.createdAt,
+              isArchived: a.isArchived,
+              isBudgetAccount: a.isBudgetAccount,
+              bankKey: a.bankKey == 'gcash' ? 'maya' : a.bankKey,
+              customBankId: a.customBankId,
+            ),
+        ],
+      );
+      expect(firstDifference(records, changed, ids), 'accounts 2: bankKey');
     });
 
     test('notices a different default Target', () {

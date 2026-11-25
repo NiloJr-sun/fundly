@@ -59,11 +59,14 @@ class SyncedAccountRepository implements AccountRepository {
     required AccountType type,
     required Money enteredOpeningAmount,
     String? customTypeId,
+    String? bankKey,
+    String? customBankId,
   }) => _database.writeAndQueue(() async {
     final trimmedName = await _validName(name);
     _requireSupportedCurrency(enteredOpeningAmount);
     final openingBalance = _openingBalance(type, enteredOpeningAmount);
     await _requireMatchingCustomType(customTypeId, type);
+    await _requireValidBank((bankKey: bankKey, customBankId: customBankId));
 
     final id = newRecordId();
     final now = syncedTimestamp(_now());
@@ -82,6 +85,8 @@ class SyncedAccountRepository implements AccountRepository {
             createdAt: now,
             updatedAt: now,
             revision: 1,
+            bankKey: Value(bankKey),
+            customBankId: Value(customBankId),
           ),
         );
     // The client names the linked Plans row, so plan edits queued before the
@@ -105,6 +110,9 @@ class SyncedAccountRepository implements AccountRepository {
             'currency_code': openingBalance.currencyCode,
             'custom_type_id': customTypeId,
             'linked_category_id': ?linkedCategoryId,
+            // Sent only when set, so a request without a bank is unchanged.
+            'bank_key': ?bankKey,
+            'custom_bank_id': ?customBankId,
           },
         ),
       ],
@@ -117,6 +125,7 @@ class SyncedAccountRepository implements AccountRepository {
     String? name,
     Money? enteredOpeningAmount,
     ({String? id})? customType,
+    AccountBank? bank,
   }) => _database.writeAndQueue(() async {
     final existing = await _find(id);
     final type = AccountType.values.byName(existing.type);
@@ -131,6 +140,12 @@ class SyncedAccountRepository implements AccountRepository {
     if (customType != null) {
       await _requireMatchingCustomType(customType.id, type);
     }
+    // An unchanged bank is not sent, so an edit made elsewhere is kept.
+    final changesBank =
+        bank != null &&
+        (bank.bankKey != existing.bankKey ||
+            bank.customBankId != existing.customBankId);
+    if (changesBank) await _requireValidBank(bank);
     final data = {
       'name': ?trimmedName,
       if (enteredOpeningAmount != null)
@@ -138,6 +153,12 @@ class SyncedAccountRepository implements AccountRepository {
           enteredOpeningAmount.minorUnits,
         ),
       if (customType != null) 'custom_type_id': customType.id,
+      // Both fields together: the server sets the account's bank to exactly
+      // what is sent (supabase/ACCOUNT_API.md, Banks).
+      if (changesBank) ...{
+        'bank_key': bank.bankKey,
+        'custom_bank_id': bank.customBankId,
+      },
     };
     // The server refuses an empty update, and nothing would change.
     if (data.isEmpty) return (syncedAccount(existing), <SyncOperation>[]);
@@ -152,6 +173,10 @@ class SyncedAccountRepository implements AccountRepository {
             customTypeId: customType == null
                 ? const Value.absent()
                 : Value(customType.id),
+            bankKey: changesBank ? Value(bank.bankKey) : const Value.absent(),
+            customBankId: changesBank
+                ? Value(bank.customBankId)
+                : const Value.absent(),
             updatedAt: Value(syncedTimestamp(_now())),
             revision: Value(nextRevision(existing.revision)),
           ),
@@ -436,6 +461,18 @@ class SyncedAccountRepository implements AccountRepository {
     }
   }
 
+  Future<void> _requireValidBank(AccountBank bank) async {
+    checkBankChoice(bank);
+    final customBankId = bank.customBankId;
+    if (customBankId == null) return;
+    final exists = await (_database.select(
+      _database.syncedCustomBanks,
+    )..where((custom) => custom.id.equals(customBankId))).getSingleOrNull();
+    if (exists == null) {
+      throw ArgumentError.value(customBankId, 'customBankId', 'No such bank.');
+    }
+  }
+
   Money _openingBalance(AccountType type, Money enteredAmount) {
     if (enteredAmount.isNegative) {
       throw const AccountValidationException(
@@ -693,4 +730,6 @@ Account syncedAccount(SyncedAccountRow row) => Account(
   isArchived: row.isArchived,
   customTypeId: row.customTypeId,
   isBudgetAccount: row.isBudgetAccount,
+  bankKey: row.bankKey,
+  customBankId: row.customBankId,
 );
