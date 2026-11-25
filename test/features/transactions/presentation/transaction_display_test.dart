@@ -65,6 +65,52 @@ void main() {
     expect(transactionTypeLabel(payment.type), 'Transfer');
   });
 
+  test('a loan or card payment without a payee is titled by the account '
+      'paid', () {
+    expect(
+      transactionTitle(
+        transfer(to: carLoanId),
+        kind: TransactionKind.loanPayment,
+        destinationName: 'Car Loan',
+      ),
+      'Car Loan',
+    );
+    expect(
+      transactionTitle(
+        cardPayment(),
+        kind: TransactionKind.creditCardPayment,
+        destinationName: 'RCBC Credit',
+      ),
+      'RCBC Credit',
+    );
+    expect(
+      transactionTitle(
+        transfer(to: carLoanId, payee: 'November due'),
+        kind: TransactionKind.loanPayment,
+        destinationName: 'Car Loan',
+      ),
+      'November due',
+      reason: 'a payee wins',
+    );
+    expect(
+      transactionTitle(
+        transfer(),
+        kind: TransactionKind.transfer,
+        destinationName: 'Cash Wallet',
+      ),
+      'Transfer',
+      reason: 'plain transfers keep their type name',
+    );
+    expect(
+      transactionTitle(
+        transfer(to: carLoanId),
+        kind: TransactionKind.loanPayment,
+      ),
+      'Loan payment',
+      reason: 'the account is not known yet',
+    );
+  });
+
   test('the picker separates Transfer from Loan payment', () {
     expect(
       transactionKindDescription(TransactionKind.transfer),

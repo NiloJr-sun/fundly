@@ -21,6 +21,7 @@ import '../domain/transaction_kind.dart';
 import '../domain/transaction_rules.dart';
 import '../domain/transaction_type.dart';
 import '../domain/transaction_validation_exception.dart';
+import 'account_picker_field.dart';
 import 'transaction_display.dart';
 
 /// Adds a transaction of [kind], or edits [transaction] when given. Closes
@@ -278,7 +279,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           _DateField(date: _date, onTap: _pickDate),
           if (_type.hasSourceAccount) ...[
             const SizedBox(height: Spacing.md),
-            _AccountField(
+            AccountPickerField(
               label: sourceAccountLabel(_type),
               accounts: sources,
               value: _sourceAccountId,
@@ -301,8 +302,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           ],
           if (_type.hasDestinationAccount) ...[
             const SizedBox(height: Spacing.md),
-            _AccountField(
-              // Rebuilds the dropdown when the allowed destinations change.
+            AccountPickerField(
+              // Resets the field (and its error) when the allowed
+              // destinations change.
               key: ValueKey(
                 destinationTypes.map((type) => type.name).join(','),
               ),
@@ -427,48 +429,6 @@ class _DateField extends StatelessWidget {
         ),
         child: Text(DateFormatter.localDate(date.toLocalDateTime())),
       ),
-    );
-  }
-}
-
-class _AccountField extends ConsumerWidget {
-  const _AccountField({
-    super.key,
-    required this.label,
-    required this.accounts,
-    required this.value,
-    required this.onChanged,
-    required this.validator,
-  });
-
-  final String label;
-  final List<Account> accounts;
-  final String? value;
-  final ValueChanged<String?> onChanged;
-  final FormFieldValidator<String> validator;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final customTypes = ref.watch(customAccountTypesByIdProvider);
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      // Lets long account names shrink with an ellipsis instead of
-      // overflowing on narrow phones.
-      isExpanded: true,
-      decoration: InputDecoration(labelText: label),
-      items: [
-        for (final account in accounts)
-          DropdownMenuItem(
-            value: account.id,
-            child: Text(
-              '${account.name} · ${accountTypeName(account, customTypes)}'
-              '${account.isArchived ? ' (archived)' : ''}',
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-      onChanged: onChanged,
-      validator: validator,
     );
   }
 }

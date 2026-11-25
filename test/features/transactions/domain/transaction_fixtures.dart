@@ -103,10 +103,12 @@ TransactionDraft transfer({
   String? from = bdoId,
   String? to = walletId,
   String? category,
+  String payee = '',
 }) => TransactionDraft(
   type: TransactionType.transfer,
   amount: php(amount),
   date: today,
+  payee: payee,
   categoryId: category,
   sourceAccountId: from,
   destinationAccountId: to,
@@ -116,10 +118,12 @@ TransactionDraft cardPayment({
   int amount = 300000,
   String? from = bdoId,
   String? to = rcbcCardId,
+  String payee = '',
 }) => TransactionDraft(
   type: TransactionType.creditCardPayment,
   amount: php(amount),
   date: today,
+  payee: payee,
   sourceAccountId: from,
   destinationAccountId: to,
 );

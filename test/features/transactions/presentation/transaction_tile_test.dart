@@ -103,14 +103,42 @@ void main() {
       tester,
       saved(transfer(to: carLoanId), id: recordIdOf(5)),
     );
-    expect(find.text('Loan payment'), findsOneWidget);
     expect(find.byIcon(Icons.request_quote_outlined), findsOneWidget);
-    expect(find.textContaining('BDO Savings → Car Loan'), findsOneWidget);
     expect(text, '₱2,000.00', reason: 'unsigned, like other transfers');
     expect(color, neutral(tester));
 
     await shown(tester, saved(transfer(), id: recordIdOf(6)));
     expect(find.text('Transfer'), findsOneWidget);
     expect(find.byIcon(Icons.swap_horiz), findsOneWidget);
+    expect(find.textContaining('BDO Savings → Cash Wallet'), findsOneWidget);
+  });
+
+  group('a debt payment without a payee is titled by the account paid', () {
+    testWidgets('a loan payment', (tester) async {
+      await shown(tester, saved(transfer(to: carLoanId), id: recordIdOf(5)));
+      expect(find.text('Car Loan'), findsOneWidget);
+      expect(find.textContaining('From BDO Savings'), findsOneWidget);
+      expect(find.text('Loan payment'), findsNothing);
+      expect(find.textContaining('→'), findsNothing);
+    });
+
+    testWidgets('a credit card payment', (tester) async {
+      await shown(tester, saved(cardPayment(), id: recordIdOf(7)));
+      expect(find.text('RCBC Credit'), findsOneWidget);
+      expect(find.textContaining('From BDO Savings'), findsOneWidget);
+      expect(find.text('Credit card payment'), findsNothing);
+    });
+
+    testWidgets('a payee still wins, with both accounts shown', (tester) async {
+      await shown(
+        tester,
+        saved(
+          transfer(to: carLoanId, payee: 'November due'),
+          id: recordIdOf(8),
+        ),
+      );
+      expect(find.text('November due'), findsOneWidget);
+      expect(find.textContaining('BDO Savings → Car Loan'), findsOneWidget);
+    });
   });
 }

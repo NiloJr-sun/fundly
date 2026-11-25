@@ -82,6 +82,15 @@ TransactionKind _kindOf(WidgetRef ref, Transaction transaction) =>
           ?.type,
     );
 
+/// The title of [transaction], e.g. the loan's name for a loan payment.
+String _titleOf(WidgetRef ref, Transaction transaction) => transactionTitle(
+  transaction,
+  kind: _kindOf(ref, transaction),
+  destinationName: ref
+      .read(accountsByIdProvider)[transaction.destinationAccountId]
+      ?.name,
+);
+
 /// Deletes [transaction] after confirmation. Balances recalculate on their
 /// own because they are derived from the remaining transactions (rule 11).
 Future<void> _delete(
@@ -95,7 +104,7 @@ Future<void> _delete(
     builder: (context) => AlertDialog(
       title: const Text('Delete this transaction?'),
       content: Text(
-        '${transactionTitle(transaction, kind: _kindOf(ref, transaction))} · '
+        '${_titleOf(ref, transaction)} · '
         '${MoneyFormatter.format(transaction.amount)}\n\n'
         "Account balances will be recalculated. This can't be undone.",
       ),

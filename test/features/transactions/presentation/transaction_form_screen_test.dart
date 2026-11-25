@@ -13,6 +13,7 @@ import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_kind.dart';
 import 'package:fundly/features/transactions/domain/transaction_rules.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
+import 'package:fundly/features/transactions/presentation/account_picker_field.dart';
 import 'package:fundly/features/transactions/presentation/transaction_form_screen.dart';
 
 import '../../../helpers/fake_transaction_repository.dart';
@@ -78,13 +79,45 @@ void main() {
 
   Finder field(String label) => find.widgetWithText(TextFormField, label);
 
+  Finder accountField(String label) =>
+      find.widgetWithText(AccountPickerField, label);
+
+  /// Picks [option] in the [label] field. An account option is written as
+  /// "name · type", as the field shows it; its sheet lists the name.
   Future<void> choose(WidgetTester tester, String label, String option) async {
+    final isAccount = accountField(label).evaluate().isNotEmpty;
     await tester.tap(
-      find.widgetWithText(DropdownButtonFormField<String>, label),
+      isAccount
+          ? accountField(label)
+          : find.widgetWithText(DropdownButtonFormField<String>, label),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text(option).last);
+    await tester.tap(
+      find.text(isAccount ? option.split(' · ').first : option).last,
+    );
     await tester.pumpAndSettle();
+  }
+
+  /// Opens the [label] account field and returns its options as
+  /// "name · type", then closes the sheet.
+  Future<List<String>> optionsOf(WidgetTester tester, String label) async {
+    await tester.tap(accountField(label));
+    await tester.pumpAndSettle();
+    final options = tester
+        .widgetList<ListTile>(
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(ListTile),
+          ),
+        )
+        .map(
+          (tile) =>
+              '${(tile.title! as Text).data} · ${(tile.subtitle! as Text).data}',
+        )
+        .toList();
+    await tester.tapAt(Offset.zero); // close the sheet
+    await tester.pumpAndSettle();
+    return options;
   }
 
   Future<void> save(WidgetTester tester) async {
@@ -180,15 +213,15 @@ void main() {
     testWidgets('offers only Savings/Cash and Credit accounts', (tester) async {
       await openForm(tester, TransactionKind.spending);
 
-      await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<String>, 'Paid from'),
-      );
-      await tester.pumpAndSettle();
+      final options = await optionsOf(tester, 'Paid from');
 
-      expect(find.text('BDO Savings · Savings / Cash'), findsWidgets);
-      expect(find.text('RCBC Credit · Credit'), findsWidgets);
-      expect(find.text('Car Loan · Loan'), findsNothing);
-      expect(find.text('Old Wallet · Savings / Cash'), findsNothing);
+      expect(options, contains('BDO Savings · Savings / Cash'));
+      expect(options, contains('RCBC Credit · Credit'));
+      expect(options, isNot(contains('Car Loan · Loan')));
+      expect(
+        options.where((option) => option.startsWith('Old Wallet')),
+        isEmpty,
+      );
     });
 
     testWidgets('offers only spending categories', (tester) async {
@@ -302,23 +335,70 @@ void main() {
     });
   });
 
-  /// Opens the [label] dropdown and returns the account options it lists.
-  Future<List<String>> optionsOf(WidgetTester tester, String label) async {
-    await tester.tap(
-      find.widgetWithText(DropdownButtonFormField<String>, label),
+  group('Account sheet', () {
+    Finder sheetTile(String name) => find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.widgetWithText(ListTile, name),
     );
-    await tester.pumpAndSettle();
-    final options = tester
-        .widgetList<DropdownMenuItem<String>>(
-          find.byType(DropdownMenuItem<String>),
-        )
-        .map((item) => ((item.child as Text).data!))
-        .toSet()
-        .toList();
-    await tester.tapAt(Offset.zero); // close the menu
-    await tester.pumpAndSettle();
-    return options;
-  }
+
+    testWidgets('searches by account name or type, and picks a result', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionKind.spending);
+      await tester.tap(accountField('Paid from'));
+      await tester.pumpAndSettle();
+      expect(sheetTile('BDO Savings'), findsOneWidget);
+      expect(sheetTile('RCBC Credit'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).last, 'bdo');
+      await tester.pumpAndSettle();
+      expect(sheetTile('BDO Savings'), findsOneWidget);
+      expect(sheetTile('RCBC Credit'), findsNothing);
+
+      await tester.enterText(find.byType(TextField).last, 'CREDIT');
+      await tester.pumpAndSettle();
+      expect(sheetTile('RCBC Credit'), findsOneWidget, reason: 'by type');
+      expect(sheetTile('BDO Savings'), findsNothing);
+
+      await tester.enterText(find.byType(TextField).last, 'zzz');
+      await tester.pumpAndSettle();
+      expect(find.text('No account matches "zzz".'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).last, 'rcbc');
+      await tester.pumpAndSettle();
+      await tester.tap(sheetTile('RCBC Credit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.text('RCBC Credit · Credit'), findsOneWidget);
+    });
+
+    testWidgets('ticks the chosen account and keeps it when dismissed', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionKind.spending);
+      await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
+
+      await tester.tap(accountField('Paid from'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: sheetTile('BDO Savings'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: sheetTile('RCBC Credit'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsNothing,
+      );
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
+      expect(find.text('BDO Savings · Savings / Cash'), findsOneWidget);
+    });
+  });
 
   group('Transfer', () {
     testWidgets('moves money between asset accounts', (tester) async {

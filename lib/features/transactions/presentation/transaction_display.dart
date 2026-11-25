@@ -70,11 +70,30 @@ String _signed(Money money) => money.isNegative || money.isZero
     ? MoneyFormatter.format(money)
     : '+${MoneyFormatter.format(money)}';
 
-/// Payee if given, otherwise the name of [kind], e.g. "Loan payment".
-/// Without [kind], the stored type's name, e.g. "Transfer".
-String transactionTitle(TransactionDraft transaction, {TransactionKind? kind}) {
+/// Whether a [kind] transaction is titled by its destination account: a loan
+/// or credit card payment without a payee, so a list of payments reads
+/// "BPI Personal Loan" rather than "Loan payment" on every row.
+bool isTitledByDestination(
+  TransactionDraft transaction,
+  TransactionKind? kind,
+) =>
+    transaction.payee.trim().isEmpty &&
+    (kind == TransactionKind.loanPayment ||
+        kind == TransactionKind.creditCardPayment);
+
+/// Payee if given. Otherwise, for a loan or card payment, [destinationName]
+/// (the account paid) when known; else the name of [kind], e.g. "Loan
+/// payment". Without [kind], the stored type's name, e.g. "Transfer".
+String transactionTitle(
+  TransactionDraft transaction, {
+  TransactionKind? kind,
+  String? destinationName,
+}) {
   final payee = transaction.payee.trim();
   if (payee.isNotEmpty) return payee;
+  if (destinationName != null && isTitledByDestination(transaction, kind)) {
+    return destinationName;
+  }
   return kind == null
       ? transactionTypeLabel(transaction.type)
       : transactionKindLabel(kind);

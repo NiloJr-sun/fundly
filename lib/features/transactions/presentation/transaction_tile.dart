@@ -51,6 +51,14 @@ class TransactionTile extends ConsumerWidget {
     final categories = ref.watch(categoriesByIdProvider);
     String accountName(String? id) => accounts[id]?.name ?? '…';
 
+    final kind = TransactionKind.of(
+      transaction,
+      destinationType: accounts[transaction.destinationAccountId]?.type,
+    );
+    // A loan or card payment without a payee is titled by the account paid,
+    // so the subtitle only needs where the money came from.
+    final titledByDestination = isTitledByDestination(transaction, kind);
+
     final details = switch (transaction.type) {
       TransactionType.spending => [
         categories[transaction.categoryId]?.name,
@@ -63,6 +71,9 @@ class TransactionTile extends ConsumerWidget {
         categories[transaction.categoryId]?.name,
         accountName(transaction.destinationAccountId),
       ],
+      TransactionType.transfer || TransactionType.creditCardPayment
+          when titledByDestination =>
+        ['From ${accountName(transaction.sourceAccountId)}'],
       TransactionType.transfer || TransactionType.creditCardPayment => [
         '${accountName(transaction.sourceAccountId)} → '
             '${accountName(transaction.destinationAccountId)}',
@@ -73,10 +84,6 @@ class TransactionTile extends ConsumerWidget {
       ...details.nonNulls,
     ].join(' · ');
 
-    final kind = TransactionKind.of(
-      transaction,
-      destinationType: accounts[transaction.destinationAccountId]?.type,
-    );
     final icon = Icon(transactionKindIcon(kind));
     final amount = transactionAmountText(transaction, accountId: accountId);
     final colors = Theme.of(context).colorScheme;
@@ -95,7 +102,13 @@ class TransactionTile extends ConsumerWidget {
               ),
             )
           : icon,
-      title: Text(transactionTitle(transaction, kind: kind)),
+      title: Text(
+        transactionTitle(
+          transaction,
+          kind: kind,
+          destinationName: accounts[transaction.destinationAccountId]?.name,
+        ),
+      ),
       subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: Text(
         amount,
