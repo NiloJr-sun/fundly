@@ -5,7 +5,9 @@ import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_parser.dart';
+import '../../transactions/presentation/account_picker_field.dart';
 import '../data/account_repository.dart';
+import '../data/card_funding.dart';
 import '../domain/account.dart';
 import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
@@ -47,6 +49,12 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   late bool _isBudgetAccount;
   bool _isSaving = false;
 
+  /// "This is a credit card" is ticked: the starting money comes from the
+  /// card [_cardId] as a Transfer, not as an opening balance. Form state
+  /// only; nothing about it is stored on the account.
+  bool _isCreditCard = false;
+  String? _cardId;
+
   /// The chosen bank; both fields `null` means No bank (docs/BANKS_PLAN.md,
   /// B-4). When editing, it starts as the account's bank, even a built-in
   /// key this app does not know, which is kept unless the user picks another.
@@ -71,6 +79,14 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   bool get _canBeBudgetAccount =>
       _type == AccountType.savingsCash &&
       !(widget.account?.isArchived ?? false);
+
+  /// Only an active asset account can take its starting money from a card
+  /// (a cash advance goes only to Savings/Cash).
+  bool get _canTakeFromCard =>
+      _type == AccountType.savingsCash &&
+      !(widget.account?.isArchived ?? false);
+
+  bool get _takesFromCard => _isCreditCard && _canTakeFromCard;
 
   /// Error returned by the repository on the last save, shown on the name
   /// field until the name changes.
@@ -117,7 +133,10 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
 
   String? _validateAmount(String? value) {
     try {
-      _parseAmount();
+      final amount = _parseAmount();
+      if (_takesFromCard && amount.isZero) {
+        return 'Enter the amount to take from the card.';
+      }
       return null;
     } on MoneyParseException catch (exception) {
       return moneyParseErrorText(exception.error, _currencyCode);
@@ -135,7 +154,9 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     setState(() => _isSaving = true);
     final repository = ref.read(accountRepositoryProvider);
     try {
-      final saved = account == null
+      final saved = _takesFromCard
+          ? await _saveFromCard(account)
+          : account == null
           ? await repository.create(
               name: _nameController.text,
               type: _type,
@@ -172,6 +193,30 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  /// Saves the account with its starting money taken from the chosen card.
+  Future<Account> _saveFromCard(Account? account) {
+    final funding = ref.read(cardFundingProvider);
+    final cardId = _cardId!;
+    return account == null
+        ? funding.create(
+            name: _nameController.text,
+            type: _type,
+            amount: _parseAmount(),
+            cardId: cardId,
+            customTypeId: _choice.customTypeId,
+            bankKey: _bank.bankKey,
+            customBankId: _bank.customBankId,
+          )
+        : funding.update(
+            account.id,
+            name: _nameController.text,
+            amount: _parseAmount(),
+            cardId: cardId,
+            customType: (id: _choice.customTypeId),
+            bank: _bank == account.bank ? null : _bank,
+          );
   }
 
   Future<void> _addType() async {
@@ -218,6 +263,32 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     return [...types, created];
   }
 
+  /// The "Starting money from" field, listing active credit accounts
+  /// (custom credit types included).
+  Widget _cardPicker() {
+    final loaded = ref.watch(activeAccountsProvider);
+    final accounts = loaded.value;
+    if (accounts == null) {
+      return loaded.hasError
+          ? const Text('Your credit cards could not be loaded.')
+          : const LinearProgressIndicator();
+    }
+    final cards = [
+      for (final account in accounts)
+        if (account.type == AccountType.credit) account,
+    ];
+    if (cards.isEmpty) {
+      return const Text('Add a credit card account first.');
+    }
+    return AccountPickerField(
+      label: 'Starting money from',
+      accounts: cards,
+      value: _cardId,
+      onChanged: (id) => setState(() => _cardId = id),
+      validator: (id) => id == null ? 'Choose a credit card.' : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final customTypes = _customTypes();
@@ -262,16 +333,37 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
             TextFormField(
               controller: _amountController,
               decoration: InputDecoration(
-                labelText: openingBalanceLabel(_type),
+                labelText: _takesFromCard
+                    ? 'Starting money'
+                    : openingBalanceLabel(_type),
                 prefixText: MoneyFormatter.symbolFor(_currencyCode),
                 hintText: '0.00',
-                helperText: 'Leave blank for zero.',
+                helperText: _takesFromCard
+                    ? 'Taken from the card as a Transfer dated today. '
+                          'The opening balance becomes zero.'
+                    : 'Leave blank for zero.',
+                helperMaxLines: 2,
               ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               validator: _validateAmount,
             ),
+            if (_canTakeFromCard) ...[
+              const SizedBox(height: Spacing.sm),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('This is a credit card'),
+                subtitle: const Text(
+                  'Take its starting money from one of your credit cards.',
+                ),
+                value: _isCreditCard,
+                onChanged: (value) =>
+                    setState(() => _isCreditCard = value ?? false),
+              ),
+              if (_isCreditCard) _cardPicker(),
+            ],
             if (_canBeBudgetAccount) ...[
               const SizedBox(height: Spacing.sm),
               SwitchListTile(

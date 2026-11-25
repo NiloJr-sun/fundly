@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
+import 'package:fundly/features/accounts/data/card_funding.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
@@ -12,10 +13,12 @@ import 'package:fundly/features/accounts/domain/custom_bank.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/accounts/presentation/bank_display.dart';
+import 'package:fundly/features/transactions/domain/transaction_type.dart';
 
 import '../../../helpers/fake_account_repository.dart';
 import '../../../helpers/fake_custom_account_type_repository.dart';
 import '../../../helpers/fake_custom_bank_repository.dart';
+import '../../../helpers/fake_transaction_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 
 Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
@@ -24,8 +27,10 @@ void main() {
   late FakeAccountRepository repository;
   late FakeCustomAccountTypeRepository typeRepository;
   late FakeCustomBankRepository bankRepository;
+  late FakeTransactionRepository transactionRepository;
 
   setUp(() {
+    transactionRepository = FakeTransactionRepository();
     repository = FakeAccountRepository();
     typeRepository = FakeCustomAccountTypeRepository();
     bankRepository = FakeCustomBankRepository();
@@ -47,6 +52,17 @@ void main() {
           ...fakeCustomBanks(customBanks, repository: bankRepository),
           allAccountsProvider.overrideWith(
             (ref) => Stream.value(existingAccounts),
+          ),
+          activeAccountsProvider.overrideWith(
+            (ref) => Stream.value(existingAccounts),
+          ),
+          cardFundingProvider.overrideWithValue(
+            CardFunding(
+              accounts: repository,
+              transactions: transactionRepository,
+              atomically: <T>(body) => body(),
+              clock: () => DateTime(2026, 11, 26),
+            ),
           ),
         ],
         child: MaterialApp(
@@ -78,11 +94,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Scrolls the form until [finder] is built and on screen: the list
+  /// builds lazily, and the 600px test screen does not fit the whole form.
+  Future<void> reveal(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      100,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountFormScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+  }
+
   Future<void> tapSave(WidgetTester tester, String label) async {
     // The Bank field pushes the button below the 600px test screen.
     final button = find.widgetWithText(FilledButton, label);
-    await tester.ensureVisible(button);
-    await tester.pumpAndSettle();
+    await reveal(tester, button);
     await tester.tap(button);
     await tester.pumpAndSettle();
   }
@@ -756,6 +787,159 @@ void main() {
 
       await tapSave(tester, 'Save changes');
       expect(repository.updated.single.bank, isNull);
+    });
+  });
+
+  group('starting money from a credit card', () {
+    final metrobank = Account(
+      id: 'card',
+      name: 'Metrobank CC',
+      type: AccountType.credit,
+      openingBalance: php(0),
+      createdAt: DateTime.utc(2026, 11, 16),
+    );
+    final bdo = Account(
+      id: 'bdo',
+      name: 'BDO Savings',
+      type: AccountType.savingsCash,
+      openingBalance: php(500000),
+      createdAt: DateTime.utc(2026, 11, 16),
+    );
+    final checkbox = find.widgetWithText(
+      CheckboxListTile,
+      'This is a credit card',
+    );
+
+    Future<void> tick(WidgetTester tester) async {
+      await reveal(tester, checkbox);
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> pickCard(WidgetTester tester, String name) async {
+      final picker = find.text('Starting money from');
+      await reveal(tester, picker);
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(name).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> pickCardSheet(WidgetTester tester) async {
+      await tick(tester);
+      final picker = find.text('Starting money from');
+      await reveal(tester, picker);
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('offered for asset accounts only; the picker shows on tick', (
+      tester,
+    ) async {
+      await openForm(tester, existingAccounts: [metrobank, bdo]);
+
+      await reveal(tester, checkbox);
+      expect(find.text('Starting money from'), findsNothing);
+      await tick(tester);
+      expect(find.text('Starting money from'), findsOneWidget);
+      expect(field('Starting money'), findsOneWidget);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, 1000));
+      await tester.pumpAndSettle();
+      await selectType(tester, 'Credit');
+      expect(checkbox, findsNothing);
+      expect(find.text('Starting money from'), findsNothing);
+    });
+
+    testWidgets('lists only credit accounts', (tester) async {
+      await openForm(tester, existingAccounts: [metrobank, bdo]);
+      await pickCardSheet(tester);
+
+      expect(find.text('Metrobank CC'), findsOneWidget);
+      expect(find.text('BDO Savings'), findsNothing);
+    });
+
+    testWidgets(
+      'creates the account at zero and a Transfer from the card dated today',
+      (tester) async {
+        await openForm(tester, existingAccounts: [metrobank]);
+        await tester.enterText(field('Name'), 'Credit Cc');
+        await tester.enterText(field('Opening balance'), '1,000');
+        await tick(tester);
+        await pickCard(tester, 'Metrobank CC');
+        await tapSave(tester, 'Add account');
+
+        final created = repository.created.single;
+        expect(created.name, 'Credit Cc');
+        expect(created.entered, php(0));
+        final transfer = transactionRepository.created.single;
+        expect(transfer.type, TransactionType.transfer);
+        expect(transfer.amount, php(100000));
+        expect(transfer.sourceAccountId, 'card');
+        expect(transfer.destinationAccountId, '1');
+        expect(transfer.note, cardFundingNote);
+        expect(find.byType(AccountFormScreen), findsNothing);
+      },
+    );
+
+    testWidgets('requires a card and a non-zero amount', (tester) async {
+      await openForm(tester, existingAccounts: [metrobank]);
+      await tester.enterText(field('Name'), 'Credit Cc');
+      await tick(tester);
+      await tapSave(tester, 'Add account');
+
+      expect(find.text('Choose a credit card.'), findsOneWidget);
+      expect(
+        find.text('Enter the amount to take from the card.'),
+        findsOneWidget,
+      );
+      expect(repository.created, isEmpty);
+      expect(transactionRepository.created, isEmpty);
+    });
+
+    testWidgets('says so when there is no credit card', (tester) async {
+      await openForm(tester, existingAccounts: [bdo]);
+      await tick(tester);
+
+      await reveal(tester, find.text('Add a credit card account first.'));
+    });
+
+    testWidgets('unticked, saves an opening balance as before', (tester) async {
+      await openForm(tester, existingAccounts: [metrobank]);
+      await tester.enterText(field('Name'), 'Cash Wallet');
+      await tester.enterText(field('Opening balance'), '500');
+      await tapSave(tester, 'Add account');
+
+      expect(repository.created.single.entered, php(50000));
+      expect(transactionRepository.created, isEmpty);
+    });
+
+    testWidgets('editing moves the opening balance to a Transfer', (
+      tester,
+    ) async {
+      final existing = Account(
+        id: 'cc',
+        name: 'Credit Cc',
+        type: AccountType.savingsCash,
+        openingBalance: php(100000),
+        createdAt: DateTime.utc(2026, 11, 26),
+      );
+      await openForm(
+        tester,
+        account: existing,
+        existingAccounts: [metrobank, existing],
+      );
+      await tick(tester);
+      await pickCard(tester, 'Metrobank CC');
+      await tapSave(tester, 'Save changes');
+
+      final update = repository.updated.single;
+      expect(update.id, 'cc');
+      expect(update.entered, php(0));
+      final transfer = transactionRepository.created.single;
+      expect(transfer.amount, php(100000));
+      expect(transfer.sourceAccountId, 'card');
+      expect(transfer.destinationAccountId, 'cc');
     });
   });
 }
