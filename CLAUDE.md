@@ -527,7 +527,7 @@ correct screen is not sufficient.
 ## 10. Current Status
 
 Phases 0–4 are complete: the MVP roadmap is delivered. Post-MVP
-refinements (R.1–R.17 in the roadmap, including automatic liability rows,
+refinements (R.1–R.18 in the roadmap, including automatic liability rows,
 Plans archiving and automatic money carry-over) and Phase 5 tasks 5.1 and 5.2
 (JSON backup export and restore) are also done. Cloud sync (S1–S7) is
 released as app **1.2.0 (3)**, signed off on 2026-11-23: Google sign-in,
@@ -1455,5 +1455,38 @@ suggestions as approved decisions.
                           with none). Ships in
                           1.4.0; older apps keep
                           the saved value.
+
+  2026-11-25              Card purchases are not  Confirmed
+                          Plans Activity (R.18):
+                          Spending from a Credit
+                          account (custom types
+                          incl.) only raises what
+                          is owed. Its category is
+                          optional (schema v16,
+                          server migration
+                          20261127010000, backup
+                          format 10; every other
+                          Spending still needs
+                          one). It still counts
+                          once in spending totals,
+                          but no category's
+                          Activity counts it; the
+                          card payment is Activity
+                          on the card's debt row.
+                          Card purchases still
+                          appear in every list,
+                          incl. a category's
+                          Activity list, marked
+                          "Not in Plans"; the
+                          form explains it under
+                          Category. Replaces "card
+                          purchases remain
+                          Spending in their
+                          category" for Plans.
+                          Ships in 1.5.0 with
+                          banks; older apps show
+                          such a purchase and
+                          ask for a category only
+                          when editing it.
 
   -----------------------------------------------------------------------

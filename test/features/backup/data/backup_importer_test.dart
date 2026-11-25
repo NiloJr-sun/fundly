@@ -480,6 +480,59 @@ void main() {
     }
   });
 
+  test(
+    'a card purchase with no category round-trips (format 10, R.18)',
+    () async {
+      final card = (await source.select(source.accounts).get()).singleWhere(
+        (a) => a.name == 'RCBC Credit',
+      );
+      await TransactionRepository(source, clock: () => now).create(
+        TransactionDraft(
+          type: TransactionType.spending,
+          amount: php(10000),
+          date: CalendarDate(2026, 11, 20),
+          payee: '7/11',
+          sourceAccountId: recordIdOf(card.id),
+        ),
+      );
+      final original = await exportJson(source);
+      final rows =
+          (jsonDecode(original) as Map<String, Object?>)['transactions']!
+              as List;
+      expect(
+        rows.where(
+          (t) =>
+              (t! as Map)['type'] == 'spending' &&
+              (t as Map)['categoryId'] == null,
+        ),
+        hasLength(1),
+      );
+
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(original));
+      expect(await exportJson(target), original);
+    },
+  );
+
+  test('restore still rejects a cash purchase with no category', () async {
+    final backup = await sourceBackup();
+    final rows = (backup['transactions']! as List).cast<Map<String, Object?>>();
+    final bdo = ((backup['accounts']! as List).cast<Map<String, Object?>>())
+        .singleWhere((a) => a['name'] == 'BDO Savings')['id'];
+    rows.add({
+      ...rows.first,
+      'id': 999,
+      'type': 'spending',
+      'categoryId': null,
+      'sourceAccountId': bdo,
+      'destinationAccountId': null,
+    });
+    expect(
+      () => parseBackup(jsonEncode(backup)),
+      throwsProblem(BackupImportProblem.invalidData, 'categoryMissing'),
+    );
+  });
+
   test('restore rejects two categories linked to one account', () async {
     final backup = await sourceBackup();
     final rows = (backup['categories']! as List).cast<Map<String, Object?>>();
@@ -1084,7 +1137,7 @@ void main() {
       'a signed-out export is format 7 and restores to the same data',
       () async {
         final backup = await exportedBackup();
-        expect(backup['formatVersion'], 9);
+        expect(backup['formatVersion'], 10);
         expect(
           (backup['accounts']! as List).first,
           containsPair('id', isA<String>()),

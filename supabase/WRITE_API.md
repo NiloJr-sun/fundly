@@ -39,7 +39,9 @@ supported by S2.2B and category creation by S2.2C ([PLANS_API.md](PLANS_API.md))
 
 Create requires `type`, `amount_minor`, and `date`. Currency defaults to PHP;
 payee/note to empty strings; account/category references to null. Validated
-transaction types still determine which fields and references are required.
+transaction types still determine which fields and references are required:
+Spending needs a category unless its source is a Credit account (a card
+purchase, R.18).
 On updates, omitted fields retain their values. Explicit null clears a nullable
 reference, but must still produce a valid transaction. Type cannot change.
 

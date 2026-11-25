@@ -3,6 +3,7 @@ import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/calendar_month.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
+import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/plans/domain/monthly_plan.dart';
 import 'package:fundly/features/plans/domain/plan_summary.dart';
@@ -56,6 +57,7 @@ void main() {
     categories: allCategories,
     plans: plans,
     transactions: transactions,
+    accounts: accounts.values,
   );
 
   CategoryPlanSummary rowFor(
@@ -83,7 +85,7 @@ void main() {
       plans: [plan(foodId, 500000, assigned: 250000)],
       transactions: [
         spending(amount: 120000),
-        spending(amount: 30000, from: rcbcCardId),
+        spending(amount: 30000, from: walletId),
       ],
     );
 
@@ -268,14 +270,53 @@ void main() {
       expect(rowFor(rows, foodId).activity, php(100000));
     });
 
-    test('Rule 6: a card purchase counts once; paying the card adds none', () {
-      final rows = summarize(
-        transactions: [
-          spending(amount: 300000, from: rcbcCardId),
-          cardPayment(amount: 300000),
+    test(
+      'R.18: a card purchase is not category Activity, nor is paying it',
+      () {
+        final rows = summarize(
+          plans: [plan(foodId, 500000)],
+          transactions: [
+            spending(amount: 300000, from: rcbcCardId),
+            cardPayment(amount: 300000),
+            spending(amount: 20000),
+          ],
+        );
+
+        // Only the cash purchase; the card purchase reaches Plans when the
+        // card is paid, on the card's own row.
+        expect(rowFor(rows, foodId).activity, php(20000));
+        expect(rowFor(rows, foodId).available, php(480000));
+      },
+    );
+
+    test('R.18: custom credit types count as cards', () {
+      final rows = planSummaries(
+        month: november,
+        categories: allCategories,
+        plans: const [],
+        transactions: [spending(amount: 300000, from: 'custom-card')],
+        accounts: [
+          Account(
+            id: 'custom-card',
+            name: 'Gold card',
+            type: AccountType.credit,
+            customTypeId: 'gold-card',
+            openingBalance: php(0),
+            createdAt: DateTime.utc(2026, 11, 1),
+          ),
         ],
       );
+      expect(rowFor(rows, foodId).activity, php(0));
+    });
 
+    test('R.18: without the card in accounts, the purchase counts', () {
+      final rows = planSummaries(
+        month: november,
+        categories: allCategories,
+        plans: const [],
+        transactions: [spending(amount: 300000, from: rcbcCardId)],
+        accounts: const [],
+      );
       expect(rowFor(rows, foodId).activity, php(300000));
     });
   });
@@ -329,6 +370,7 @@ void main() {
       categories: withDefault,
       plans: plans,
       transactions: transactions,
+      accounts: accounts.values,
     );
 
     test('a month without its own plan uses the default Target', () {

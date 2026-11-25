@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../core/formatting/date_formatter.dart';
+import '../../accounts/domain/account_type.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
 import '../domain/transaction.dart';
@@ -53,6 +54,9 @@ class TransactionTile extends ConsumerWidget {
       TransactionType.spending => [
         categories[transaction.categoryId]?.name,
         accountName(transaction.sourceAccountId),
+        // R.18: card purchases stay listed but Plans counts the payment.
+        if (accounts[transaction.sourceAccountId]?.type == AccountType.credit)
+          'Not in Plans',
       ],
       TransactionType.inflow => [
         categories[transaction.categoryId]?.name,

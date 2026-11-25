@@ -284,8 +284,46 @@ void main() {
   });
 
   group('category', () {
-    test('required for spending', () {
+    test('required for spending from an asset account', () {
       expect(validate(spending(category: null)), {E.categoryMissing});
+      expect(validate(spending(category: null, from: walletId)), {
+        E.categoryMissing,
+      });
+    });
+
+    test('optional for a card purchase (R.18)', () {
+      expect(validate(spending(category: null, from: rcbcCardId)), isEmpty);
+      // A category may still be set, and must still be a valid one.
+      expect(validate(spending(from: rcbcCardId)), isEmpty);
+      expect(validate(spending(from: rcbcCardId, category: salaryId)), {
+        E.categoryWrongKind,
+      });
+    });
+
+    test('a missing source still needs a category', () {
+      expect(validate(spending(category: null, from: null)), {
+        E.sourceAccountMissing,
+        E.categoryMissing,
+      });
+    });
+
+    test('isCategoryRequired', () {
+      expect(isCategoryRequired(TransactionType.spending), isTrue);
+      expect(
+        isCategoryRequired(
+          TransactionType.spending,
+          source: AccountType.savingsCash,
+        ),
+        isTrue,
+      );
+      expect(
+        isCategoryRequired(
+          TransactionType.spending,
+          source: AccountType.credit,
+        ),
+        isFalse,
+      );
+      expect(isCategoryRequired(TransactionType.inflow), isFalse);
     });
 
     test('spending needs a spending category', () {

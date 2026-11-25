@@ -64,6 +64,15 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   `apply_operation`, `apply_account`, `apply_item`, `dataset_counts`,
   `dataset_is_empty`, `fundly_delete_space` and `fundly_import_dataset` with only
   those changes. Grants the PowerSync replication role read access to `custom_banks`.
+- `migrations/20261127010000_card_purchases.sql` (R.18, app 1.5.0): a Spending
+  paid from a Credit account may have no category. Relaxes `transactions_shape`
+  and replaces `apply_transaction` and `fundly_import_dataset` with only that
+  change (every other Spending still needs a category). Safe for current apps,
+  which never send such a row and display one without a category.
+- `rollback/20261127_card_purchases_rollback.sql`: **not a migration.** Restores
+  the banks server; refuses while any Spending has no category (give those a
+  category first). Rehearsed by `tests/migration/card_purchases_rollback_test.py`
+  inside one rolled-back transaction.
 - `rollback/20261126_banks_rollback.sql`: **not a migration.** Restores the
   1.4.0 server, removing custom banks and every account's bank (balances and
   other records untouched); rehearsed by `tests/migration/banks_rollback_test.py`
@@ -77,7 +86,7 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
 - `rollback/20261124_c1_rollback.sql`: **not a migration.** Restores the pre-C1
   API and rules without touching data; rehearsed by
   `tests/migration/c1_rollback_test.py`.
-- `tests/database/`: **1161 pgTAP assertions**, run in
+- `tests/database/`: **1163 pgTAP assertions**, run in
   transactions that roll back fixtures and mutations. Test Auth rows are local and do
   not send email or require the probe's `.env` or admin key.
 - `tests/concurrency/write_api_test.py`: four real overlapping-session tests
@@ -119,6 +128,7 @@ python3 supabase/tests/migration/c2_rollback_test.py
 python3 supabase/tests/migration/c3_rollback_test.py
 # Rolled back in one transaction; leaves the local database as it was:
 python3 supabase/tests/migration/banks_rollback_test.py
+python3 supabase/tests/migration/card_purchases_rollback_test.py
 ```
 
 `db start` starts the local database and initializes migrations. For an existing
@@ -162,8 +172,10 @@ To stop this local stack, use `npx --yes supabase@3.2.0 stop`.
 
 Transaction row CHECKs enforce valid types and field combinations, different
 transfer endpoints, payee/note limits, and required spending/inflow payees.
-The transaction RPC enforces account roles, archived-reference rules, category
-kinds and linked-category eligibility. Account/custom-type and category/Plans
+Since `20261127010000` the row check lets a Spending have no category; the
+transaction RPC and import allow that only from a Credit account (R.18), as a
+check cannot see the account type. The RPC also enforces account roles,
+archived-reference rules, category kinds and linked-category eligibility. Account/custom-type and category/Plans
 workflows are implemented. Do not use privileged direct writes as a production workaround.
 
 PostgreSQL `bigint` can exceed browser/Dart transport limits. The future client

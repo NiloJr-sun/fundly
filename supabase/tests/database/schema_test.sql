@@ -96,7 +96,6 @@ from (values
   ($$update public.transactions set date = '10000-01-01'$$, '23514', 'date above supported four-digit year range'),
   ($$update public.transactions set date = '0002-01-01 BC'$$, '23514', 'date below ISO year zero'),
   ($$update public.transactions set source_account_id = null where type = 'spending'$$, '23514', 'spending requires source'),
-  ($$update public.transactions set category_id = null where type = 'spending'$$, '23514', 'spending requires category'),
   ($$update public.transactions set destination_account_id = '20000000-0000-4000-8000-000000000002' where type = 'spending'$$, '23514', 'spending forbids destination'),
   ($$update public.transactions set destination_account_id = null where type = 'inflow'$$, '23514', 'inflow requires destination'),
   ($$update public.transactions set source_account_id = '20000000-0000-4000-8000-000000000003' where type = 'inflow'$$, '23514', 'inflow forbids source'),
@@ -129,6 +128,14 @@ select lives_ok($$update public.monthly_plans set month = '0000-01'$$, 'ISO year
 select lives_ok($$update public.monthly_plans set month = '2026-11'$$, 'restore fixture months');
 select lives_ok($$update public.transactions set amount_minor = 9007199254740991 where type = 'inflow'$$,
   'large integer money remains exact without floating point');
+-- R.18: the table lets a Spending have no category (a card purchase); the
+-- write API and import keep it to Credit sources, since a check cannot see
+-- the account type.
+select lives_ok($$insert into public.transactions(id,owner_id,type,amount_minor,date,payee,source_account_id) values
+  ('40000000-0000-4000-8000-000000000099','a0000000-0000-4000-8000-000000000001','spending',100,'2026-11-25','7/11',
+   '20000000-0000-4000-8000-000000000002')$$,
+  'a spending may have no category at table level');
+delete from public.transactions where id = '40000000-0000-4000-8000-000000000099';
 
 -- Detachment and cascade semantics are checked independently of API workflows.
 insert into public.accounts(id,owner_id,name,type,opening_balance_minor) values

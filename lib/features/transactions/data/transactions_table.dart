@@ -10,7 +10,8 @@ import '../domain/transaction_type.dart';
 /// The database enforces every rule that a single row can express: positive
 /// amount (rule 8), different source and destination (rule 7), which account
 /// and category columns each type uses, and length limits. Rules that need
-/// other tables (allowed account types, archived accounts, category kind) are
+/// other tables (allowed account types, archived accounts, category kind,
+/// and since v16 that only a card purchase may have no category) are
 /// enforced by `validateTransaction` in the repository.
 ///
 /// Accounts and categories referenced here cannot be deleted (G7).
@@ -68,9 +69,11 @@ class Transactions extends Table {
     "CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')",
     'CHECK (length(payee) <= 60)',
     'CHECK (length(note) <= 500)',
-    // Which account and category columns each type uses.
+    // Which account and category columns each type uses. Spending may have
+    // no category since v16: a card purchase (R.18), checked in
+    // validateTransaction because it depends on the account type.
     "CHECK ((type = 'spending' AND source_account_id IS NOT NULL"
-        ' AND destination_account_id IS NULL AND category_id IS NOT NULL)'
+        ' AND destination_account_id IS NULL)'
         " OR (type = 'inflow' AND source_account_id IS NULL"
         ' AND destination_account_id IS NOT NULL)'
         " OR (type IN ('transfer', 'creditCardPayment')"

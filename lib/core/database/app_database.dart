@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -159,6 +159,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(schema.customBanks);
         await m.addColumn(schema.accounts, schema.accounts.bankKey);
         await m.addColumn(schema.accounts, schema.accounts.customBankId);
+      },
+      // v16: a card purchase may have no category (R.18). SQLite cannot
+      // change a CHECK in place, so the transactions table is rebuilt with
+      // every row, id and index kept.
+      from15To16: (m, schema) async {
+        await m.alterTable(TableMigration(schema.transactions));
       },
     ),
     beforeOpen: (details) async {

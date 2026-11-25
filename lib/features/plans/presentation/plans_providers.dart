@@ -77,11 +77,13 @@ AsyncValue<List<CategoryPlanSummary>> _summaries(
   final categories = ref.watch(allCategoriesProvider);
   final plans = ref.watch(monthPlansProvider(month));
   final transactions = ref.watch(allTransactionsProvider);
-  return switch ((categories, plans, transactions)) {
+  final accounts = ref.watch(allAccountsProvider);
+  return switch ((categories, plans, transactions, accounts)) {
     (
       AsyncData(value: final c),
       AsyncData(value: final p),
       AsyncData(value: final t),
+      AsyncData(value: final a),
     ) =>
       AsyncData(
         planSummaries(
@@ -89,12 +91,15 @@ AsyncValue<List<CategoryPlanSummary>> _summaries(
           categories: c,
           plans: p,
           transactions: t,
+          accounts: a,
           archived: archived,
         ),
       ),
-    (AsyncError(:final error, :final stackTrace), _, _) ||
-    (_, AsyncError(:final error, :final stackTrace), _) ||
+    (AsyncError(:final error, :final stackTrace), _, _, _) ||
+    (_, AsyncError(:final error, :final stackTrace), _, _) ||
+    (_, _, AsyncError(:final error, :final stackTrace), _) ||
     (
+      _,
       _,
       _,
       AsyncError(:final error, :final stackTrace),

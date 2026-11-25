@@ -82,4 +82,17 @@ void main() {
       money.positive,
     ));
   });
+
+  testWidgets('card purchases are listed and marked Not in Plans (R.18)', (
+    tester,
+  ) async {
+    await shown(tester, saved(spending(from: rcbcCardId), id: recordIdOf(1)));
+    expect(
+      find.textContaining('Food · RCBC Credit · Not in Plans'),
+      findsOneWidget,
+    );
+
+    await shown(tester, saved(spending(), id: recordIdOf(2)));
+    expect(find.textContaining('Not in Plans'), findsNothing);
+  });
 }

@@ -177,6 +177,34 @@ void main() {
       );
     });
 
+    test(
+      'R.18: a card purchase saves with no category; cash does not',
+      () async {
+        final draft = TransactionDraft(
+          type: TransactionType.spending,
+          amount: php(10000),
+          date: CalendarDate(2026, 11, 16),
+          payee: '7/11',
+          sourceAccountId: card,
+        );
+        final saved = await repository.create(draft);
+        expect(saved.categoryId, isNull);
+        expect((await repository.watchAll().first).single.categoryId, isNull);
+        await expectLater(
+          repository.create(
+            TransactionDraft(
+              type: TransactionType.spending,
+              amount: php(10000),
+              date: CalendarDate(2026, 11, 16),
+              payee: '7/11',
+              sourceAccountId: wallet,
+            ),
+          ),
+          throwsValidation({TransactionValidationError.categoryMissing}),
+        );
+      },
+    );
+
     test('rejects unknown accounts and categories', () async {
       await expectLater(
         repository.create(spending(from: '999')),

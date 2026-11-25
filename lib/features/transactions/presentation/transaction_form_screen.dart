@@ -316,7 +316,15 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           if (_categoryKind != null)
             _CategoryField(
               categories: _selectableCategories(categories),
-              optional: _type == TransactionType.inflow,
+              optional: !isCategoryRequired(_type, source: sourceType),
+              // R.18: a card purchase only adds to what is owed; Plans
+              // counts the payment.
+              helperText:
+                  _type == TransactionType.spending &&
+                      sourceType == AccountType.credit
+                  ? 'Optional. Card purchases only add to what you owe; '
+                        'Plans counts the payment.'
+                  : null,
               value: _categoryId,
               onChanged: (id) => setState(() => _categoryId = id),
               validator: (_) => _errorFor(TransactionField.category),
@@ -464,10 +472,12 @@ class _CategoryField extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.validator,
+    this.helperText,
   });
 
   final List<Category> categories;
   final bool optional;
+  final String? helperText;
   final String? value;
   final ValueChanged<String?> onChanged;
   final FormFieldValidator<String> validator;
@@ -478,6 +488,8 @@ class _CategoryField extends StatelessWidget {
       initialValue: value,
       decoration: InputDecoration(
         labelText: optional ? 'Category (optional)' : 'Category',
+        helperText: helperText,
+        helperMaxLines: 2,
       ),
       items: [
         if (optional) const DropdownMenuItem<String>(child: Text('None')),

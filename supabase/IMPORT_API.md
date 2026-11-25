@@ -130,8 +130,9 @@ Archived accounts and categories may hold history.
     | Transfer | Savings/Cash or Credit | Savings/Cash or Loan; only Savings/Cash from Credit (cash advance) |
     | Credit Card Payment | Savings/Cash | Credit |
 
-  - Spending uses a spending category, and Inflow uses an inflow category or
-    none;
+  - Spending uses a spending category, or none when paid from a Credit
+    account (a card purchase, R.18; otherwise `invalid_shape`), and Inflow
+    uses an inflow category or none;
   - linked debt rows are never transaction categories.
 - **Plans:** a spending category that is not plan-deleted, one plan per
   category per month, and amounts that are not negative.

@@ -82,7 +82,7 @@ from (values
   ('{"payee":null}','22023','invalid_request','null free text'),
   ('{"payee":"  "}','P0001','invalid_transaction','blank payee'),
   ('{"source_account_id":null}','P0001','invalid_transaction','spending source required'),
-  ('{"category_id":null}','P0001','invalid_transaction','spending category required'),
+  ('{"category_id":null}','P0001','invalid_transaction','spending category required from an asset account'),
   ('{"destination_account_id":"21000000-0000-4000-8000-000000000002"}','P0001','invalid_transaction','spending destination forbidden'),
   ('{"source_account_id":"21000000-0000-4000-8000-000000000003"}','P0001','invalid_transaction','loan cannot fund spending'),
   ('{"source_account_id":"21000000-0000-4000-8000-000000000004"}','P0001','invalid_transaction','new spending from archived account'),
@@ -106,6 +106,7 @@ select throws_ok($$select pg_temp.call(pg_temp.spend(jsonb_build_object('payee',
 select lives_ok(format('select pg_temp.call(pg_temp.spend(%L::jsonb))',patch),description)
 from (values
   ('{"source_account_id":"21000000-0000-4000-8000-000000000002"}','credit purchase counts as Spending'),
+  ('{"source_account_id":"21000000-0000-4000-8000-000000000002","category_id":null}','R.18: a card purchase may have no category'),
   ('{"category_id":"31000000-0000-4000-8000-000000000007"}','deleted plan does not disable ordinary category spending'),
   ('{"type":"inflow","source_account_id":null,"destination_account_id":"21000000-0000-4000-8000-000000000001","category_id":null}','cash inflow without category'),
   ('{"type":"inflow","source_account_id":null,"destination_account_id":"21000000-0000-4000-8000-000000000002","category_id":"31000000-0000-4000-8000-000000000002"}','credit refund with inflow category'),

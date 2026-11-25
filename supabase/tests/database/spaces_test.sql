@@ -92,10 +92,11 @@ select throws_ok($$insert into public.custom_account_types(id, owner_id, name, b
     ('11100000-0000-4000-8000-000000000002', 'a1100000-0000-4000-8000-000000000001', 'e-WALLET', 'savingsCash')$$,
   '23505', 'duplicate key value violates unique constraint "custom_account_types_space_name"',
   'account type names are unique per space');
-select throws_ok($$insert into public.transactions(id, owner_id, type, amount_minor, date, payee, category_id, source_account_id) values
+select throws_ok($$insert into public.transactions(id, owner_id, type, amount_minor, date, payee, category_id,
+    source_account_id, destination_account_id) values
     ('41100000-0000-4000-8000-000000000002', 'b1100000-0000-4000-8000-000000000001', 'spending', 100, '2026-11-24',
-     'Shop', null, '21100000-0000-4000-8000-000000000001')$$,
-  '23514', null, 'a spending without a category is still refused');
+     'Shop', null, '21100000-0000-4000-8000-000000000001', '21100000-0000-4000-8000-000000000002')$$,
+  '23514', null, 'a spending with a destination is still refused');
 select throws_ok($$insert into public.transactions(id, owner_id, type, amount_minor, date, payee, source_account_id, destination_account_id) values
     ('41100000-0000-4000-8000-000000000003', 'b1100000-0000-4000-8000-000000000001', 'transfer', 100, '2026-11-24',
      '', '21100000-0000-4000-8000-000000000002', '21100000-0000-4000-8000-000000000001')$$,

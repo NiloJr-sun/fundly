@@ -90,6 +90,40 @@ void main() {
   }
 
   group('Spending', () {
+    testWidgets('a card purchase saves without a category (R.18)', (
+      tester,
+    ) async {
+      const hint =
+          'Optional. Card purchases only add to what you owe; '
+          'Plans counts the payment.';
+      await openForm(tester, TransactionType.spending);
+      await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
+      expect(find.text(hint), findsNothing);
+      expect(find.text('Category (optional)'), findsNothing);
+
+      await choose(tester, 'Paid from', 'RCBC Credit · Credit');
+      expect(find.text(hint), findsOneWidget);
+      expect(find.text('Category (optional)'), findsOneWidget);
+      await tester.enterText(field('Amount'), '100');
+      await tester.enterText(field('Paid to'), '7/11');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.sourceAccountId, rcbcCardId);
+      expect(draft.categoryId, isNull);
+    });
+
+    testWidgets('a cash purchase still needs a category', (tester) async {
+      await openForm(tester, TransactionType.spending);
+      await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
+      await tester.enterText(field('Amount'), '100');
+      await tester.enterText(field('Paid to'), '7/11');
+      await save(tester);
+
+      expect(repository.created, isEmpty);
+      expect(find.text('Choose a category.'), findsOneWidget);
+    });
+
     testWidgets('saves a complete spending transaction', (tester) async {
       await openForm(tester, TransactionType.spending);
       expect(find.text('New Spending'), findsOneWidget);
@@ -98,7 +132,8 @@ void main() {
       await tester.enterText(field('Amount'), '1,250.50');
       await choose(tester, 'Paid from', 'RCBC Credit · Credit');
       await tester.enterText(field('Paid to'), ' Jollibee ');
-      await choose(tester, 'Category', 'Food');
+      // Optional for a card purchase (R.18), but still saved when chosen.
+      await choose(tester, 'Category (optional)', 'Food');
       await tester.enterText(field('Note (optional)'), 'Lunch');
       await save(tester);
 

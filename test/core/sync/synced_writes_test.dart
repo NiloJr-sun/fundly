@@ -143,6 +143,42 @@ void main() {
       expect(stored['created_at'], '2026-11-22T03:00:00.000Z');
     });
 
+    test('a card purchase saves and uploads with no category (R.18)', () async {
+      final repository = SyncedTransactionRepository(store.database);
+      final created = await repository.create(
+        TransactionDraft(
+          type: TransactionType.spending,
+          amount: php(10000),
+          date: CalendarDate(2026, 11, 22),
+          payee: '7/11',
+          sourceAccountId: card,
+        ),
+      );
+      expect(created.categoryId, isNull);
+      final data =
+          (await store.queuedItems()).single['data']! as Map<String, Object?>;
+      expect(data['category_id'], isNull);
+      expect(data['source_account_id'], card);
+      await expectLater(
+        repository.create(
+          TransactionDraft(
+            type: TransactionType.spending,
+            amount: php(10000),
+            date: CalendarDate(2026, 11, 22),
+            payee: '7/11',
+            sourceAccountId: bdo,
+          ),
+        ),
+        throwsA(
+          isA<TransactionValidationException>().having(
+            (e) => e.errors,
+            'errors',
+            {TransactionValidationError.categoryMissing},
+          ),
+        ),
+      );
+    });
+
     test(
       'two offline edits carry the revisions the server will hold',
       () async {

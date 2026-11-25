@@ -43,6 +43,7 @@ void main() {
     categories: allCategories,
     plans: plans,
     transactions: transactions,
+    accounts: accounts.values,
   );
 
   test('active debts appear without a saved plan or inferred target', () {
@@ -53,24 +54,22 @@ void main() {
     expect(rows[1].hasPlan, isFalse);
   });
 
-  test(
-    'card payments and loan transfers are activity, purchases stay in Food',
-    () {
-      final rows = summarize([
-        cardPayment(amount: 20000),
-        transfer(amount: 30000, to: carLoanId),
-        spending(amount: 50000, from: rcbcCardId),
-        inflow(amount: 10000, to: rcbcCardId),
-        transfer(amount: 10000),
-        // A cash advance adds debt but is not a payment.
-        transfer(amount: 40000, from: rcbcCardId, to: bdoId),
-        spending(amount: 10000, date: CalendarDate(2026, 10, 31)),
-      ]);
-      expect(rows[0].activity, php(50000));
-      expect(rows[1].activity, php(20000));
-      expect(rows[2].activity, php(30000));
-    },
-  );
+  test('card payments and loan transfers are activity; card purchases are not '
+      'Food Activity (R.18)', () {
+    final rows = summarize([
+      cardPayment(amount: 20000),
+      transfer(amount: 30000, to: carLoanId),
+      spending(amount: 50000, from: rcbcCardId),
+      inflow(amount: 10000, to: rcbcCardId),
+      transfer(amount: 10000),
+      // A cash advance adds debt but is not a payment.
+      transfer(amount: 40000, from: rcbcCardId, to: bdoId),
+      spending(amount: 10000, date: CalendarDate(2026, 10, 31)),
+    ]);
+    expect(rows[0].activity, php(0));
+    expect(rows[1].activity, php(20000));
+    expect(rows[2].activity, php(30000));
+  });
 
   test('card and loan payments are row Activity, not moved out', () {
     final result = readyToAssign(

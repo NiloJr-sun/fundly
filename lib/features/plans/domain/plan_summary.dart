@@ -4,6 +4,7 @@ import '../../../core/money/money.dart';
 import '../../../core/time/calendar_month.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/domain/account_balance.dart';
+import '../../accounts/domain/account_type.dart';
 import '../../categories/domain/category.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/domain/transaction_type.dart';
@@ -96,9 +97,11 @@ final class CategoryPlanSummary {
 
 /// One row per spending category for [month], in the order of [categories].
 ///
-/// - Regular category Activity counts Spending only. Linked liability rows
-///   count transfers and card payments into their account. Neither changes
-///   spending/inflow totals; card purchases remain Spending in their category.
+/// - Regular category Activity counts Spending only, and not purchases on a
+///   Credit account in [accounts] (R.18): those only raise what is owed, and
+///   reach Plans when the card is paid. Linked liability rows count transfers
+///   and card payments into their account. Neither changes spending/inflow
+///   totals; card purchases remain Spending in their category.
 /// - Main rows exclude archived plans and categories. With [archived], all
 ///   archived spending rows are returned, including those without history.
 /// - Inflow categories never appear: plans are for spending only.
@@ -110,9 +113,11 @@ List<CategoryPlanSummary> planSummaries({
   required Iterable<Category> categories,
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
+  required Iterable<Account> accounts,
   String currencyCode = Account.defaultCurrency,
   bool archived = false,
 }) {
+  final cards = creditAccountIds(accounts);
   final planByCategory = {
     for (final plan in plans)
       if (plan.month == month) plan.categoryId: plan,
@@ -124,7 +129,7 @@ List<CategoryPlanSummary> planSummaries({
     var activity = Money.zero(currencyCode);
     for (final transaction in entries) {
       if (month.dateRange.contains(transaction.date) &&
-          isCategoryPlanActivity(category, transaction)) {
+          isCategoryPlanActivity(category, transaction, cards)) {
         activity += transaction.amount;
       }
     }
@@ -149,9 +154,22 @@ List<CategoryPlanSummary> planSummaries({
   ];
 }
 
-/// Debt rows count payments to the linked account; regular rows count Spending.
-/// Payments remain excluded from spending totals throughout the app.
-bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
+/// Accounts whose purchases Plans leaves out of category Activity (R.18):
+/// Credit accounts, custom credit types included (they store the base type).
+Set<String> creditAccountIds(Iterable<Account> accounts) => {
+  for (final account in accounts)
+    if (account.type == AccountType.credit) account.id,
+};
+
+/// Debt rows count payments to the linked account; regular rows count
+/// Spending, except purchases from [cardAccountIds] (from
+/// [creditAccountIds]). Payments remain excluded from spending totals
+/// throughout the app.
+bool isCategoryPlanActivity(
+  Category category,
+  TransactionDraft transaction,
+  Set<String> cardAccountIds,
+) {
   final accountId = category.linkedAccountId;
   if (accountId != null) {
     return transaction.destinationAccountId == accountId &&
@@ -159,7 +177,8 @@ bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
             transaction.type == TransactionType.creditCardPayment);
   }
   return transaction.type == TransactionType.spending &&
-      transaction.categoryId == category.id;
+      transaction.categoryId == category.id &&
+      !cardAccountIds.contains(transaction.sourceAccountId);
 }
 
 /// The selected month's money in the budget accounts and what is assigned.

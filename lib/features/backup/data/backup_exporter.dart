@@ -57,8 +57,10 @@ class BackupExporter {
   /// `isPlanArchived`; 6 adds `isPlanDeleted`; 7 writes every ID and
   /// reference as text (cloud sync S6, Decision 6); 8 adds category
   /// `defaultTargetMinor`; 9 adds `customBanks` and account `bankKey` and
-  /// `customBankId` (docs/BANKS_PLAN.md).
-  static const int formatVersion = 9;
+  /// `customBankId` (docs/BANKS_PLAN.md); 10 allows a Spending with no
+  /// `categoryId` when paid from a Credit account (R.18), so older apps
+  /// refuse such a file as too new rather than as invalid.
+  static const int formatVersion = 10;
 
   final BackupSource _source;
   final DateTime Function() _now;

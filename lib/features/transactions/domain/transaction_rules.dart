@@ -41,7 +41,8 @@ enum TransactionValidationError {
   payeeMissing,
   payeeTooLong,
 
-  /// Spending requires a category.
+  /// Spending requires a category, unless it is paid from a Credit account
+  /// (R.18).
   categoryMissing,
 
   /// Transfers and card payments have no category.
@@ -145,7 +146,13 @@ Set<TransactionValidationError> validateTransaction(
   }
 
   _checkPayee(draft, errors);
-  _checkCategory(draft, categories, existing?.categoryId, errors);
+  _checkCategory(
+    draft,
+    categories,
+    existing?.categoryId,
+    errors,
+    sourceType: accounts[draft.sourceAccountId]?.type,
+  );
 
   if (draft.note.trim().length > maxNoteLength) {
     errors.add(TransactionValidationError.noteTooLong);
@@ -153,6 +160,12 @@ Set<TransactionValidationError> validateTransaction(
 
   return errors;
 }
+
+/// Whether a [type] transaction paid from a [source] account must have a
+/// category: Spending does, except a card purchase (source Credit, custom
+/// credit types included), which only adds to what is owed (R.18).
+bool isCategoryRequired(TransactionType type, {AccountType? source}) =>
+    type == TransactionType.spending && source != AccountType.credit;
 
 enum _Role { source, destination }
 
@@ -236,8 +249,9 @@ void _checkCategory(
   TransactionDraft draft,
   Map<String, Category> categories,
   String? previousCategoryId,
-  Set<TransactionValidationError> errors,
-) {
+  Set<TransactionValidationError> errors, {
+  required AccountType? sourceType,
+}) {
   final categoryId = draft.categoryId;
   final expectedKind = switch (draft.type) {
     TransactionType.spending => CategoryKind.spending,
@@ -252,7 +266,7 @@ void _checkCategory(
     return;
   }
   if (categoryId == null) {
-    if (draft.type == TransactionType.spending) {
+    if (isCategoryRequired(draft.type, source: sourceType)) {
       errors.add(TransactionValidationError.categoryMissing);
     }
     return;

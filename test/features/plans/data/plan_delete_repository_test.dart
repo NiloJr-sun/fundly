@@ -100,6 +100,7 @@ void main() {
           categories: [row],
           plans: [],
           transactions: [],
+          accounts: [],
         ),
         isEmpty,
       );
@@ -109,6 +110,7 @@ void main() {
           categories: [row],
           plans: [],
           transactions: [],
+          accounts: [],
           archived: true,
         ),
         isEmpty,

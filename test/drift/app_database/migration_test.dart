@@ -13,6 +13,7 @@ import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v15.dart' as v15;
+import 'generated/schema_v16.dart' as v16;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1397,6 +1398,151 @@ void main() {
           'DELETE FROM custom_banks WHERE id = 1',
           'INSERT INTO custom_banks (name, created_at) '
               "VALUES ('town coop', '2026-11-25T00:00:00.000Z')",
+        ]) {
+          await expectLater(
+            db.customStatement(statement),
+            throwsA(isA<Exception>()),
+            reason: statement,
+          );
+        }
+        expect(
+          await db.customSelect('PRAGMA foreign_key_check').get(),
+          isEmpty,
+        );
+      },
+    );
+  });
+
+  test('v15 to v16 keeps every transaction, id and index; a spending may '
+      'then have no category, and the other shape rules still hold', () async {
+    const accounts = [
+      v15.AccountsData(
+        id: 1,
+        name: 'BDO Savings',
+        type: 'savingsCash',
+        openingBalanceMinor: 1500000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        isArchived: 0,
+        isBudgetAccount: 1,
+        bankKey: 'bdo',
+      ),
+      v15.AccountsData(
+        id: 2,
+        name: 'RCBC Credit',
+        type: 'credit',
+        openingBalanceMinor: -300000,
+        currencyCode: 'PHP',
+        createdAt: '2026-11-01T00:00:00.000Z',
+        isArchived: 0,
+        isBudgetAccount: 0,
+      ),
+    ];
+    const categories = [
+      v15.CategoriesData(
+        id: 1,
+        name: 'Food',
+        kind: 'spending',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'spending',
+      ),
+      v15.CategoriesData(
+        id: 2,
+        name: 'Salary',
+        kind: 'inflow',
+        isArchived: 0,
+        isPlanArchived: 0,
+        isPlanDeleted: 0,
+        planGroup: 'spending',
+      ),
+    ];
+    v15.TransactionsData row(
+      int id,
+      String type, {
+      int? category,
+      int? from,
+      int? to,
+    }) => v15.TransactionsData(
+      id: id,
+      type: type,
+      amountMinor: 1000 * id,
+      currencyCode: 'PHP',
+      date: '2026-11-1$id',
+      payee: type == 'transfer' ? '' : 'Payee $id',
+      categoryId: category,
+      sourceAccountId: from,
+      destinationAccountId: to,
+      note: 'note $id',
+      createdAt: '2026-11-1${id}T00:00:00.000Z',
+      updatedAt: '2026-11-1${id}T01:00:00.000Z',
+    );
+    // Ids 1, 2, 3, 5, 7: gaps must be kept, not renumbered.
+    final transactions = [
+      row(1, 'spending', category: 1, from: 1),
+      row(2, 'spending', category: 1, from: 2),
+      row(3, 'inflow', category: 2, to: 1),
+      row(5, 'transfer', from: 1, to: 2),
+      row(7, 'creditCardPayment', from: 1, to: 2),
+    ];
+    await verifier.testWithDataIntegrity(
+      oldVersion: 15,
+      newVersion: 16,
+      createOld: v15.DatabaseAtV15.new,
+      createNew: v16.DatabaseAtV16.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, db) => batch
+        ..insertAll(db.accounts, accounts)
+        ..insertAll(db.categories, categories)
+        ..insertAll(db.transactions, transactions),
+      validateItems: (db) async {
+        final rows = await (db.select(
+          db.transactions,
+        )..orderBy([(t) => OrderingTerm(expression: t.id)])).get();
+        expect(rows.map((t) => t.toJson()).toList(), [
+          for (final transaction in transactions) transaction.toJson(),
+        ]);
+        final indexes = await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'index' "
+              "AND tbl_name = 'transactions' AND name NOT LIKE 'sqlite_%' "
+              'ORDER BY name',
+            )
+            .get();
+        expect(indexes.map((r) => r.read<String>('name')), [
+          'transactions_date',
+          'transactions_destination_account',
+          'transactions_source_account',
+        ]);
+
+        await db.customStatement('PRAGMA foreign_keys = ON');
+        // A card purchase without a category (R.18). The account type is
+        // checked by validateTransaction, not by SQLite.
+        await db.customStatement(
+          'INSERT INTO transactions (type, amount_minor, currency_code, '
+          'date, payee, source_account_id, note, created_at, updated_at) '
+          "VALUES ('spending', 500, 'PHP', '2026-11-25', '7/11', 2, '', "
+          "'2026-11-25T00:00:00.000Z', '2026-11-25T00:00:00.000Z')",
+        );
+        // New rows continue after the highest id.
+        expect(
+          (await db
+                  .customSelect('SELECT max(id) AS id FROM transactions')
+                  .getSingle())
+              .read<int>('id'),
+          8,
+        );
+        for (final statement in [
+          // Spending still needs a source and no destination; transfers
+          // and card payments still have no category; amounts stay
+          // positive; references must exist.
+          'UPDATE transactions SET source_account_id = NULL WHERE id = 8',
+          'UPDATE transactions SET destination_account_id = 1 WHERE id = 8',
+          'UPDATE transactions SET category_id = 1 WHERE id = 5',
+          'UPDATE transactions SET category_id = 1 WHERE id = 7',
+          'UPDATE transactions SET amount_minor = 0 WHERE id = 8',
+          'UPDATE transactions SET category_id = 99 WHERE id = 8',
         ]) {
           await expectLater(
             db.customStatement(statement),

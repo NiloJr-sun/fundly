@@ -32,7 +32,7 @@ G10 is resolved: backups can be exported (5.1) and restored (5.2).
 
 | # | Issue | Affects | Proposed resolution |
 |---|---|---|---|
-| G1 | Spending requires a **category** (Phase 2), and Phase 3 filters by category, but categories are only defined in **Phase 4**. | Phase 2 | Add a small **seeded category list** (fixed names) in Phase 2. Phase 4 adds create/rename/archive. |
+| G1 | Spending requires a **category** (Phase 2; since R.18 not a card purchase), and Phase 3 filters by category, but categories are only defined in **Phase 4**. | Phase 2 | Add a small **seeded category list** (fixed names) in Phase 2. Phase 4 adds create/rename/archive. |
 | G2 | No **sign convention** for liabilities is chosen. | Phase 1 | See D1. |
 | G3 | "Available money" is mentioned but not defined. | Phase 3 | See D2. |
 | G4 | **Loan** accounts have no defined transactions. How is a loan payment recorded? | Phase 2 | Treat a loan payment as a **Transfer** from an asset account to the loan. Interest is out of scope. |
@@ -237,6 +237,7 @@ Requested by the product owner after the MVP and logged in CLAUDE.md §11.
 | R.15 | Archive Plans rows independently across all months, hide archived rows from Plans, and browse read-only history/unarchive from Archived plans. Block archive when any current/future month has remaining budget allocation. Backup format 5 adds isPlanArchived; earlier formats default false | v11 | Migration, repository, archive guard, backup and widget tests |
 | R.16 | Automatic budget-money carry-over: show the previous closing ledger balance in Plans without adding a transaction or duplicating money. Refresh at local midnight and on resume/open; catch up missed months while preserving browsed months. Category allocations stay monthly; edits recalculate carry-over | — | Calculator, month-boundary and lifecycle widget tests |
 | R.17 | Permanently delete unused archived Plans rows: zero Assigned in every month, no spending/payment activity, confirmation, and a red button below Unarchive. Remove monthly targets while keeping category/account; a persistent deletion flag prevents automatic recreation. Backup format 6 adds isPlanDeleted; earlier formats default false | v12 | Migration, eligibility, atomic deletion/rollback, backup and widget tests |
+| R.18 | Card purchases leave Plans alone: Spending from a Credit account (custom types included) is not counted in any category's Activity; it only raises what is owed, and the card payment is Activity on the card's debt row. The category is optional on a card purchase (still required for every other Spending) and spending totals still count the purchase once. Card purchases stay in every transaction list, including a category's Activity list, marked "Not in Plans"; the form shows "Category (optional)" with a note when paying by card. Server migration `20261127010000_card_purchases.sql` (with rollback) lets the table, write API and import accept it from Credit sources only; backup format 10. Ships in 1.5.0 | v16 | Domain, repositories (local and synced), migration v15→v16, backup round trip, tile and form widget tests; pgTAP, rollback rehearsal |
 
 ### Phase 5 — After the MVP (one item approved)
 

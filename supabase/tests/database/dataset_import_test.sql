@@ -245,7 +245,11 @@ select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,payee}',to
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,note}',to_jsonb(repeat('n',501)))),
   'invalid_import transactions[0].note invalid_value','notes are at most 500 characters');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,category_id}','null')),
-  'invalid_import transactions[0] invalid_shape','Spending needs a category');
+  'invalid_import transactions[0] invalid_shape','Spending from Savings/Cash needs a category');
+select is(pg_temp.try_rolled_back(jsonb_set(jsonb_set(pg_temp.dataset('x'),
+    '{transactions,0,category_id}','null'),
+    '{transactions,0,source_account_id}',to_jsonb(pg_temp.id('x','A2')))),
+  'ok','R.18: a card purchase may have no category');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,2,destination_account_id}',to_jsonb(pg_temp.id('x','A1')))),
   'invalid_import transactions[2].destination_account_id same_account','no transfer to the same account');
 select is(pg_temp.try(jsonb_set(pg_temp.dataset('x'),'{transactions,0,source_account_id}',to_jsonb(pg_temp.id('x','A9')))),
