@@ -63,8 +63,10 @@ class TransactionTile extends ConsumerWidget {
       TransactionType.spending => [
         categories[transaction.categoryId]?.name,
         accountName(transaction.sourceAccountId),
-        // R.18: card purchases stay listed but Plans counts the payment.
-        if (accounts[transaction.sourceAccountId]?.type == AccountType.credit)
+        // A card purchase without a category moves nothing to the card's
+        // Plans row.
+        if (transaction.categoryId == null &&
+            accounts[transaction.sourceAccountId]?.type == AccountType.credit)
           'Not in Plans',
       ],
       TransactionType.inflow => [

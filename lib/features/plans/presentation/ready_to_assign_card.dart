@@ -164,7 +164,8 @@ class _ReadyToAssignDetails extends StatelessWidget {
       _Balance.balanced => colors.onSurface,
       _Balance.over => AppColors.of(context).expense,
     };
-    final available = value.carryOver + value.moneyIn - value.movedOut;
+    final available =
+        value.carryOver + value.moneyIn - value.movedOut - value.heldForCards;
     final percent = assignedPercentLabel(
       assigned: value.assigned,
       available: available,
@@ -235,6 +236,11 @@ class _ReadyToAssignDetails extends StatelessWidget {
           _BreakdownRow(
             label: '− Moved out this month',
             amount: value.movedOut,
+          ),
+        if (!value.heldForCards.isZero)
+          _BreakdownRow(
+            label: '− Held for card payments',
+            amount: value.heldForCards,
           ),
         _BreakdownRow(label: '− Assigned', amount: value.assigned),
         const SizedBox(height: Spacing.sm),

@@ -341,8 +341,10 @@ them:
     (Approved 2026-11-17: a manual Assigned amount per category per month,
     and a Ready to assign figure, which since 2026-11-23 is the budget
     account’s carry over plus the month’s money in, minus money moved out
-    and the month’s Assigned total. Automatic allocation
-    and allocation carry-over between months remain out of scope.)
+    and the month’s Assigned total and, since 2026-11-26, money held for
+    card payments. Automatic allocation and allocation carry-over between
+    months remain out of scope, except that a credit card's Plans row
+    carries unpaid money moved in by card purchases (R.19).)
 
 Keep future extension in mind, but do not build abstractions for
 hypothetical requirements.
@@ -800,7 +802,8 @@ suggestions as approved decisions.
                           transactions. Available 
                           = Assigned - Activity,  
                           allocations do not carry
-                          over. Negative when
+                          over (card rows: R.19).
+                          Negative when
                           overspent (also when
                           unassigned).
                           Funded when Assigned >= 
@@ -1242,7 +1245,8 @@ suggestions as approved decisions.
                           moved out (transfers to
                           accounts without a
                           linked Plans row) −
-                          that month's Assigned.
+                          that month's Assigned −
+                          held for cards (R.19).
                           Spending, card and loan
                           payments are Activity
                           only; overspending shows
@@ -1457,8 +1461,8 @@ suggestions as approved decisions.
                           1.4.0; older apps keep
                           the saved value.
 
-  2026-11-25              Card purchases are not  Confirmed
-                          Plans Activity (R.18):
+  2026-11-25              Card purchase category  Confirmed
+                          is optional (R.18):
                           Spending from a Credit
                           account (custom types
                           incl.) only raises what
@@ -1469,21 +1473,12 @@ suggestions as approved decisions.
                           format 10; every other
                           Spending still needs
                           one). It still counts
-                          once in spending totals,
-                          but no category's
-                          Activity counts it; the
-                          card payment is Activity
-                          on the card's debt row.
-                          Card purchases still
-                          appear in every list,
-                          incl. a category's
-                          Activity list, marked
-                          "Not in Plans"; the
-                          form explains it under
-                          Category. Replaces "card
-                          purchases remain
-                          Spending in their
-                          category" for Plans.
+                          once in spending totals.
+                          Plans: replaced by R.19
+                          (2026-11-26 row); only
+                          card purchases without
+                          a category are marked
+                          "Not in Plans".
                           Ships in 1.5.0 with
                           banks; older apps show
                           such a purchase and
@@ -1517,5 +1512,31 @@ suggestions as approved decisions.
                           and inflow have none"
                           (2026-11-25) for debt
                           rows.
+
+  2026-11-26              Card purchases fund the Confirmed
+                          card's Plans row (R.19,
+                          like YNAB): a card
+                          purchase is Activity in
+                          its category, and the
+                          part that category's
+                          Available covered (by
+                          date, then record time;
+                          the month's current
+                          Assigned) moves to the
+                          card's row. The rest is
+                          overspending. Card row
+                          Available = carried
+                          over + Assigned + moved
+                          in − payments; unpaid
+                          moved money carries to
+                          the next month (card
+                          rows only), and Ready
+                          to assign subtracts it.
+                          No category, cash
+                          advances and refunds
+                          move nothing. Archive
+                          guard unchanged. No
+                          schema, sync, server or
+                          backup change.
 
   -----------------------------------------------------------------------

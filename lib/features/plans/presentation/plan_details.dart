@@ -94,6 +94,18 @@ class PlanDetails extends StatelessWidget {
               : () => onAction(PlanDetailsAction.editAssigned),
           tooltip: 'Edit ${category.name} assigned',
         ),
+        // Card rows only: money card purchases moved here (see
+        // cardRowFunding).
+        if (summary.carriedOver case final carried?)
+          _DetailLine(
+            label: 'Carried over',
+            value: MoneyFormatter.format(carried),
+          ),
+        if (summary.movedIn case final moved?)
+          _DetailLine(
+            label: 'Moved from categories',
+            value: MoneyFormatter.format(moved),
+          ),
         _DetailLine(
           label: 'Activity',
           value: MoneyFormatter.format(summary.activity),

@@ -270,26 +270,22 @@ void main() {
       expect(rowFor(rows, foodId).activity, php(100000));
     });
 
-    test(
-      'R.18: a card purchase is not category Activity, nor is paying it',
-      () {
-        final rows = summarize(
-          plans: [plan(foodId, 500000)],
-          transactions: [
-            spending(amount: 300000, from: rcbcCardId),
-            cardPayment(amount: 300000),
-            spending(amount: 20000),
-          ],
-        );
+    test('a card purchase is category Activity; paying it is not', () {
+      final rows = summarize(
+        plans: [plan(foodId, 500000)],
+        transactions: [
+          spending(amount: 300000, from: rcbcCardId),
+          cardPayment(amount: 300000),
+          spending(amount: 20000),
+        ],
+      );
 
-        // Only the cash purchase; the card purchase reaches Plans when the
-        // card is paid, on the card's own row.
-        expect(rowFor(rows, foodId).activity, php(20000));
-        expect(rowFor(rows, foodId).available, php(480000));
-      },
-    );
+      // Both purchases; the payment is Activity on the card's own row.
+      expect(rowFor(rows, foodId).activity, php(320000));
+      expect(rowFor(rows, foodId).available, php(180000));
+    });
 
-    test('R.18: custom credit types count as cards', () {
+    test('custom credit types count as cards in category Activity', () {
       final rows = planSummaries(
         month: november,
         categories: allCategories,
@@ -306,10 +302,10 @@ void main() {
           ),
         ],
       );
-      expect(rowFor(rows, foodId).activity, php(0));
+      expect(rowFor(rows, foodId).activity, php(300000));
     });
 
-    test('R.18: without the card in accounts, the purchase counts', () {
+    test('without the card in accounts, the purchase counts', () {
       final rows = planSummaries(
         month: november,
         categories: allCategories,
@@ -515,6 +511,7 @@ void main() {
       List<MonthlyPlan> plans = const [],
       List<TransactionDraft> transactions = const [],
     }) => readyToAssign(
+      accounts: accounts.values,
       month: month ?? november,
       budgetAccounts: [
         Account(

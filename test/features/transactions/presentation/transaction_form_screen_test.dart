@@ -131,8 +131,8 @@ void main() {
       tester,
     ) async {
       const hint =
-          'Optional. Card purchases only add to what you owe; '
-          'Plans counts the payment.';
+          'Optional. Its budgeted amount moves to the card on Plans; '
+          'without a category it is not covered.';
       await openForm(tester, TransactionKind.spending);
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
       expect(find.text(hint), findsNothing);

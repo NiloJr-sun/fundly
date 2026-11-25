@@ -56,6 +56,11 @@ final monthPlansProvider =
       (ref, month) => ref.watch(planRepositoryProvider).watchForMonth(month),
     );
 
+/// Every month's plans: card rows and Ready to assign need earlier months.
+final allPlansProvider = StreamProvider<List<MonthlyPlan>>(
+  (ref) => ref.watch(planRepositoryProvider).watchAll(),
+);
+
 /// Target, assigned, activity, available and status per spending category
 /// for one month.
 final planSummariesProvider =
@@ -75,7 +80,7 @@ AsyncValue<List<CategoryPlanSummary>> _summaries(
   required bool archived,
 }) {
   final categories = ref.watch(allCategoriesProvider);
-  final plans = ref.watch(monthPlansProvider(month));
+  final plans = ref.watch(allPlansProvider);
   final transactions = ref.watch(allTransactionsProvider);
   final accounts = ref.watch(allAccountsProvider);
   return switch ((categories, plans, transactions, accounts)) {
@@ -114,7 +119,7 @@ final readyToAssignProvider =
     Provider.family<AsyncValue<ReadyToAssign?>, CalendarMonth>((ref, month) {
       final categories = ref.watch(allCategoriesProvider);
       final accounts = ref.watch(allAccountsProvider);
-      final plans = ref.watch(monthPlansProvider(month));
+      final plans = ref.watch(allPlansProvider);
       final transactions = ref.watch(allTransactionsProvider);
       return switch ((accounts, plans, transactions, categories)) {
         (
@@ -131,6 +136,7 @@ final readyToAssignProvider =
               plans: p,
               transactions: t,
               categories: c,
+              accounts: a,
             ),
           }),
         (AsyncError(:final error, :final stackTrace), _, _, _) ||

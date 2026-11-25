@@ -83,16 +83,20 @@ void main() {
     ));
   });
 
-  testWidgets('card purchases are listed and marked Not in Plans (R.18)', (
+  testWidgets('only card purchases without a category are Not in Plans', (
     tester,
   ) async {
-    await shown(tester, saved(spending(from: rcbcCardId), id: recordIdOf(1)));
-    expect(
-      find.textContaining('Food · RCBC Credit · Not in Plans'),
-      findsOneWidget,
+    await shown(
+      tester,
+      saved(spending(from: rcbcCardId, category: null), id: recordIdOf(1)),
     );
+    expect(find.textContaining('RCBC Credit · Not in Plans'), findsOneWidget);
 
-    await shown(tester, saved(spending(), id: recordIdOf(2)));
+    await shown(tester, saved(spending(from: rcbcCardId), id: recordIdOf(2)));
+    expect(find.textContaining('Food · RCBC Credit'), findsOneWidget);
+    expect(find.textContaining('Not in Plans'), findsNothing);
+
+    await shown(tester, saved(spending(), id: recordIdOf(3)));
     expect(find.textContaining('Not in Plans'), findsNothing);
   });
 

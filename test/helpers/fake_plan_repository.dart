@@ -56,6 +56,9 @@ class FakePlanRepository implements PlanRepository {
       Stream.value(const []);
 
   @override
+  Stream<List<MonthlyPlan>> watchAll() => Stream.value(const []);
+
+  @override
   Future<MonthlyPlan?> save({
     required CalendarMonth month,
     required String categoryId,

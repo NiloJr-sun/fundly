@@ -34,6 +34,7 @@ void main() {
     CalendarMonth? month,
     List<MonthlyPlan> plans = const [],
   }) => readyToAssign(
+    accounts: accounts.values,
     month: month ?? december,
     budgetAccounts: [budget],
     plans: plans,
@@ -158,6 +159,7 @@ void main() {
       expect(summarize([]).carryOver, php(1000000));
       expect(
         readyToAssign(
+          accounts: accounts.values,
           month: december,
           budgetAccounts: [budget.copyWith(openingBalance: php(2000000))],
           plans: [],
@@ -174,6 +176,7 @@ void main() {
     () {
       final other = accounts[walletId]!.copyWith(openingBalance: php(50000));
       final result = readyToAssign(
+        accounts: accounts.values,
         month: december,
         budgetAccounts: [other],
         plans: [],

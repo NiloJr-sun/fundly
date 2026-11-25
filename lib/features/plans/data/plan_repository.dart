@@ -36,6 +36,13 @@ class PlanRepository {
     );
   }
 
+  /// Every month's plans: card rows need earlier months (see
+  /// `cardRowFunding`).
+  Stream<List<MonthlyPlan>> watchAll() => _database
+      .select(_plans)
+      .watch()
+      .map((rows) => [for (final row in rows) _toDomain(row)]);
+
   /// Saves the [target] and [assigned] amount for [categoryId] in [month],
   /// creating the plan or replacing both amounts. A `null` [target] means no
   /// target. With no target and nothing assigned the plan is removed, since

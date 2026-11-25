@@ -105,6 +105,7 @@ List<Override> fakeAccounts(
           if (plan.month == month) plan,
       ]),
     ),
+    allPlansProvider.overrideWith((ref) => Stream.value(plans)),
     planRepositoryProvider.overrideWithValue(
       planRepository ?? FakePlanRepository(),
     ),

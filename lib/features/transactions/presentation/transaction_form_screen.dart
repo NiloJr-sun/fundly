@@ -327,13 +327,13 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
             _CategoryField(
               categories: _selectableCategories(categories),
               optional: !isCategoryRequired(_type, source: sourceType),
-              // R.18: a card purchase only adds to what is owed; Plans
-              // counts the payment.
+              // The category's budgeted money moves to the card's Plans
+              // row; without a category nothing moves.
               helperText:
                   _type == TransactionType.spending &&
                       sourceType == AccountType.credit
-                  ? 'Optional. Card purchases only add to what you owe; '
-                        'Plans counts the payment.'
+                  ? 'Optional. Its budgeted amount moves to the card on '
+                        'Plans; without a category it is not covered.'
                   : null,
               value: _categoryId,
               onChanged: (id) => setState(() => _categoryId = id),

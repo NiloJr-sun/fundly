@@ -57,6 +57,15 @@ class SyncedPlanRepository implements PlanRepository {
   }
 
   @override
+  Stream<List<MonthlyPlan>> watchAll() =>
+      (_database.select(_database.syncedMonthlyPlans)..where(
+            (_) =>
+                CustomExpression<bool>('NOT (${unsafePlan('monthly_plans')})'),
+          ))
+          .watch()
+          .map((rows) => [for (final row in rows) syncedPlan(row)]);
+
+  @override
   Stream<PlanDeletionStatus> watchDeletionStatus(String categoryId) =>
       _deletionQuery(categoryId)
           .watchSingleOrNull()

@@ -325,6 +325,7 @@ void main() {
       await plans.setArchived(food, archived: true);
       await transactions.delete(original.id);
       final result = readyToAssign(
+        accounts: await accounts.watchAll(includeArchived: true).first,
         month: november,
         budgetAccounts: [budget],
         plans: await plans.watchForMonth(november).first,

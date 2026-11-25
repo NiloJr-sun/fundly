@@ -25,7 +25,9 @@ enum PlanStatus {
 
 /// One category's target, assigned, activity and available amounts in one
 /// month. Assignments do not carry over between months; a month without its
-/// own plan uses the category's default Target.
+/// own plan uses the category's default Target. A credit card's row also
+/// holds what card purchases moved to it ([movedIn]) and what is still unpaid
+/// from earlier months ([carriedOver]); see [cardRowFunding].
 @immutable
 final class CategoryPlanSummary {
   const CategoryPlanSummary({
@@ -34,6 +36,8 @@ final class CategoryPlanSummary {
     required this.assigned,
     required this.activity,
     required this.hasPlan,
+    this.carriedOver,
+    this.movedIn,
   });
 
   final Category category;
@@ -45,15 +49,30 @@ final class CategoryPlanSummary {
   /// Money set aside this month; zero when nothing is assigned.
   final Money assigned;
 
-  /// Spending, or payments into a linked liability, dated in the month.
+  /// Spending (card purchases included), or payments into a linked
+  /// liability, dated in the month.
   final Money activity;
+
+  /// Card rows only: money moved in during earlier months and not yet paid.
+  /// `null` on other rows.
+  final Money? carriedOver;
+
+  /// Card rows only: the covered part of this month's card purchases, moved
+  /// from their categories. `null` on other rows.
+  final Money? movedIn;
 
   /// Whether a plan is saved for this month (a target, an assigned amount,
   /// or both).
   final bool hasPlan;
 
-  /// `assigned - activity`; negative when more was spent than assigned.
-  Money get available => assigned - activity;
+  /// `assigned - activity`, plus [carriedOver] and [movedIn] on a card row;
+  /// negative when more was spent (or paid) than it holds.
+  Money get available {
+    var total = assigned - activity;
+    if (carriedOver case final carried?) total += carried;
+    if (movedIn case final moved?) total += moved;
+    return total;
+  }
 
   bool get isOverspent => available.isNegative;
 
@@ -83,11 +102,20 @@ final class CategoryPlanSummary {
       other.target == target &&
       other.assigned == assigned &&
       other.activity == activity &&
-      other.hasPlan == hasPlan;
+      other.hasPlan == hasPlan &&
+      other.carriedOver == carriedOver &&
+      other.movedIn == movedIn;
 
   @override
-  int get hashCode =>
-      Object.hash(category, target, assigned, activity, hasPlan);
+  int get hashCode => Object.hash(
+    category,
+    target,
+    assigned,
+    activity,
+    hasPlan,
+    carriedOver,
+    movedIn,
+  );
 
   @override
   String toString() =>
@@ -97,11 +125,13 @@ final class CategoryPlanSummary {
 
 /// One row per spending category for [month], in the order of [categories].
 ///
-/// - Regular category Activity counts Spending only, and not purchases on a
-///   Credit account in [accounts] (R.18): those only raise what is owed, and
-///   reach Plans when the card is paid. Linked liability rows count transfers
-///   and card payments into their account. Neither changes spending/inflow
-///   totals; card purchases remain Spending in their category.
+/// - Regular category Activity counts Spending, card purchases included.
+///   Linked liability rows count transfers and card payments into their
+///   account. Neither changes spending/inflow totals.
+/// - A Credit account's row (custom credit types included) also gets
+///   [CategoryPlanSummary.carriedOver] and [CategoryPlanSummary.movedIn] from
+///   [cardRowFunding]. [plans] may hold every month: earlier months decide
+///   what card purchases moved and what is still unpaid.
 /// - Main rows exclude archived plans and categories. With [archived], all
 ///   archived spending rows are returned, including those without history.
 /// - Inflow categories never appear: plans are for spending only.
@@ -117,7 +147,14 @@ List<CategoryPlanSummary> planSummaries({
   String currencyCode = Account.defaultCurrency,
   bool archived = false,
 }) {
-  final cards = creditAccountIds(accounts);
+  final funding = cardRowFunding(
+    month: month,
+    categories: categories,
+    plans: plans,
+    transactions: transactions,
+    accounts: accounts,
+    currencyCode: currencyCode,
+  );
   final planByCategory = {
     for (final plan in plans)
       if (plan.month == month) plan.categoryId: plan,
@@ -129,7 +166,7 @@ List<CategoryPlanSummary> planSummaries({
     var activity = Money.zero(currencyCode);
     for (final transaction in entries) {
       if (month.dateRange.contains(transaction.date) &&
-          isCategoryPlanActivity(category, transaction, cards)) {
+          isCategoryPlanActivity(category, transaction)) {
         activity += transaction.amount;
       }
     }
@@ -150,26 +187,29 @@ List<CategoryPlanSummary> planSummaries({
               planByCategory[category.id]?.assigned ?? Money.zero(currencyCode),
           activity: activityByCategory[category.id] ?? Money.zero(currencyCode),
           hasPlan: planByCategory.containsKey(category.id),
+          carriedOver: switch (funding[category.linkedAccountId]) {
+            final row? => row.carriedOver,
+            null => null,
+          },
+          movedIn: switch (funding[category.linkedAccountId]) {
+            final row? => row.movedIn,
+            null => null,
+          },
         ),
   ];
 }
 
-/// Accounts whose purchases Plans leaves out of category Activity (R.18):
-/// Credit accounts, custom credit types included (they store the base type).
+/// Credit accounts, custom credit types included (they store the base type):
+/// their purchases move covered money to the card's Plans row.
 Set<String> creditAccountIds(Iterable<Account> accounts) => {
   for (final account in accounts)
     if (account.type == AccountType.credit) account.id,
 };
 
 /// Debt rows count payments to the linked account; regular rows count
-/// Spending, except purchases from [cardAccountIds] (from
-/// [creditAccountIds]). Payments remain excluded from spending totals
-/// throughout the app.
-bool isCategoryPlanActivity(
-  Category category,
-  TransactionDraft transaction,
-  Set<String> cardAccountIds,
-) {
+/// Spending, card purchases included. Payments remain excluded from spending
+/// totals throughout the app.
+bool isCategoryPlanActivity(Category category, TransactionDraft transaction) {
   final accountId = category.linkedAccountId;
   if (accountId != null) {
     return transaction.destinationAccountId == accountId &&
@@ -177,8 +217,183 @@ bool isCategoryPlanActivity(
             transaction.type == TransactionType.creditCardPayment);
   }
   return transaction.type == TransactionType.spending &&
-      transaction.categoryId == category.id &&
-      !cardAccountIds.contains(transaction.sourceAccountId);
+      transaction.categoryId == category.id;
+}
+
+/// What a credit card's Plans row holds in one month from card purchases.
+@immutable
+final class CardRowFunding {
+  const CardRowFunding({required this.carriedOver, required this.movedIn});
+
+  /// Moved in during earlier months and not yet paid.
+  final Money carriedOver;
+
+  /// Moved in this month.
+  final Money movedIn;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CardRowFunding &&
+      other.carriedOver == carriedOver &&
+      other.movedIn == movedIn;
+
+  @override
+  int get hashCode => Object.hash(carriedOver, movedIn);
+
+  @override
+  String toString() =>
+      'CardRowFunding(carriedOver: $carriedOver, movedIn: $movedIn)';
+}
+
+/// Per Credit account in [accounts] (custom credit types included), what its
+/// Plans row holds in [month] from card purchases, as YNAB does:
+///
+/// - A card purchase in a spending category moves the part the category
+///   could cover to the card's row: the category's Available just before the
+///   purchase, never below zero. The rest is debt with no money behind it,
+///   and the category shows overspent.
+/// - Within a month each category's Spending (cash and card) is taken by
+///   date, then by when it was recorded, starting from that month's Assigned
+///   as it is now. Purchases without a category move nothing.
+/// - Payments into the card (card payments and transfers) use moved money
+///   first. What is left unpaid at a month's end carries to the next month,
+///   never below zero. Assigned does not carry over.
+///
+/// [plans] should hold every month up to [month], and [transactions] the
+/// whole history: earlier months decide what is carried over. Every card is
+/// in the result, with zeros when nothing was moved.
+Map<String, CardRowFunding> cardRowFunding({
+  required CalendarMonth month,
+  required Iterable<Category> categories,
+  required Iterable<MonthlyPlan> plans,
+  required Iterable<TransactionDraft> transactions,
+  required Iterable<Account> accounts,
+  String currencyCode = Account.defaultCurrency,
+}) {
+  final zero = Money.zero(currencyCode);
+  final cards = creditAccountIds(accounts);
+  if (cards.isEmpty) return const {};
+  final regularCategories = {
+    for (final category in categories)
+      if (category.kind == CategoryKind.spending &&
+          category.linkedAccountId == null)
+        category.id,
+  };
+  final assigned = {
+    for (final plan in plans) (plan.month, plan.categoryId): plan.assigned,
+  };
+
+  final spendingByMonth = <CalendarMonth, List<TransactionDraft>>{};
+  final paymentsByMonth = <CalendarMonth, Map<String, Money>>{};
+  CalendarMonth? first;
+  for (final transaction in _chronological(transactions)) {
+    final transactionMonth = CalendarMonth.of(transaction.date);
+    if (transactionMonth.compareTo(month) > 0) continue;
+    final source = transaction.sourceAccountId;
+    final destination = transaction.destinationAccountId;
+    final bool startsHistory;
+    if (transaction.type == TransactionType.spending &&
+        regularCategories.contains(transaction.categoryId)) {
+      (spendingByMonth[transactionMonth] ??= []).add(transaction);
+      startsHistory = cards.contains(source);
+    } else if ((transaction.type == TransactionType.transfer ||
+            transaction.type == TransactionType.creditCardPayment) &&
+        cards.contains(destination)) {
+      final payments = paymentsByMonth[transactionMonth] ??= {};
+      payments[destination!] =
+          (payments[destination] ?? zero) + transaction.amount;
+      startsHistory = true;
+    } else {
+      startsHistory = false;
+    }
+    if (startsHistory &&
+        (first == null || transactionMonth.compareTo(first) < 0)) {
+      first = transactionMonth;
+    }
+  }
+
+  var carried = <String, Money>{};
+  if (first != null) {
+    for (var current = first; ; current = current.next) {
+      final movedIn = _movedToCards(
+        spendingByMonth[current] ?? const [],
+        current,
+        assigned,
+        cards,
+        zero,
+      );
+      if (current == month) {
+        return {
+          for (final card in cards)
+            card: CardRowFunding(
+              carriedOver: carried[card] ?? zero,
+              movedIn: movedIn[card] ?? zero,
+            ),
+        };
+      }
+      final payments = paymentsByMonth[current] ?? const {};
+      carried = {
+        for (final card in cards)
+          if ((carried[card] ?? zero) +
+                  (movedIn[card] ?? zero) -
+                  (payments[card] ?? zero)
+              case final unpaid when unpaid.minorUnits > 0)
+            card: unpaid,
+      };
+    }
+  }
+  return {
+    for (final card in cards)
+      card: CardRowFunding(carriedOver: zero, movedIn: zero),
+  };
+}
+
+/// The covered part of [spending]'s card purchases in [month], per card.
+/// [spending] is that month's Spending in regular categories, in order.
+Map<String, Money> _movedToCards(
+  List<TransactionDraft> spending,
+  CalendarMonth month,
+  Map<(CalendarMonth, String), Money> assigned,
+  Set<String> cards,
+  Money zero,
+) {
+  final availableByCategory = <String, Money>{};
+  final moved = <String, Money>{};
+  for (final transaction in spending) {
+    final categoryId = transaction.categoryId!;
+    final available =
+        availableByCategory[categoryId] ??
+        assigned[(month, categoryId)] ??
+        zero;
+    final card = transaction.sourceAccountId;
+    if (card != null && cards.contains(card) && available.minorUnits > 0) {
+      final covered = available.minorUnits < transaction.amount.minorUnits
+          ? available
+          : transaction.amount;
+      moved[card] = (moved[card] ?? zero) + covered;
+    }
+    availableByCategory[categoryId] = available - transaction.amount;
+  }
+  return moved;
+}
+
+/// [transactions] oldest first: by date, then by when they were recorded
+/// (when known), then in the order given.
+List<TransactionDraft> _chronological(Iterable<TransactionDraft> transactions) {
+  final indexed = transactions.indexed.toList()
+    ..sort((a, b) {
+      final byDate = a.$2.date.compareTo(b.$2.date);
+      if (byDate != 0) return byDate;
+      if ((a.$2, b.$2) case (
+        final Transaction first,
+        final Transaction second,
+      )) {
+        final byCreation = first.createdAt.compareTo(second.createdAt);
+        if (byCreation != 0) return byCreation;
+      }
+      return a.$1.compareTo(b.$1);
+    });
+  return [for (final (_, transaction) in indexed) transaction];
 }
 
 /// The selected month's money in the budget accounts and what is assigned.
@@ -189,6 +404,7 @@ final class ReadyToAssign {
     required this.moneyIn,
     required this.movedOut,
     required this.assigned,
+    required this.heldForCards,
   });
 
   /// Total budget-account balance on the month's first day: opening balances
@@ -208,8 +424,13 @@ final class ReadyToAssign {
   /// Total assigned in the month, including archived plan rows.
   final Money assigned;
 
+  /// Card purchases' covered money from earlier months, not yet paid
+  /// ([CardRowFunding.carriedOver] on every card row). It is still in
+  /// [carryOver] but already promised to the cards.
+  final Money heldForCards;
+
   /// Money that came in and has not been given a job yet.
-  Money get amount => carryOver + moneyIn - movedOut - assigned;
+  Money get amount => carryOver + moneyIn - movedOut - heldForCards - assigned;
 
   @override
   bool operator ==(Object other) =>
@@ -217,14 +438,19 @@ final class ReadyToAssign {
       other.carryOver == carryOver &&
       other.moneyIn == moneyIn &&
       other.movedOut == movedOut &&
-      other.assigned == assigned;
+      other.assigned == assigned &&
+      other.heldForCards == heldForCards;
 
   @override
-  int get hashCode => Object.hash(carryOver, moneyIn, movedOut, assigned);
+  int get hashCode =>
+      Object.hash(carryOver, moneyIn, movedOut, assigned, heldForCards);
 }
 
-/// Carry over plus money in, minus money moved out and the month's assigned
-/// total, across all [budgetAccounts]. Each month has its own figure.
+/// Carry over plus money in, minus money moved out, money held for cards and
+/// the month's assigned total, across all [budgetAccounts]. Each month has
+/// its own figure. [plans] may hold every month; held for cards comes from
+/// [cardRowFunding] over [accounts] (all accounts), for card rows that are
+/// not permanently deleted.
 ///
 /// Spending from a budget account does not change it: spending is Activity
 /// in its category, which turns negative when overspent. Card and loan
@@ -238,6 +464,7 @@ ReadyToAssign readyToAssign({
   required Iterable<MonthlyPlan> plans,
   required Iterable<TransactionDraft> transactions,
   required Iterable<Category> categories,
+  required Iterable<Account> accounts,
   String currencyCode = Account.defaultCurrency,
 }) {
   final budgets = budgetAccounts.toList();
@@ -275,11 +502,27 @@ ReadyToAssign readyToAssign({
   for (final plan in plans) {
     if (plan.month == month) assigned += plan.assigned;
   }
+  final funding = cardRowFunding(
+    month: month,
+    categories: categories,
+    plans: plans,
+    transactions: transactions,
+    accounts: accounts,
+    currencyCode: currencyCode,
+  );
+  var heldForCards = zero;
+  for (final category in categories) {
+    final row = funding[category.linkedAccountId];
+    if (row != null && !category.isPlanDeleted) {
+      heldForCards += row.carriedOver;
+    }
+  }
   return ReadyToAssign(
     carryOver: carryOver,
     moneyIn: moneyIn,
     movedOut: movedOut,
     assigned: assigned,
+    heldForCards: heldForCards,
   );
 }
 
