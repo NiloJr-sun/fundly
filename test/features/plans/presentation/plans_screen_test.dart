@@ -1649,4 +1649,57 @@ void main() {
       expect(panel(), findsOneWidget);
     });
   });
+
+  group('Add transaction', () {
+    Finder addButton() =>
+        find.widgetWithText(FloatingActionButton, 'Add transaction');
+
+    testWidgets('opens the same type sheet as on Spending', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      expect(addButton(), findsOneWidget);
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+
+      Finder inSheet(String text) => find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text(text),
+      );
+      expect(inSheet('Spending'), findsOneWidget);
+      expect(inSheet('Inflow'), findsOneWidget);
+    });
+
+    testWidgets('is hidden while the Assigned keypad is open', (tester) async {
+      await pumpScreen(tester, plans: [plan(foodId, 500000)]);
+
+      await tester.tap(inRow('Food', 'Food'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AssignPanel), findsOneWidget);
+      expect(addButton(), findsNothing);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AssignPanel),
+          matching: find.text('Cancel'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(addButton(), findsOneWidget);
+    });
+
+    testWidgets('both tabs offer it in the app shell', (tester) async {
+      await pumpScreen(tester, inShell: true);
+      expect(addButton(), findsOneWidget, reason: 'on Plans');
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Spending'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(addButton(), findsOneWidget, reason: 'on Spending');
+    });
+  });
 }

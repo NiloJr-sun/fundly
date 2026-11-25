@@ -20,6 +20,7 @@ import '../../categories/presentation/category_display.dart';
 import '../../spaces/presentation/screen_title.dart';
 import '../../spending/presentation/spending_providers.dart';
 import '../../sync/presentation/edit_guard.dart';
+import '../../transactions/presentation/add_transaction_button.dart';
 import '../data/plan_repository.dart';
 import '../domain/plan_summary.dart';
 import 'archive_plan.dart';
@@ -99,6 +100,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   // like the phone's keyboard; the list gets room below to scroll past it.
   final _panelPortal = OverlayPortalController();
   double _panelHeight = 0;
+
+  /// Room below the last row for the Add transaction button, as on Spending.
+  static const double _addButtonClearance = 88;
 
   void _startAssign(CalendarMonth month, CategoryPlanSummary summary) {
     if (_editing?.category.id == summary.category.id) return;
@@ -329,9 +333,10 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   editingId: _editing?.category.id,
                   draft: _draft,
                   editingRowKey: _editingRowKey,
-                  // A little extra so the last row clears the panel's edge.
+                  // A little extra so the last row clears the panel's edge;
+                  // without the panel, room for the Add transaction button.
                   bottomPadding: _panelHeight == 0
-                      ? 0
+                      ? _addButtonClearance
                       : _panelHeight + Spacing.md,
                 ),
                 AsyncError() => const CenteredMessage(
@@ -342,6 +347,10 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
             ),
           ],
         ),
+        // Hidden while the Assigned keypad covers the bottom of the screen.
+        floatingActionButton: _editing == null
+            ? const AddTransactionButton()
+            : null,
       ),
     );
   }
