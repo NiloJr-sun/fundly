@@ -48,7 +48,7 @@ class SyncedCategoryRepository implements CategoryRepository {
     Money? defaultTarget,
   }) => _database.writeAndQueue(() async {
     _requireGroupAllowed(kind, planGroup);
-    requireValidDefaultTarget(defaultTarget, kind: kind, isLinked: false);
+    requireValidDefaultTarget(defaultTarget, kind: kind);
     final trimmedName = await _validName(name);
     final id = newRecordId();
     final now = syncedTimestamp(_now());
@@ -92,11 +92,12 @@ class SyncedCategoryRepository implements CategoryRepository {
   @override
   Future<Category> setDefaultTarget(String id, Money? defaultTarget) =>
       _database.writeAndQueue(() async {
-        final existing = await _findUnlinked(id);
+        // Debt rows take a default Target too; the server accepts exactly
+        // this field on them (20261127020000_debt_row_target.sql).
+        final existing = await _find(id);
         requireValidDefaultTarget(
           defaultTarget,
           kind: CategoryKind.values.byName(existing.kind),
-          isLinked: false,
         );
         final row = await _update(
           existing,
@@ -222,12 +223,17 @@ class SyncedCategoryRepository implements CategoryRepository {
     );
   });
 
-  /// Linked liability rows are managed through their account.
-  Future<SyncedCategoryRow> _findUnlinked(String id) async {
+  Future<SyncedCategoryRow> _find(String id) async {
     final row = await (_database.select(
       _categories,
     )..where((category) => category.id.equals(id))).getSingleOrNull();
     if (row == null) throw StateError('Category $id does not exist.');
+    return row;
+  }
+
+  /// Linked liability rows are managed through their account.
+  Future<SyncedCategoryRow> _findUnlinked(String id) async {
+    final row = await _find(id);
     if (row.linkedAccountId != null) {
       throw StateError('Manage this Plans row through its account.');
     }

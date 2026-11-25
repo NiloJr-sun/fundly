@@ -25,20 +25,17 @@ CategoryNameError? validateCategoryName(String name) {
   return null;
 }
 
-/// Checks a default Target before it is stored. Only unlinked spending
-/// categories have one, in PHP, zero or positive. The form only offers valid
-/// values, so a broken rule is a programming error ([ArgumentError]).
-void requireValidDefaultTarget(
-  Money? target, {
-  required CategoryKind kind,
-  required bool isLinked,
-}) {
+/// Checks a default Target before it is stored. Only spending categories
+/// have one (debt rows included since 2026-11-27), in PHP, zero or positive.
+/// The form only offers valid values, so a broken rule is a programming error
+/// ([ArgumentError]).
+void requireValidDefaultTarget(Money? target, {required CategoryKind kind}) {
   if (target == null) return;
-  if (kind != CategoryKind.spending || isLinked) {
+  if (kind != CategoryKind.spending) {
     throw ArgumentError.value(
       target,
       'defaultTarget',
-      'Only spending categories managed here have a default Target.',
+      'Only spending categories have a default Target.',
     );
   }
   if (target.currencyCode != Account.defaultCurrency) {

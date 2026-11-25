@@ -69,6 +69,14 @@ the client recovery contract in [SYNC_PROTOCOL.md](SYNC_PROTOCOL.md).
   and replaces `apply_transaction` and `fundly_import_dataset` with only that
   change (every other Spending still needs a category). Safe for current apps,
   which never send such a row and display one without a category.
+- `migrations/20261127020000_debt_row_target.sql` (app 1.5.0): a debt row (a
+  Credit or Loan account's Plans row) may have a default Target. Relaxes
+  `categories_default_target`; `category.update` on a debt row accepts data that
+  is exactly `{"default_target_minor": ...}` (anything else is still
+  `managed_category`); imports accept one. Replaces `apply_category` and
+  `fundly_import_dataset` with only those changes. Additive; rollback
+  `rollback/20261127_debt_row_target_rollback.sql` (clears debt-row Targets),
+  rehearsed by `tests/migration/debt_row_target_rollback_test.py`.
 - `rollback/20261127_card_purchases_rollback.sql`: **not a migration.** Restores
   the banks server; refuses while any Spending has no category (give those a
   category first). Rehearsed by `tests/migration/card_purchases_rollback_test.py`

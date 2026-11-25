@@ -7,6 +7,7 @@ import 'package:fundly/features/categories/presentation/category_form_screen.dar
 import 'package:fundly/features/plans/presentation/plans_screen.dart';
 
 import '../../../helpers/provider_overrides.dart';
+import '../../transactions/domain/transaction_fixtures.dart' as fixtures;
 
 void main() {
   const food = Category(id: '1', name: 'Food', kind: CategoryKind.spending);
@@ -122,5 +123,97 @@ void main() {
 
     expect(find.byType(CategoryFormScreen), findsOneWidget);
     expect(find.text('New category'), findsOneWidget);
+  });
+
+  group('Liability section', () {
+    const insurance = Category(
+      id: '6',
+      name: 'Insurance',
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+    );
+    final card = fixtures.accounts[fixtures.rcbcCardId]!;
+    final cardRow = Category(
+      id: '7',
+      name: card.name,
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+      linkedAccountId: card.id,
+    );
+
+    Future<void> pumpWithAccounts(
+      WidgetTester tester,
+      List<Category> categories,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: fakeAccounts(
+            fixtures.accounts.values.toList(),
+            categories: categories,
+          ),
+          child: const MaterialApp(home: CategoriesScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    String? subtitleOf(WidgetTester tester, String name) {
+      final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, name));
+      return (tile.subtitle as Text?)?.data;
+    }
+
+    testWidgets('sits between Spending and Inflow with Liability-group '
+        'categories and debt rows', (tester) async {
+      await pumpWithAccounts(tester, [food, salary, insurance, cardRow]);
+
+      expect(top(tester, 'Food'), lessThan(top(tester, 'Liability')));
+      expect(top(tester, 'Liability'), lessThan(top(tester, 'Insurance')));
+      expect(top(tester, 'Insurance'), lessThan(top(tester, card.name)));
+      expect(top(tester, card.name), lessThan(top(tester, 'Inflow')));
+      expect(
+        subtitleOf(tester, 'Insurance'),
+        isNull,
+        reason: 'the section heading already names the group',
+      );
+      expect(subtitleOf(tester, card.name), 'From account · Credit');
+    });
+
+    testWidgets('a debt row opens its Target form', (tester) async {
+      await pumpWithAccounts(tester, [food, cardRow]);
+
+      await tester.tap(find.text(card.name));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CategoryFormScreen), findsOneWidget);
+      expect(find.text('Open account'), findsOneWidget);
+    });
+
+    testWidgets('archived and permanently deleted debt rows are not listed', (
+      tester,
+    ) async {
+      await pumpWithAccounts(tester, [
+        food,
+        Category(
+          id: '7',
+          name: card.name,
+          kind: CategoryKind.spending,
+          planGroup: PlanGroup.liability,
+          linkedAccountId: card.id,
+          isArchived: true,
+        ),
+        const Category(
+          id: '8',
+          name: 'Old loan',
+          kind: CategoryKind.spending,
+          planGroup: PlanGroup.liability,
+          linkedAccountId: fixtures.carLoanId,
+          isPlanDeleted: true,
+        ),
+      ]);
+
+      expect(find.text('Liability'), findsNothing);
+      expect(find.text(card.name), findsNothing);
+      expect(find.text('Old loan'), findsNothing);
+    });
   });
 }

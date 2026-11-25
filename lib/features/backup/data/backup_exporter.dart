@@ -59,8 +59,9 @@ class BackupExporter {
   /// `defaultTargetMinor`; 9 adds `customBanks` and account `bankKey` and
   /// `customBankId` (docs/BANKS_PLAN.md); 10 allows a Spending with no
   /// `categoryId` when paid from a Credit account (R.18), so older apps
-  /// refuse such a file as too new rather than as invalid.
-  static const int formatVersion = 10;
+  /// refuse such a file as too new rather than as invalid; 11 allows a
+  /// `defaultTargetMinor` on a debt row (one with `linkedAccountId`), likewise.
+  static const int formatVersion = 11;
 
   final BackupSource _source;
   final DateTime Function() _now;

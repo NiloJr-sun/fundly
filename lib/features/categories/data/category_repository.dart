@@ -48,7 +48,7 @@ class CategoryRepository {
     Money? defaultTarget,
   }) async {
     _requireGroupAllowed(kind, planGroup);
-    requireValidDefaultTarget(defaultTarget, kind: kind, isLinked: false);
+    requireValidDefaultTarget(defaultTarget, kind: kind);
     final trimmedName = await _validName(name);
     final row = await _database
         .into(_categories)
@@ -64,10 +64,11 @@ class CategoryRepository {
   }
 
   /// Sets spending category [id]'s default Target; `null` removes it. Months
-  /// with their own plan keep their Target.
+  /// with their own plan keep their Target. Debt rows take one too: it is
+  /// the only thing set on them here; the rest follows their account.
   ///
   /// Throws [ArgumentError] for an inflow category or an invalid amount, or
-  /// [StateError] if the category does not exist or is a linked debt row.
+  /// [StateError] if the category does not exist.
   Future<Category> setDefaultTarget(String id, Money? defaultTarget) =>
       _database.transaction(() async {
         final existing =
@@ -75,14 +76,7 @@ class CategoryRepository {
                   ..where((category) => category.id.equals(rowIdOf(id))))
                 .getSingleOrNull();
         if (existing == null) throw StateError('Category $id does not exist.');
-        if (existing.linkedAccountId != null) {
-          throw StateError('Manage this Plans row through its account.');
-        }
-        requireValidDefaultTarget(
-          defaultTarget,
-          kind: existing.kind,
-          isLinked: false,
-        );
+        requireValidDefaultTarget(defaultTarget, kind: existing.kind);
         final rows =
             await (_database.update(_categories)
                   ..where((category) => category.id.equals(rowIdOf(id))))

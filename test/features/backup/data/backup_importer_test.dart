@@ -464,7 +464,6 @@ void main() {
     for (final (description, pick, value) in [
       ('a negative one', 'Rent', -1),
       ('one on an inflow category', 'Salary', 100),
-      ('one on a debt row', 'RCBC Credit', 100),
     ]) {
       test('rejects $description', () async {
         final backup = await exportedBackup();
@@ -478,6 +477,19 @@ void main() {
         );
       });
     }
+
+    test('a debt row restores with its default Target (format 11)', () async {
+      final backup = await exportedBackup();
+      categoriesOf(backup).singleWhere(
+        (c) => c['name'] == 'RCBC Credit',
+      )['defaultTargetMinor'] = 260750;
+      final importer = BackupImporter(target);
+      await importer.replaceAll(importer.parse(jsonEncode(backup)));
+
+      final row = await restoredNamed('RCBC Credit');
+      expect(row.linkedAccountId, isNotNull);
+      expect(row.defaultTarget, php(260750));
+    });
   });
 
   test(
@@ -1137,7 +1149,7 @@ void main() {
       'a signed-out export is format 7 and restores to the same data',
       () async {
         final backup = await exportedBackup();
-        expect(backup['formatVersion'], 10);
+        expect(backup['formatVersion'], 11);
         expect(
           (backup['accounts']! as List).first,
           containsPair('id', isA<String>()),

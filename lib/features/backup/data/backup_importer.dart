@@ -661,13 +661,12 @@ class _Parser {
     final defaultTarget = formatVersion >= 8
         ? reader.integerOrNull('defaultTargetMinor')
         : null;
+    // Debt rows have one since format 11; earlier apps never wrote one there.
     if (defaultTarget != null &&
-        (defaultTarget < 0 ||
-            kind != CategoryKind.spending ||
-            linkedAccountId != null)) {
+        (defaultTarget < 0 || kind != CategoryKind.spending)) {
       reader.fail(
         'defaultTargetMinor',
-        'only unlinked spending categories have one, zero or more',
+        'only spending categories have one, zero or more',
       );
     }
     _categories[recordIdOf(id)] = Category(

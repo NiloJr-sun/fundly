@@ -656,10 +656,12 @@ void main() {
         {'default_target_minor': '0'},
         {'default_target_minor': null},
       ]);
-      await expectLater(
-        repository.setDefaultTarget(cardRow, php(100)),
-        throwsStateError,
-      );
+      // A debt row sends exactly this field, which the server accepts on it.
+      final debt = await repository.setDefaultTarget(cardRow, php(100));
+      expect(debt.defaultTarget, php(100));
+      expect((await store.queuedItems()).last['data'], {
+        'default_target_minor': '100',
+      });
     });
 
     test('a category in use cannot be deleted', () async {

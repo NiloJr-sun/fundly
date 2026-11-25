@@ -4,7 +4,8 @@ import '../../accounts/data/accounts_table.dart';
 import '../domain/category.dart';
 
 /// SQLite table for [Category]s (added in schema v2; `is_archived` in v4;
-/// `plan_group` in v8; `default_target_minor` in v14).
+/// `plan_group` in v8; `default_target_minor` in v14, on debt rows too since
+/// v17).
 ///
 /// Names are unique ignoring ASCII case and 1-40 characters long. A category
 /// used by a transaction cannot be deleted (the foreign key restricts it).
@@ -52,7 +53,7 @@ class Categories extends Table {
   )();
 
   /// The Target, in minor units, for months without their own plan; `null`
-  /// for no Target. Only unlinked spending categories have one.
+  /// for no Target. Only spending categories have one, debt rows included.
   IntColumn get defaultTargetMinor =>
       integer().nullable()
       // The check refers to the column itself, drift's documented way to
@@ -62,8 +63,7 @@ class Categories extends Table {
         defaultTargetMinor.isNull() |
             // ignore: recursive_getters
             (defaultTargetMinor.isBiggerOrEqualValue(0) &
-                kind.equals('spending') &
-                linkedAccountId.isNull()),
+                kind.equals('spending')),
       )();
 
   @override

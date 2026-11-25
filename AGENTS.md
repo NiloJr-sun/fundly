@@ -73,15 +73,16 @@ simulator build for anything that changes app code. macOS has no
 
 ## 3. Current state (2026-11-17)
 
-- **Database:** drift (SQLite), **schema v14** (synced store v5). Tables: `accounts`
+- **Database:** drift (SQLite), **schema v17** (synced store v6). Tables: `accounts`
   (`custom_type_id`, `is_budget_account`), `custom_account_types`,
   `categories` (`kind`, `is_archived`, `is_plan_archived`, `is_plan_deleted`,
   `plan_group`, `linked_account_id`, `default_target_minor`), `transactions`,
   `monthly_plans` (`target_amount_minor` nullable, `assigned_amount_minor`).
   Migration tests cover every upgrade path.
-- **Backup format 8** (JSON export and replace-all restore from the Profile
+- **Backup format 11** (JSON export and replace-all restore from the Profile
   tab): format 6 with every ID and reference as text (format 7), plus each
-  category's `defaultTargetMinor` (format 8). Signed out, IDs are
+  category's `defaultTargetMinor` (format 8), banks (format 9), card purchases
+  without a category (format 10) and a default Target on debt rows (format 11). Signed out, IDs are
   decimal strings (`LocalBackupSource`); signed in, UUIDs
   (`SyncedBackupSource`), and only when the synced store matches the server
   (`signedInExportBlocker`).

@@ -534,8 +534,8 @@ released as app **1.2.0 (3)**, signed off on 2026-11-23: Google sign-in,
 Supabase and PowerSync, the web app on Vercel and iOS installed with
 `devicectl`. The minimum supported app version is 1.2.0.
 [docs/OPERATIONS.md](docs/OPERATIONS.md) is the runbook for deploying,
-rolling back, outages and backups. The database is at schema v14 and backups
-at format 8. [AGENTS.md](AGENTS.md) summarises the current state, commands
+rolling back, outages and backups. The database is at schema v17 and backups
+at format 11. [AGENTS.md](AGENTS.md) summarises the current state, commands
 and pitfalls for any coding agent.
 
 F.1 (refused delete cards name the record) is live as 1.2.1. Shared spaces
@@ -1447,7 +1447,8 @@ suggestions as approved decisions.
                           Target carries over;
                           Assigned starts at zero.
                           Debt rows and inflow
-                          have none. Server
+                          have none (debt rows
+                          may since 2026-11-27). Server
                           migration 20261125010000
                           (additive), sync config
                           column, backup format 8
@@ -1488,5 +1489,33 @@ suggestions as approved decisions.
                           such a purchase and
                           ask for a category only
                           when editing it.
+
+  2026-11-27              Debt rows take a        Confirmed
+                          default Target: a Credit
+                          or Loan account's Plans
+                          row is set from the new
+                          Liability section of
+                          Categories, in the
+                          category form with Kind,
+                          Group and Name locked
+                          (they follow the
+                          account) and "Open
+                          account" instead of
+                          Archive. Every month
+                          without its own plan
+                          uses it, as for other
+                          categories; Assigned
+                          stays manual. The
+                          Liability section also
+                          lists spending
+                          categories in the
+                          Liability group. Schema
+                          v17, server migration
+                          20261127020000 (with
+                          rollback), backup format
+                          11. Amends "Debt rows
+                          and inflow have none"
+                          (2026-11-25) for debt
+                          rows.
 
   -----------------------------------------------------------------------

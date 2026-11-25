@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -165,6 +165,12 @@ class AppDatabase extends _$AppDatabase {
       // every row, id and index kept.
       from15To16: (m, schema) async {
         await m.alterTable(TableMigration(schema.transactions));
+      },
+      // v17: a debt row may have a default Target (2026-11-27). SQLite cannot
+      // change a CHECK in place, so the categories table is rebuilt with every
+      // row and id kept.
+      from16To17: (m, schema) async {
+        await m.alterTable(TableMigration(schema.categories));
       },
     ),
     beforeOpen: (details) async {

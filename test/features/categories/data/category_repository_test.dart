@@ -327,26 +327,36 @@ void main() {
       expect(removed.defaultTarget, isNull);
     });
 
-    test('setDefaultTarget refuses inflow and debt rows', () async {
+    test('setDefaultTarget refuses inflow and unknown categories', () async {
       final salary = await named('Salary');
       await expectLater(
         repository.setDefaultTarget(salary.id, php5000),
         throwsArgumentError,
       );
+      expect(repository.setDefaultTarget('999', php5000), throwsStateError);
+    });
 
-      await AccountRepository(database).create(
+    test('a debt row takes a default Target and keeps it when its account '
+        'is renamed', () async {
+      final accounts = AccountRepository(database);
+      final card = await accounts.create(
         name: 'RCBC Credit',
         type: AccountType.credit,
         enteredOpeningAmount: const Money.zero('PHP'),
       );
-      final debtRow = (await repository.watchAll().first).singleWhere(
-        (c) => c.linkedAccountId != null,
-      );
-      await expectLater(
-        repository.setDefaultTarget(debtRow.id, php5000),
-        throwsStateError,
-      );
-      expect(repository.setDefaultTarget('999', php5000), throwsStateError);
+      Future<Category> debtRow() async => (await repository.watchAll().first)
+          .singleWhere((c) => c.linkedAccountId == card.id);
+
+      await repository.setDefaultTarget((await debtRow()).id, php5000);
+      expect((await debtRow()).defaultTarget, php5000);
+
+      await accounts.update(card.id, name: 'RCBC Flex');
+      final renamed = await debtRow();
+      expect(renamed.name, 'RCBC Flex');
+      expect(renamed.defaultTarget, php5000);
+
+      await repository.setDefaultTarget(renamed.id, null);
+      expect((await debtRow()).defaultTarget, isNull);
     });
 
     test('the database refuses one on an inflow category', () async {

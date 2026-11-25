@@ -26,16 +26,18 @@ Inflow categories always stay in the `spending` group; an unknown kind or group,
 or another group for an inflow, is `invalid_request`. The default Target
 (`default_target_minor`, since `20261125010000_category_default_target.sql`)
 is the Target a month uses when it has no plan of its own; a default Target on
-an inflow category, or below zero, is `invalid_request`, and the table refuses
-one on a linked row. Archived categories keep
+an inflow category, or below zero, is `invalid_request`. Debt rows may have
+one since `20261127020000_debt_row_target.sql`. Archived categories keep
 their history; new transactions already reject them (S2.2A), and edits may keep
 them. Deletion is refused with `category_in_use` while any transaction
 references the category. Its monthly plans are deleted with it and listed in
 `changes`, in month order.
 
 Linked liability rows are managed through their account (S2.2B): every
-`category.*` operation on them returns `managed_category`. Plan operations are
-allowed on them.
+`category.*` operation on them returns `managed_category`, except a
+`category.update` whose data is exactly `{"default_target_minor": ...}` (since
+`20261127020000_debt_row_target.sql`, app 1.5.0), which sets or removes the
+row's default Target. Plan operations are allowed on them.
 
 ## Monthly plans
 

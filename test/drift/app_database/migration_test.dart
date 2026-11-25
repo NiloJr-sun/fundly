@@ -14,6 +14,7 @@ import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v15.dart' as v15;
 import 'generated/schema_v16.dart' as v16;
+import 'generated/schema_v17.dart' as v17;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1557,4 +1558,165 @@ void main() {
       },
     );
   });
+
+  test(
+    'v16 to v17 keeps every category, plan and transaction; a debt row '
+    'may then have a default Target, an inflow category still may not',
+    () async {
+      const accounts = [
+        v16.AccountsData(
+          id: 1,
+          name: 'BDO Savings',
+          type: 'savingsCash',
+          openingBalanceMinor: 1500000,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          isArchived: 0,
+          isBudgetAccount: 1,
+        ),
+        v16.AccountsData(
+          id: 2,
+          name: 'RCBC Credit',
+          type: 'credit',
+          openingBalanceMinor: -300000,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          isArchived: 0,
+          isBudgetAccount: 0,
+        ),
+      ];
+      // Ids 1, 2, 4, 6: gaps must be kept, not renumbered.
+      const categories = [
+        v16.CategoriesData(
+          id: 1,
+          name: 'Rent',
+          kind: 'spending',
+          isArchived: 0,
+          isPlanArchived: 0,
+          isPlanDeleted: 0,
+          planGroup: 'spending',
+          defaultTargetMinor: 1500000,
+        ),
+        v16.CategoriesData(
+          id: 2,
+          name: 'Salary',
+          kind: 'inflow',
+          isArchived: 0,
+          isPlanArchived: 0,
+          isPlanDeleted: 0,
+          planGroup: 'spending',
+        ),
+        v16.CategoriesData(
+          id: 4,
+          name: 'RCBC Credit',
+          kind: 'spending',
+          isArchived: 0,
+          isPlanArchived: 0,
+          isPlanDeleted: 0,
+          planGroup: 'liability',
+          linkedAccountId: 2,
+        ),
+        v16.CategoriesData(
+          id: 6,
+          name: 'Old gifts',
+          kind: 'spending',
+          isArchived: 1,
+          isPlanArchived: 1,
+          isPlanDeleted: 1,
+          planGroup: 'savings',
+        ),
+      ];
+      const transactions = [
+        v16.TransactionsData(
+          id: 3,
+          type: 'spending',
+          amountMinor: 500000,
+          currencyCode: 'PHP',
+          date: '2026-11-05',
+          payee: 'Landlord',
+          categoryId: 1,
+          sourceAccountId: 1,
+          note: '',
+          createdAt: '2026-11-05T00:00:00.000Z',
+          updatedAt: '2026-11-05T00:00:00.000Z',
+        ),
+        v16.TransactionsData(
+          id: 5,
+          type: 'creditCardPayment',
+          amountMinor: 100000,
+          currencyCode: 'PHP',
+          date: '2026-11-06',
+          payee: '',
+          sourceAccountId: 1,
+          destinationAccountId: 2,
+          note: '',
+          createdAt: '2026-11-06T00:00:00.000Z',
+          updatedAt: '2026-11-06T00:00:00.000Z',
+        ),
+      ];
+      const plans = [
+        v16.MonthlyPlansData(
+          id: 7,
+          month: '2026-11',
+          categoryId: 4,
+          targetAmountMinor: 260750,
+          assignedAmountMinor: 260750,
+          currencyCode: 'PHP',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+        ),
+      ];
+      await verifier.testWithDataIntegrity(
+        oldVersion: 16,
+        newVersion: 17,
+        createOld: v16.DatabaseAtV16.new,
+        createNew: v17.DatabaseAtV17.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, db) => batch
+          ..insertAll(db.accounts, accounts)
+          ..insertAll(db.categories, categories)
+          ..insertAll(db.transactions, transactions)
+          ..insertAll(db.monthlyPlans, plans),
+        validateItems: (db) async {
+          final rows = await (db.select(
+            db.categories,
+          )..orderBy([(c) => OrderingTerm(expression: c.id)])).get();
+          expect(rows.map((c) => c.toJson()).toList(), [
+            for (final category in categories) category.toJson(),
+          ]);
+          expect(await db.select(db.transactions).get(), hasLength(2));
+          expect(
+            (await db.select(db.monthlyPlans).getSingle()).categoryId,
+            4,
+            reason: 'plans still point at the debt row',
+          );
+
+          await db.customStatement('PRAGMA foreign_keys = ON');
+          await db.customStatement(
+            'UPDATE categories SET default_target_minor = 260750 WHERE id = 4',
+          );
+          expect(
+            (await (db.select(
+              db.categories,
+            )..where((c) => c.id.equals(4))).getSingle()).defaultTargetMinor,
+            260750,
+          );
+          for (final statement in [
+            'UPDATE categories SET default_target_minor = 100 WHERE id = 2',
+            'UPDATE categories SET default_target_minor = -1 WHERE id = 4',
+          ]) {
+            await expectLater(
+              db.customStatement(statement),
+              throwsA(isA<Exception>()),
+              reason: statement,
+            );
+          }
+          expect(
+            await db.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
 }

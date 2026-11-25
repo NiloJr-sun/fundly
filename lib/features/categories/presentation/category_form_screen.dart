@@ -6,6 +6,7 @@ import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_parser.dart';
 import '../../accounts/domain/account.dart';
+import '../../accounts/presentation/account_detail_screen.dart';
 import '../../accounts/presentation/account_form_messages.dart';
 import '../data/category_repository.dart';
 import '../domain/category.dart';
@@ -20,6 +21,10 @@ import 'category_display.dart';
 ///
 /// The kind cannot be changed when editing. Closes itself after a successful
 /// save, archive or delete.
+///
+/// A debt row (a Credit or Loan account's Plans row) only takes its default
+/// Target here: its name, group and archive status follow its account, which
+/// "Open account" shows.
 class CategoryFormScreen extends ConsumerStatefulWidget {
   const CategoryFormScreen({super.key, this.category});
 
@@ -42,6 +47,8 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
   String? _nameSaveError;
 
   bool get _isEditing => widget.category != null;
+
+  bool get _isDebtRow => widget.category?.linkedAccountId != null;
 
   @override
   void initState() {
@@ -133,6 +140,12 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
     final defaultTarget = isSpending ? _defaultTarget() : null;
     await _run(
       (repository) async {
+        if (category != null && _isDebtRow) {
+          if (defaultTarget != category.defaultTarget) {
+            await repository.setDefaultTarget(category.id, defaultTarget);
+          }
+          return;
+        }
         if (category == null) {
           await repository.create(
             name: name,
@@ -211,6 +224,7 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
               const SizedBox(height: Spacing.lg),
               _GroupSelector(
                 selected: _planGroup,
+                enabled: !_isDebtRow,
                 onChanged: (group) => setState(() => _planGroup = group),
               ),
               const SizedBox(height: Spacing.lg),
@@ -237,12 +251,17 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
             const SizedBox(height: Spacing.lg),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              readOnly: _isDebtRow,
+              enabled: !_isDebtRow,
+              decoration: InputDecoration(
                 labelText: 'Name',
                 hintText: 'e.g. Groceries',
+                helperText: _isDebtRow
+                    ? "Managed in Accounts: it follows the account's name."
+                    : null,
               ),
               textCapitalization: TextCapitalization.words,
-              maxLength: maxCategoryNameLength,
+              maxLength: _isDebtRow ? null : maxCategoryNameLength,
               validator: _validateName,
               onChanged: (_) => _nameSaveError = null,
             ),
@@ -251,7 +270,30 @@ class _CategoryFormScreenState extends ConsumerState<CategoryFormScreen> {
               onPressed: _isBusy ? null : _save,
               child: Text(_isEditing ? 'Save changes' : 'Add category'),
             ),
-            if (category != null) ...[
+            if (category != null && _isDebtRow) ...[
+              const SizedBox(height: Spacing.md),
+              OutlinedButton.icon(
+                onPressed: _isBusy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AccountDetailScreen(
+                            accountId: category.linkedAccountId!,
+                          ),
+                        ),
+                      ),
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open account'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: Spacing.md),
+                child: Text(
+                  'Rename or archive it through its account.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ] else if (category != null) ...[
               const SizedBox(height: Spacing.md),
               OutlinedButton.icon(
                 onPressed: _isBusy
@@ -325,26 +367,36 @@ class _DeleteButton extends ConsumerWidget {
 
 /// Which section of the Plans page a spending category is listed under.
 class _GroupSelector extends StatelessWidget {
-  const _GroupSelector({required this.selected, required this.onChanged});
+  const _GroupSelector({
+    required this.selected,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   final PlanGroup selected;
+  final bool enabled;
   final ValueChanged<PlanGroup> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<PlanGroup>(
       initialValue: selected,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Group',
-        helperText: 'The section it appears in on the Plans page.',
+        helperText: enabled
+            ? 'The section it appears in on the Plans page.'
+            : 'Credit and Loan accounts are always under Liability.',
       ),
       items: [
         for (final group in PlanGroup.values)
           DropdownMenuItem(value: group, child: Text(planGroupLabel(group))),
       ],
-      onChanged: (group) {
-        if (group != null) onChanged(group);
-      },
+      // A null callback disables the field.
+      onChanged: enabled
+          ? (group) {
+              if (group != null) onChanged(group);
+            }
+          : null,
     );
   }
 }

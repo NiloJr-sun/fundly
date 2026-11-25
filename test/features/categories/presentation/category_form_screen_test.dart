@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/money/money.dart';
+import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
 import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/domain/category_validation_exception.dart';
 import 'package:fundly/features/categories/presentation/category_form_screen.dart';
@@ -392,6 +393,57 @@ void main() {
       await tapButton(tester, 'Save changes');
 
       expect(repository.defaultTargetChanges, isEmpty);
+    });
+  });
+
+  group('a debt row', () {
+    final cardRow = Category(
+      id: '90',
+      name: accounts[rcbcCardId]!.name,
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+      linkedAccountId: rcbcCardId,
+    );
+
+    testWidgets('only its default Target can change', (tester) async {
+      await openForm(tester, editing: cardRow);
+
+      expect(
+        tester.widget<TextFormField>(nameField()).enabled,
+        isFalse,
+        reason: 'the name follows the account',
+      );
+      expect(
+        find.text("Managed in Accounts: it follows the account's name."),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Credit and Loan accounts are always under Liability.'),
+        findsOneWidget,
+      );
+      expect(find.text('Archive category'), findsNothing);
+      expect(find.text('Delete category'), findsNothing);
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Target'),
+        '2607.50',
+      );
+      await tapButton(tester, 'Save changes');
+
+      expect(repository.defaultTargetChanges, [
+        (id: '90', defaultTarget: php(260750)),
+      ]);
+      expect(repository.renamed, isEmpty);
+      expect(repository.groupChanges, isEmpty);
+      expect(find.text('Changes saved'), findsOneWidget);
+    });
+
+    testWidgets('Open account shows the account', (tester) async {
+      await openForm(tester, editing: cardRow);
+
+      await tapButton(tester, 'Open account');
+
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
     });
   });
 }

@@ -65,8 +65,9 @@ and every count, delete and insert are per space (WRITE_API.md, Spaces).
 
 Records use the download wire shape, without `owner_id` or `revision`. Every
 field is required except `created_at`, `updated_at` and the category's
-`default_target_minor` (a nonnegative decimal string or null, only on unlinked
-spending categories; refused otherwise as `invalid_value`), and the account's
+`default_target_minor` (a nonnegative decimal string or null, only on spending
+categories, debt rows included since `20261127020000_debt_row_target.sql`;
+refused otherwise as `invalid_value`), and the account's
 `bank_key` and `custom_bank_id` (null or missing for no bank; at most one set,
 else `custom_bank_id` `invalid_value`; a key must match `^[a-z0-9]{1,32}$`).
 Unknown fields are refused.

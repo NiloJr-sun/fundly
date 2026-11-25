@@ -1400,8 +1400,7 @@ class $CategoriesTable extends Categories
     check: () =>
         defaultTargetMinor.isNull() |
         (ComparableExpr(defaultTargetMinor).isBiggerOrEqualValue(0) &
-            kind.equals('spending') &
-            linkedAccountId.isNull()),
+            kind.equals('spending')),
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
@@ -1567,7 +1566,7 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
   final int? linkedAccountId;
 
   /// The Target, in minor units, for months without their own plan; `null`
-  /// for no Target. Only unlinked spending categories have one.
+  /// for no Target. Only spending categories have one, debt rows included.
   final int? defaultTargetMinor;
   const CategoryRow({
     required this.id,

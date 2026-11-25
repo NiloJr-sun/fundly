@@ -181,6 +181,8 @@ void main() {
     await categories.setDefaultTarget(rent.id, php(0));
     await categories.setDefaultTarget(food.id, php(250000));
     await categories.setDefaultTarget(food.id, null);
+    // A debt row's default Target (20261127020000_debt_row_target.sql).
+    await categories.setDefaultTarget(cardRow.id, php(260750));
     await plans.setArchived(gifts.id, archived: true);
     await plans.setArchived(gifts.id, archived: false);
     await categories.setArchived(gifts.id, archived: true);
@@ -291,7 +293,7 @@ void main() {
       );
     }
     // Setting BDO again while it is already a budget account queues nothing.
-    expect(batches, hasLength(55));
+    expect(batches, hasLength(56));
     await store.close();
   });
 }
