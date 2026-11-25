@@ -23,8 +23,8 @@ runs a production write.
 | Web app | **Already 1.4.0 (6) with sharing** (C3 pushed with `b416f03` on 2026-11-24, earlier than this plan's row 9). Not yet the three Plans commits | `version.json` reads 1.4.0 (6) on 2026-11-25 |
 | Hosted database | **Both migrations applied** | `db push --remote --dry-run`: "Remote database is up to date"; latest migration `20261125010000`; `categories.default_target_minor`, `space_members.email` and `fundly_create_invite` exist (read-only query, 2026-11-25) |
 | Backups | Taken (see row 1) | Files in `~/Documents/fundly-backup/` |
-| Hosted sync config | **Unknown**: check in row 5 | Not visible to the agent |
-| Plans commits `62131f9`, `6428567`, `12c5c6c` | Committed on `main`, **not pushed** | `main` is 3 ahead of `origin/main` |
+| Hosted sync config | **Deployed by the owner** (row 5, 2026-11-25) | Not visible to the agent; row 6 passes against it |
+| Plans commits `62131f9`, `6428567`, `12c5c6c` | **Pushed**, with banks, R.18 and debt-row Targets after them | `main` equals `origin/main` (2026-11-25) |
 | iPhone (A) | 1.3.0 (5) until Part C | |
 
 ## Before continuing
@@ -127,3 +127,9 @@ stays 1.2.0.
 | 1 | Hosted dumps in `~/Documents/fundly-backup/`: `2026-11-24_c3_*` (19:39, before sharing); `YYYY-MM-DD_schema.sql` / `YYYY-MM-DD_data.sql` (2026-11-25 01:15: sharing applied, **before the default-Target migration**: the only pre-migration copy, so keep it; rename it to `2026-11-25_pre-default-target_*`); `2026-11-25_1.4.0_*` (01:18, after both migrations). iPhone export not recorded |
 | 2 | Both migrations applied. Dry run on 2026-11-25: "Remote database is up to date"; latest migration `20261125010000` (read-only check) |
 | 9 (C3 part) | The C3 app reached the web with `b416f03` (2026-11-24), before Part A finished: `version.json` reads 1.4.0 (6) |
+| 0 (partial) | 2026-11-25. `supabase test db`: 1,178 of 1,182 pass. The 4 failures are counts of dev data in the local database: `schema_test` 1 (24 = 5 + 19 existing transactions) and 98 (9 = 2 + 7 existing plans); `dataset_import_test` 72 and 102 (1 existing import receipt). Local `db lint`: no errors. All 7 concurrency tests and `client_contract_test.py` (14 checks) pass. **Not run yet:** `c3_rollback_test.py` (it resets the local database; waiting for the owner) and the local stream probes |
+| 2 (recheck) | 2026-11-25, owner: dry run says "Remote database is up to date". The local migrations end at `20261127020000`, so banks (`20261126010000`), card purchases (`20261127010000`) and debt-row Targets (`20261127020000`) are on production too. The web (`main`, pushed) already runs those 1.5.0 changes, still labelled 1.4.0 (6); Part B does not check them |
+| 3 | 2026-11-25. `db lint --remote` (public, fundly_private, fundly_access): no errors. `db advisors --remote`: only WARN `authenticated_security_definer_function_executable` for 14 intended RPCs (`fundly_apply_operations`, `fundly_import_dataset`, `fundly_create_space`, `fundly_rename_space`, and the C3 ones: `fundly_create_invite`, `fundly_list_invites`, `fundly_preview_invite`, `fundly_accept_invite`, `fundly_decline_invite`, `fundly_revoke_invite`, `fundly_set_member_role`, `fundly_remove_member`, `fundly_leave_space`, `fundly_delete_space`) and `auth_leaked_password_protection` (Google sign-in only) |
+| 4 | 2026-11-25, read-only. 9 members, none missing an email; 5 without a display name, none of whom has a name from sign-in; `space_invites` RLS on, no `anon` or `authenticated` grants. 7 of 43 categories already have a default Target, set since the Plans build reached the web (not a failure) |
+| 5 | 2026-11-25, owner: `main`'s `powersync/sync-config.yaml` (as of `811f831`, with banks) deployed in the PowerSync dashboard |
+| 6 | 2026-11-25, against the hosted services: `api_isolation.py` 15/15 pass (test records removed); `fundly_stream_test.dart`, `c2_space_streams_test.dart` and `c3_sharing_streams_test.dart` pass |
