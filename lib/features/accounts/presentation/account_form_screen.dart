@@ -11,10 +11,13 @@ import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
 import '../domain/custom_account_type.dart';
+import '../domain/custom_bank.dart';
 import 'account_display.dart';
 import 'account_form_messages.dart';
 import 'account_type_dialog.dart';
 import 'accounts_providers.dart';
+import 'bank_display.dart';
+import 'bank_picker.dart';
 
 /// A choice in the account type dropdown: a built-in [type], or the custom
 /// type [customTypeId] based on it.
@@ -44,6 +47,15 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   late bool _isBudgetAccount;
   bool _isSaving = false;
 
+  /// The chosen bank; both fields `null` means No bank (docs/BANKS_PLAN.md,
+  /// B-4). When editing, it starts as the account's bank, even a built-in
+  /// key this app does not know, which is kept unless the user picks another.
+  late AccountBank _bank;
+
+  /// A bank added from the picker, shown until the custom banks list
+  /// includes it.
+  CustomBank? _addedBank;
+
   /// A type created from the dropdown, shown until the custom types list
   /// includes it.
   CustomAccountType? _createdType;
@@ -71,6 +83,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     super.initState();
     final account = widget.account;
     _isBudgetAccount = account?.isBudgetAccount ?? false;
+    _bank = account?.bank ?? (bankKey: null, customBankId: null);
     _choice = (
       type: account?.type ?? AccountType.savingsCash,
       customTypeId: account?.customTypeId,
@@ -128,12 +141,16 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
               type: _type,
               enteredOpeningAmount: _parseAmount(),
               customTypeId: _choice.customTypeId,
+              bankKey: _bank.bankKey,
+              customBankId: _bank.customBankId,
             )
           : await repository.update(
               account.id,
               name: _nameController.text,
               enteredOpeningAmount: _parseAmount(),
               customType: (id: _choice.customTypeId),
+              // Unchanged: keep the stored bank as it is.
+              bank: _bank == account.bank ? null : _bank,
             );
       if (wantsBudget && !wasBudget) {
         await repository.setBudgetAccount(saved.id);
@@ -169,6 +186,27 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     });
   }
 
+  Future<void> _pickBank() async {
+    final pick = await showBankPicker(context, selected: _bank);
+    if (pick == null || !mounted) return;
+    setState(() {
+      _bank = pick.bank;
+      if (pick.added case final added?) _addedBank = added;
+    });
+  }
+
+  /// The chosen bank's badge, or `null` for No bank.
+  BankBadge? _bankBadge() {
+    final banks = ref.watch(customBanksByIdProvider);
+    final added = _addedBank;
+    return bankBadgeFor(
+      _bank,
+      added == null || banks.containsKey(added.id)
+          ? banks
+          : {...banks, added.id: added},
+    );
+  }
+
   /// Custom types to offer, including one just created that the stream has
   /// not delivered yet. `null` while loading.
   List<CustomAccountType>? _customTypes() {
@@ -183,6 +221,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   @override
   Widget build(BuildContext context) {
     final customTypes = _customTypes();
+    final bankBadge = _bankBadge();
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit account' : 'New account')),
       body: Form(
@@ -202,11 +241,17 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 onAddType: _addType,
               ),
             const SizedBox(height: Spacing.lg),
+            _BankField(
+              badge: bankBadge,
+              fallbackIcon: accountTypeIcon(_type),
+              onTap: _pickBank,
+            ),
+            const SizedBox(height: Spacing.lg),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Name',
-                hintText: 'e.g. BDO Savings',
+                hintText: 'e.g. ${bankBadge?.name ?? 'BDO'} Savings',
               ),
               textCapitalization: TextCapitalization.words,
               maxLength: maxAccountNameLength,
@@ -246,6 +291,50 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
               child: Text(_isEditing ? 'Save changes' : 'Add account'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Bank field: the chosen bank's logo and name, or No bank. Tap to
+/// open the bank picker.
+class _BankField extends StatelessWidget {
+  const _BankField({
+    required this.badge,
+    required this.fallbackIcon,
+    required this.onTap,
+  });
+
+  final BankBadge? badge;
+  final IconData fallbackIcon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = this.badge;
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            labelText: 'Bank',
+            helperText: 'Optional. Its logo shows beside the account.',
+            suffixIcon: Icon(Icons.arrow_drop_down),
+          ),
+          child: Row(
+            children: [
+              BankAvatar(badge: badge, fallbackIcon: fallbackIcon, size: 28),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: Text(
+                  badge?.name ?? 'No bank',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

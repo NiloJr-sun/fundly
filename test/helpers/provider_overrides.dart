@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:fundly/core/sync/synced_store.dart';
 import 'package:fundly/features/accounts/data/account_repository.dart';
 import 'package:fundly/features/accounts/data/custom_account_type_repository.dart';
+import 'package:fundly/features/accounts/data/custom_bank_repository.dart';
 import 'package:fundly/features/accounts/domain/account.dart';
 import 'package:fundly/features/accounts/domain/account_balance.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type.dart';
+import 'package:fundly/features/accounts/domain/custom_bank.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
 import 'package:fundly/features/categories/data/category_repository.dart';
 import 'package:fundly/features/categories/domain/category.dart';
@@ -22,6 +24,7 @@ import 'package:fundly/features/transactions/presentation/transactions_providers
 import 'fake_account_repository.dart';
 import 'fake_category_repository.dart';
 import 'fake_custom_account_type_repository.dart';
+import 'fake_custom_bank_repository.dart';
 import 'fake_plan_repository.dart';
 import 'fake_synced_store.dart';
 import 'fake_transaction_repository.dart';
@@ -47,6 +50,8 @@ List<Override> fakeAccounts(
   FakeTransactionRepository? transactionRepository,
   List<CustomAccountType> customTypes = const [],
   FakeCustomAccountTypeRepository? customTypeRepository,
+  List<CustomBank> customBanks = const [],
+  FakeCustomBankRepository? customBankRepository,
   List<Space> spaces = const [],
 }) {
   final everyAccount = [...accounts, ...archived];
@@ -87,6 +92,7 @@ List<Override> fakeAccounts(
       repository ?? FakeAccountRepository(),
     ),
     ...fakeCustomAccountTypes(customTypes, repository: customTypeRepository),
+    ...fakeCustomBanks(customBanks, repository: customBankRepository),
     allCategoriesProvider.overrideWith(
       (ref) => categoryStream ?? Stream.value(categories),
     ),
@@ -131,5 +137,16 @@ List<Override> fakeCustomAccountTypes(
   customAccountTypesProvider.overrideWith((ref) => Stream.value(types)),
   customAccountTypeRepositoryProvider.overrideWithValue(
     repository ?? FakeCustomAccountTypeRepository(),
+  ),
+];
+
+/// Custom banks for widget tests that do not need [fakeAccounts].
+List<Override> fakeCustomBanks(
+  List<CustomBank> banks, {
+  FakeCustomBankRepository? repository,
+}) => [
+  customBanksProvider.overrideWith((ref) => Stream.value(banks)),
+  customBankRepositoryProvider.overrideWithValue(
+    repository ?? FakeCustomBankRepository(),
   ),
 ];

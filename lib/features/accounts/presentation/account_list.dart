@@ -10,6 +10,7 @@ import '../domain/account_type.dart';
 import 'account_detail_screen.dart';
 import 'account_display.dart';
 import 'accounts_providers.dart';
+import 'bank_display.dart';
 
 const double _floatingButtonClearance = 88;
 
@@ -143,7 +144,8 @@ class _AccountSection extends StatelessWidget {
   }
 }
 
-/// One account row: name and formatted current balance. Tap for details.
+/// One account row: its bank's logo (or its type's icon without a bank),
+/// name and formatted current balance. Tap for details.
 class AccountTile extends ConsumerWidget {
   const AccountTile({super.key, required this.account});
 
@@ -152,7 +154,13 @@ class AccountTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balance = ref.watch(accountBalancesProvider).value?[account.id];
+    final badge = accountBankBadge(account, ref.watch(customBanksByIdProvider));
     return ListTile(
+      leading: BankAvatar(
+        badge: badge,
+        fallbackIcon: accountTypeIcon(account.type),
+        size: 36,
+      ),
       title: Text(account.name),
       subtitle: account.isBudgetAccount ? const Text('Budget account') : null,
       trailing: balance == null

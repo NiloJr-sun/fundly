@@ -4,6 +4,7 @@ import '../domain/account_rules.dart';
 import '../domain/account_type.dart';
 import '../domain/account_validation_exception.dart';
 import '../domain/custom_account_type_validation_exception.dart';
+import '../domain/custom_bank.dart';
 
 /// User-facing text for account form validation errors.
 
@@ -54,3 +55,14 @@ String customAccountTypeErrorText(CustomAccountTypeValidationError error) =>
       CustomAccountTypeValidationError.baseTypeInUse =>
         "Accounts use this type, so its class can't change.",
     };
+
+/// Message for an error reported when saving or deleting a custom bank.
+String customBankErrorText(CustomBankValidationError error) => switch (error) {
+  CustomBankValidationError.nameEmpty => 'Enter a name.',
+  CustomBankValidationError.nameTooLong =>
+    'Use $maxAccountNameLength characters or fewer.',
+  CustomBankValidationError.nameTaken =>
+    'A bank with this name is already in the list.',
+  CustomBankValidationError.inUse =>
+    'Accounts belong to this bank, so it cannot be deleted.',
+};

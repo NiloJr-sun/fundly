@@ -4,8 +4,9 @@ Date: 2026-11-25
 
 Status: **approved 2026-11-25** (B-1 to B-9, all as recommended). **B.1
 (server) done 2026-11-25 and deployed by the owner the same day** (migration,
-publication, sync config). **B.2 (app data) done 2026-11-25, not released**;
-see [B.2 outcome](#b2-outcome); see [B.1 outcome](#b1-outcome). The agent stops after each
+publication, sync config; see [B.1 outcome](#b1-outcome)). **B.2 (app data)**
+and **B.3 (UI) done 2026-11-25, not released**; see
+[B.2 outcome](#b2-outcome) and [B.3 outcome](#b3-outcome). The agent stops after each
 step, never commits or pushes, and does not touch production. Production
 migrations, sync-config deploys and pushes to `main` are run by the owner.
 
@@ -294,6 +295,73 @@ There is no UI yet, so nothing changes on screen.
 **Do not push to `main` before B.4.**
 - Every push deploys the web.
 - Its exports would be format 9, which apps 1.4.0 and older cannot restore.
+
+## B.3 outcome
+
+Done 2026-11-25, not released. No schema, backup, server or sync change.
+
+- **Account form:** a **Bank** field between Type and Name, showing the
+  chosen bank's logo and name, or "No bank". Tapping it opens a bottom sheet
+  with:
+  - a search field
+  - the 16 built-in banks
+  - "Your banks"
+  - "Add a bank…" (a dialog that saves the bank and selects it)
+  - "No bank"
+
+  The Name hint follows the bank (e.g. "e.g. GCash Savings").
+- **Editing:** an unchanged bank is not sent, so an account keeps a key from
+  a later app, which shows as No bank. Picking another bank or No bank sends
+  the change.
+- **Logos** (`bank_display.dart`):
+  - Built-in banks have a fixed monogram (2–3 letters) and colour.
+  - Custom banks have initials, with a colour from an 8-colour palette chosen
+    by the name, ignoring case.
+  - A test checks that white initials meet 4.5:1 contrast on every colour.
+  - Without a bank, an account shows its type's icon: wallet, card or loan.
+  - Shown on the Account tab rows, Archived accounts and the account detail
+    header (logo plus bank name, or "No bank").
+- **Banks screen:**
+  - Lists the user's banks with logo and account count, archived accounts
+    included.
+  - Add, rename, and delete after confirming, only while no account uses the
+    bank.
+  - Built-in banks are not listed. The empty state says they are already in
+    the picker.
+- **Where Banks opens:** the Account tab has no ⋮ menu, so B-8's "⋮ menu" is
+  an app-bar button (bank icon, tooltip "Banks") next to Account types.
+- **Logo files (B-2), added the same day at the owner's request:**
+  - A 192 px square PNG per built-in bank at `assets/images/banks/<key>.png`
+    (224 KB in all), listed in `pubspec.yaml`.
+  - Cropped from a screenshot of the banks' logos the owner supplied: the
+    symbol where the bank has one (e.g. Metrobank's globe, UnionBank's UB),
+    otherwise the wordmark. Padded to fit a circle, on white, except
+    UnionBank and CIMB, which fill the circle with their colour.
+  - `BankAvatar` draws the image clipped to a circle, with a hairline so
+    white logos show on white. If the image fails to load, it shows the
+    monogram. Custom banks keep their monograms.
+  - The quality is limited by the screenshot: Land Bank's top gear teeth
+    were already cut off, and Metrobank has a faint grey edge. Official
+    files can replace any image with no code change.
+  - The logos are the banks' trademarks, used to identify each bank. Fine
+    for personal use. Check each bank's brand rules before a public store
+    release.
+  - A test checks that every built-in key has a 192 × 192 PNG and that the
+    folder is bundled.
+- **Tests:**
+  - New: `bank_display_test.dart`, `banks_screen_test.dart`,
+    `bank_logos_test.dart`, and a bank group in
+    `account_form_screen_test.dart` (search, built-in, custom, add, refused
+    name, keep, switch, clear, unknown key).
+  - Helpers: `FakeCustomBankRepository`; `fakeAccounts` and
+    `fakeCustomBanks` override the custom banks.
+  - The form's Save button now sits below the 600 px test screen, so the
+    form test helper scrolls it into view.
+  - Totals: `flutter test` 1545 passed (with the logo tests); `flutter analyze` clean.
+- **Not checked:** how it looks on the iPhone or in Chrome (only widget
+  tests ran).
+
+**Do not push to `main` before B.4** (same reason as B.2).
 
 ## Not in this slice
 

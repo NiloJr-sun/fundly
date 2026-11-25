@@ -5,9 +5,11 @@ import '../../transactions/presentation/transactions_providers.dart';
 
 import '../data/account_repository.dart';
 import '../data/custom_account_type_repository.dart';
+import '../data/custom_bank_repository.dart';
 import '../domain/account.dart';
 import '../domain/account_balance.dart';
 import '../domain/custom_account_type.dart';
+import '../domain/custom_bank.dart';
 
 /// Active accounts, ordered by type then name. Updates when accounts change.
 final activeAccountsProvider = StreamProvider<List<Account>>(
@@ -94,4 +96,28 @@ final budgetAccountsProvider = Provider<List<Account>>((ref) {
     for (final account in accounts)
       if (account.isBudgetAccount) account,
   ];
+});
+
+/// Every custom bank in the active store, ordered by name.
+final customBanksProvider = StreamProvider<List<CustomBank>>(
+  (ref) => ref.watch(customBankRepositoryProvider).watchAll(),
+);
+
+/// Every custom bank keyed by id, for showing names and logos. Empty while
+/// loading.
+final customBanksByIdProvider = Provider<Map<String, CustomBank>>((ref) {
+  final banks = ref.watch(customBanksProvider).value ?? const [];
+  return {for (final bank in banks) bank.id: bank};
+});
+
+/// How many accounts, active or archived, belong to each custom bank, keyed
+/// by custom bank id. Banks without accounts are absent. Empty while loading.
+final customBankAccountCountsProvider = Provider<Map<String, int>>((ref) {
+  final accounts = ref.watch(allAccountsProvider).value ?? const [];
+  final counts = <String, int>{};
+  for (final account in accounts) {
+    final id = account.customBankId;
+    if (id != null) counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
 });

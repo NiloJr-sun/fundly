@@ -76,10 +76,12 @@ flutter:
   uses-material-design: true
 
   # Google "G" logo, cropped from Google's official sign-in button assets;
-  # login/ holds the login page's wallet and coin layers.
+  # login/ holds the login page's wallet and coin layers; banks/ holds a
+  # 192 px square logo per built-in bank, named by its key.
   assets:
     - assets/images/
     - assets/images/login/
+    - assets/images/banks/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

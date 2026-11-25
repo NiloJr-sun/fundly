@@ -8,6 +8,7 @@ import 'account_list.dart';
 import 'account_types_screen.dart';
 import 'accounts_providers.dart';
 import 'archived_accounts_screen.dart';
+import 'banks_screen.dart';
 
 /// The Accounts tab: lists the user's active accounts.
 class AccountsScreen extends ConsumerWidget {
@@ -27,6 +28,13 @@ class AccountsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => const AccountTypesScreen(),
               ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Banks',
+            icon: const Icon(Icons.account_balance_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const BanksScreen()),
             ),
           ),
           IconButton(

@@ -16,6 +16,7 @@ import 'account_display.dart';
 import 'account_form_messages.dart';
 import 'account_form_screen.dart';
 import 'accounts_providers.dart';
+import 'bank_display.dart';
 
 /// Shows one account: balance, details, and archive / unarchive.
 class AccountDetailScreen extends ConsumerWidget {
@@ -72,9 +73,27 @@ class _AccountDetails extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final badge = accountBankBadge(account, ref.watch(customBanksByIdProvider));
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
+        Row(
+          children: [
+            BankAvatar(
+              badge: badge,
+              fallbackIcon: accountTypeIcon(account.type),
+              size: 48,
+            ),
+            const SizedBox(width: Spacing.md),
+            Expanded(
+              child: Text(
+                badge?.name ?? 'No bank',
+                style: textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Spacing.md),
         Text('Current balance', style: textTheme.labelLarge),
         const SizedBox(height: Spacing.xs),
         if (balance case final balance?)

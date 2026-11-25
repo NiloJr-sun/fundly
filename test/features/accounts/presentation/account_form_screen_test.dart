@@ -8,11 +8,14 @@ import 'package:fundly/features/accounts/domain/account_type.dart';
 import 'package:fundly/features/accounts/domain/account_validation_exception.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type.dart';
 import 'package:fundly/features/accounts/domain/custom_account_type_validation_exception.dart';
+import 'package:fundly/features/accounts/domain/custom_bank.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_providers.dart';
+import 'package:fundly/features/accounts/presentation/bank_display.dart';
 
 import '../../../helpers/fake_account_repository.dart';
 import '../../../helpers/fake_custom_account_type_repository.dart';
+import '../../../helpers/fake_custom_bank_repository.dart';
 import '../../../helpers/provider_overrides.dart';
 
 Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
@@ -20,10 +23,12 @@ Money php(int minorUnits) => Money(minorUnits: minorUnits, currencyCode: 'PHP');
 void main() {
   late FakeAccountRepository repository;
   late FakeCustomAccountTypeRepository typeRepository;
+  late FakeCustomBankRepository bankRepository;
 
   setUp(() {
     repository = FakeAccountRepository();
     typeRepository = FakeCustomAccountTypeRepository();
+    bankRepository = FakeCustomBankRepository();
   });
 
   /// Opens the form from a placeholder page so a successful save can pop.
@@ -32,12 +37,14 @@ void main() {
     Account? account,
     List<CustomAccountType> customTypes = const [],
     List<Account> existingAccounts = const [],
+    List<CustomBank> customBanks = const [],
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           accountRepositoryProvider.overrideWithValue(repository),
           ...fakeCustomAccountTypes(customTypes, repository: typeRepository),
+          ...fakeCustomBanks(customBanks, repository: bankRepository),
           allAccountsProvider.overrideWith(
             (ref) => Stream.value(existingAccounts),
           ),
@@ -72,7 +79,11 @@ void main() {
   }
 
   Future<void> tapSave(WidgetTester tester, String label) async {
-    await tester.tap(find.widgetWithText(FilledButton, label));
+    // The Bank field pushes the button below the 600px test screen.
+    final button = find.widgetWithText(FilledButton, label);
+    await tester.ensureVisible(button);
+    await tester.pumpAndSettle();
+    await tester.tap(button);
     await tester.pumpAndSettle();
   }
 
@@ -532,6 +543,219 @@ void main() {
 
       await tapSave(tester, 'Save changes');
       expect(repository.updated.single.entered, php(0));
+    });
+  });
+
+  // docs/BANKS_PLAN.md, B.3.
+  group('bank', () {
+    final coop = CustomBank(
+      id: '30',
+      name: 'Town Coop',
+      createdAt: DateTime.utc(2026, 11, 25),
+    );
+
+    // Built-in names like BDO also appear as the monogram, so these look
+    // for the avatar.
+    Finder logo(String name) => find.byWidgetPredicate(
+      (widget) => widget is BankAvatar && widget.badge?.name == name,
+    );
+
+    Future<void> openPicker(WidgetTester tester) async {
+      await tester.tap(
+        find.ancestor(of: find.text('Bank'), matching: find.byType(InkWell)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// Scrolls the picker, not the form behind it, until [finder] is fully
+    /// shown.
+    Future<void> scrollPickerTo(WidgetTester tester, Finder finder) async {
+      await tester.scrollUntilVisible(
+        finder,
+        200,
+        // The sheet's list; the search field has a Scrollable too.
+        scrollable: find
+            .descendant(
+              of: find.descendant(
+                of: find.byType(BottomSheet),
+                matching: find.byType(ListView),
+              ),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('starts as No bank and saves none', (tester) async {
+      await openForm(tester);
+      expect(find.text('No bank'), findsOneWidget);
+
+      await tester.enterText(field('Name'), 'Cash Wallet');
+      await tapSave(tester, 'Add account');
+
+      final created = repository.created.single;
+      expect(created.bankKey, isNull);
+      expect(created.customBankId, isNull);
+    });
+
+    testWidgets('a built-in bank is found by search and saved by key', (
+      tester,
+    ) async {
+      await openForm(tester);
+      await openPicker(tester);
+      expect(logo('BDO'), findsOneWidget);
+      expect(find.text('Metrobank'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Search banks'),
+        'g',
+      );
+      await tester.pumpAndSettle();
+      expect(logo('BDO'), findsNothing);
+      await tester.tap(find.text('GCash'));
+      await tester.pumpAndSettle();
+
+      expect(logo('GCash'), findsOneWidget, reason: 'shown in the field');
+      expect(find.text('e.g. GCash Savings'), findsOneWidget);
+
+      await tester.enterText(field('Name'), 'GCash Wallet');
+      await tapSave(tester, 'Add account');
+
+      final created = repository.created.single;
+      expect(created.bankKey, 'gcash');
+      expect(created.customBankId, isNull);
+    });
+
+    testWidgets("the user's own banks are listed and saved by id", (
+      tester,
+    ) async {
+      await openForm(tester, customBanks: [coop]);
+      await openPicker(tester);
+      await scrollPickerTo(tester, find.text('Town Coop'));
+      expect(find.text('Your banks'), findsOneWidget);
+      await tester.tap(find.text('Town Coop'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(field('Name'), 'Coop Savings');
+      await tapSave(tester, 'Add account');
+
+      final created = repository.created.single;
+      expect(created.bankKey, isNull);
+      expect(created.customBankId, '30');
+    });
+
+    testWidgets('Add a bank creates one and selects it', (tester) async {
+      await openForm(tester);
+      await openPicker(tester);
+      await scrollPickerTo(tester, find.text('Add a bank…'));
+      await tester.tap(find.text('Add a bank…'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Name').last,
+        'Rural Bank of Iba',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Add bank'));
+      await tester.pumpAndSettle();
+
+      expect(bankRepository.created.single.name, 'Rural Bank of Iba');
+      // Shown at once, before the banks list includes it.
+      expect(find.text('Rural Bank of Iba'), findsOneWidget);
+
+      await tester.enterText(field('Name'), 'Iba Savings');
+      await tapSave(tester, 'Add account');
+      expect(repository.created.single.customBankId, '200');
+    });
+
+    testWidgets('a refused bank name keeps the bank dialog open', (
+      tester,
+    ) async {
+      bankRepository.failWith = CustomBankValidationError.nameTaken;
+      await openForm(tester);
+      await openPicker(tester);
+      await scrollPickerTo(tester, find.text('Add a bank…'));
+      await tester.tap(find.text('Add a bank…'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Name').last,
+        'bdo',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Add bank'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('A bank with this name is already in the list.'),
+        findsOneWidget,
+      );
+      expect(find.text('New bank'), findsOneWidget);
+    });
+
+    final bdoSavings = Account(
+      id: '8',
+      name: 'BDO Savings',
+      type: AccountType.savingsCash,
+      openingBalance: php(100000),
+      createdAt: DateTime.utc(2026, 11, 16),
+      bankKey: 'bdo',
+    );
+
+    testWidgets('editing shows the bank and an unchanged bank is kept', (
+      tester,
+    ) async {
+      await openForm(tester, account: bdoSavings);
+      expect(logo('BDO'), findsOneWidget);
+
+      await tapSave(tester, 'Save changes');
+
+      expect(repository.updated.single.bank, isNull);
+    });
+
+    testWidgets('editing can switch the bank or clear it', (tester) async {
+      await openForm(tester, account: bdoSavings);
+      await openPicker(tester);
+      await tester.tap(logo('BPI'));
+      await tester.pumpAndSettle();
+      await tapSave(tester, 'Save changes');
+      expect(repository.updated.single.bank, (
+        bankKey: 'bpi',
+        customBankId: null,
+      ));
+    });
+
+    testWidgets('No bank clears it', (tester) async {
+      await openForm(tester, account: bdoSavings);
+      await openPicker(tester);
+      await scrollPickerTo(tester, find.text('No bank'));
+      await tester.tap(find.text('No bank'));
+      await tester.pumpAndSettle();
+      expect(find.text('No bank'), findsOneWidget, reason: 'in the field');
+
+      await tapSave(tester, 'Save changes');
+      expect(repository.updated.single.bank, (
+        bankKey: null,
+        customBankId: null,
+      ));
+    });
+
+    testWidgets("a later app's bank shows as No bank and is kept", (
+      tester,
+    ) async {
+      final unknown = Account(
+        id: '9',
+        name: 'Komo Savings',
+        type: AccountType.savingsCash,
+        openingBalance: php(0),
+        createdAt: DateTime.utc(2026, 11, 16),
+        bankKey: 'komo',
+      );
+      await openForm(tester, account: unknown);
+      expect(find.text('No bank'), findsOneWidget);
+
+      await tapSave(tester, 'Save changes');
+      expect(repository.updated.single.bank, isNull);
     });
   });
 }
