@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/features/transactions/domain/transaction_kind.dart';
 import 'package:fundly/features/transactions/presentation/transaction_display.dart';
 
 import '../domain/transaction_fixtures.dart';
@@ -52,5 +53,26 @@ void main() {
     expect(transactionTitle(spending(payee: 'Jollibee')), 'Jollibee');
     expect(transactionTitle(transfer()), 'Transfer');
     expect(transactionTitle(cardPayment()), 'Credit card payment');
+  });
+
+  test('transactionTitle uses the kind when given', () {
+    final payment = transfer(to: carLoanId);
+
+    expect(
+      transactionTitle(payment, kind: TransactionKind.loanPayment),
+      'Loan payment',
+    );
+    expect(transactionTypeLabel(payment.type), 'Transfer');
+  });
+
+  test('the picker separates Transfer from Loan payment', () {
+    expect(
+      transactionKindDescription(TransactionKind.transfer),
+      'Move money between your accounts',
+    );
+    expect(
+      transactionKindDescription(TransactionKind.loanPayment),
+      'Pay off a loan',
+    );
   });
 }

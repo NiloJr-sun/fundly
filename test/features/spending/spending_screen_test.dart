@@ -8,7 +8,7 @@ import 'package:fundly/features/transactions/presentation/transaction_form_scree
 import '../../helpers/provider_overrides.dart';
 
 void main() {
-  testWidgets('Add transaction offers all four types and opens the form', (
+  testWidgets('Add transaction offers all five kinds and opens the form', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -23,6 +23,10 @@ void main() {
       ),
     );
 
+    // An iPhone-sized screen, so the sheet shows all five kinds.
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.tap(find.text('Add transaction'));
     await tester.pumpAndSettle();
 
@@ -33,6 +37,9 @@ void main() {
     expect(inSheet('Spending'), findsOneWidget);
     expect(inSheet('Inflow'), findsOneWidget);
     expect(inSheet('Transfer'), findsOneWidget);
+    expect(inSheet('Move money between your accounts'), findsOneWidget);
+    expect(inSheet('Loan payment'), findsOneWidget);
+    expect(inSheet('Pay off a loan'), findsOneWidget);
     expect(inSheet('Credit card payment'), findsOneWidget);
 
     await tester.tap(inSheet('Inflow'));

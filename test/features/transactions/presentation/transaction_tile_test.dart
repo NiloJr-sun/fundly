@@ -95,4 +95,22 @@ void main() {
     await shown(tester, saved(spending(), id: recordIdOf(2)));
     expect(find.textContaining('Not in Plans'), findsNothing);
   });
+
+  testWidgets('G4: a transfer into a loan shows as a Loan payment', (
+    tester,
+  ) async {
+    final (text, color) = await shown(
+      tester,
+      saved(transfer(to: carLoanId), id: recordIdOf(5)),
+    );
+    expect(find.text('Loan payment'), findsOneWidget);
+    expect(find.byIcon(Icons.request_quote_outlined), findsOneWidget);
+    expect(find.textContaining('BDO Savings → Car Loan'), findsOneWidget);
+    expect(text, '₱2,000.00', reason: 'unsigned, like other transfers');
+    expect(color, neutral(tester));
+
+    await shown(tester, saved(transfer(), id: recordIdOf(6)));
+    expect(find.text('Transfer'), findsOneWidget);
+    expect(find.byIcon(Icons.swap_horiz), findsOneWidget);
+  });
 }

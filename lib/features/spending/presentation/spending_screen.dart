@@ -16,11 +16,11 @@ class SpendingScreen extends StatelessWidget {
 
   Future<void> _addTransaction(BuildContext context) async {
     if (!canEditOrExplain(context)) return;
-    final type = await showTransactionTypePicker(context);
-    if (type == null || !context.mounted) return;
+    final kind = await showTransactionTypePicker(context);
+    if (kind == null || !context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => TransactionFormScreen(type: type),
+        builder: (_) => TransactionFormScreen(kind: kind),
       ),
     );
   }

@@ -4,30 +4,39 @@ import '../../../core/formatting/money_formatter.dart';
 import '../../../core/money/money.dart';
 import '../domain/transaction.dart';
 import '../domain/transaction_effects.dart';
+import '../domain/transaction_kind.dart';
 import '../domain/transaction_rules.dart';
 import '../domain/transaction_type.dart';
 
-/// User-facing name for a [TransactionType].
-String transactionTypeLabel(TransactionType type) => switch (type) {
-  TransactionType.spending => 'Spending',
-  TransactionType.inflow => 'Inflow',
-  TransactionType.transfer => 'Transfer',
-  TransactionType.creditCardPayment => 'Credit card payment',
+/// User-facing name for a [TransactionKind].
+String transactionKindLabel(TransactionKind kind) => switch (kind) {
+  TransactionKind.spending => 'Spending',
+  TransactionKind.inflow => 'Inflow',
+  TransactionKind.transfer => 'Transfer',
+  TransactionKind.loanPayment => 'Loan payment',
+  TransactionKind.creditCardPayment => 'Credit card payment',
 };
+
+/// User-facing name for a stored [TransactionType] when the destination
+/// account is not known, so a loan payment reads "Transfer".
+String transactionTypeLabel(TransactionType type) =>
+    transactionKindLabel(TransactionKind.ofType(type));
 
 /// One-line explanation shown in the type picker.
-String transactionTypeDescription(TransactionType type) => switch (type) {
-  TransactionType.spending => 'Money you spent, including card purchases',
-  TransactionType.inflow => 'Money you received, such as salary or a refund',
-  TransactionType.transfer => 'Move money between your accounts, or pay a loan',
-  TransactionType.creditCardPayment => 'Pay off a credit card',
+String transactionKindDescription(TransactionKind kind) => switch (kind) {
+  TransactionKind.spending => 'Money you spent, including card purchases',
+  TransactionKind.inflow => 'Money you received, such as salary or a refund',
+  TransactionKind.transfer => 'Move money between your accounts',
+  TransactionKind.loanPayment => 'Pay off a loan',
+  TransactionKind.creditCardPayment => 'Pay off a credit card',
 };
 
-IconData transactionTypeIcon(TransactionType type) => switch (type) {
-  TransactionType.spending => Icons.shopping_bag_outlined,
-  TransactionType.inflow => Icons.savings_outlined,
-  TransactionType.transfer => Icons.swap_horiz,
-  TransactionType.creditCardPayment => Icons.credit_score_outlined,
+IconData transactionKindIcon(TransactionKind kind) => switch (kind) {
+  TransactionKind.spending => Icons.shopping_bag_outlined,
+  TransactionKind.inflow => Icons.savings_outlined,
+  TransactionKind.transfer => Icons.swap_horiz,
+  TransactionKind.loanPayment => Icons.request_quote_outlined,
+  TransactionKind.creditCardPayment => Icons.credit_score_outlined,
 };
 
 /// The amount as shown in a list.
@@ -61,10 +70,14 @@ String _signed(Money money) => money.isNegative || money.isZero
     ? MoneyFormatter.format(money)
     : '+${MoneyFormatter.format(money)}';
 
-/// Payee if given, otherwise the type name, e.g. "Transfer".
-String transactionTitle(TransactionDraft transaction) {
+/// Payee if given, otherwise the name of [kind], e.g. "Loan payment".
+/// Without [kind], the stored type's name, e.g. "Transfer".
+String transactionTitle(TransactionDraft transaction, {TransactionKind? kind}) {
   final payee = transaction.payee.trim();
-  return payee.isEmpty ? transactionTypeLabel(transaction.type) : payee;
+  if (payee.isNotEmpty) return payee;
+  return kind == null
+      ? transactionTypeLabel(transaction.type)
+      : transactionKindLabel(kind);
 }
 
 String payeeLabel(TransactionType type) => switch (type) {

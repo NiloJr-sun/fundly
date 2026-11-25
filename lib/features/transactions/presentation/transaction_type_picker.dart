@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../domain/transaction_type.dart';
+import '../domain/transaction_kind.dart';
 import 'transaction_display.dart';
 
-/// Types offered when adding a transaction, in display order.
-const List<TransactionType> addableTransactionTypes = TransactionType.values;
+/// Kinds offered when adding a transaction, in display order. Loan payment
+/// sits next to Credit card payment.
+const List<TransactionKind> addableTransactionKinds = [
+  TransactionKind.spending,
+  TransactionKind.inflow,
+  TransactionKind.transfer,
+  TransactionKind.loanPayment,
+  TransactionKind.creditCardPayment,
+];
 
 /// Asks which kind of transaction to add. Returns `null` if dismissed.
-Future<TransactionType?> showTransactionTypePicker(BuildContext context) {
-  return showModalBottomSheet<TransactionType>(
+Future<TransactionKind?> showTransactionTypePicker(BuildContext context) {
+  return showModalBottomSheet<TransactionKind>(
     context: context,
     showDragHandle: true,
     builder: (context) => SafeArea(
@@ -17,12 +24,12 @@ Future<TransactionType?> showTransactionTypePicker(BuildContext context) {
       child: ListView(
         shrinkWrap: true,
         children: [
-          for (final type in addableTransactionTypes)
+          for (final kind in addableTransactionKinds)
             ListTile(
-              leading: Icon(transactionTypeIcon(type)),
-              title: Text(transactionTypeLabel(type)),
-              subtitle: Text(transactionTypeDescription(type)),
-              onTap: () => Navigator.of(context).pop(type),
+              leading: Icon(transactionKindIcon(kind)),
+              title: Text(transactionKindLabel(kind)),
+              subtitle: Text(transactionKindDescription(kind)),
+              onTap: () => Navigator.of(context).pop(kind),
             ),
         ],
       ),

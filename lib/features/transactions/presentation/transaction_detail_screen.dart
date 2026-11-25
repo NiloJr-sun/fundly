@@ -11,6 +11,7 @@ import '../../categories/presentation/categories_providers.dart';
 import '../../sync/presentation/edit_guard.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction.dart';
+import '../domain/transaction_kind.dart';
 import 'transaction_display.dart';
 import 'transaction_form_screen.dart';
 import 'transactions_providers.dart';
@@ -36,10 +37,13 @@ class TransactionDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.edit_outlined),
               onPressed: () {
                 if (!canEditOrExplain(context)) return;
+                final kind = _kindOf(ref, loaded);
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        TransactionFormScreen.edit(transaction: loaded),
+                    builder: (_) => TransactionFormScreen.edit(
+                      transaction: loaded,
+                      kind: kind,
+                    ),
                   ),
                 );
               },
@@ -68,6 +72,16 @@ class TransactionDetailScreen extends ConsumerWidget {
   }
 }
 
+/// The kind of [transaction], e.g. a loan payment for a Transfer into a Loan
+/// account.
+TransactionKind _kindOf(WidgetRef ref, Transaction transaction) =>
+    TransactionKind.of(
+      transaction,
+      destinationType: ref
+          .read(accountsByIdProvider)[transaction.destinationAccountId]
+          ?.type,
+    );
+
 /// Deletes [transaction] after confirmation. Balances recalculate on their
 /// own because they are derived from the remaining transactions (rule 11).
 Future<void> _delete(
@@ -81,7 +95,7 @@ Future<void> _delete(
     builder: (context) => AlertDialog(
       title: const Text('Delete this transaction?'),
       content: Text(
-        '${transactionTitle(transaction)} · '
+        '${transactionTitle(transaction, kind: _kindOf(ref, transaction))} · '
         '${MoneyFormatter.format(transaction.amount)}\n\n'
         "Account balances will be recalculated. This can't be undone.",
       ),
@@ -125,18 +139,19 @@ class _TransactionDetails extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final payee = transaction.payee.trim();
     final note = transaction.note.trim();
+    final kind = TransactionKind.of(
+      transaction,
+      destinationType: accounts[transaction.destinationAccountId]?.type,
+    );
 
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
         Row(
           children: [
-            Icon(transactionTypeIcon(transaction.type)),
+            Icon(transactionKindIcon(kind)),
             const SizedBox(width: Spacing.sm),
-            Text(
-              transactionTypeLabel(transaction.type),
-              style: textTheme.labelLarge,
-            ),
+            Text(transactionKindLabel(kind), style: textTheme.labelLarge),
           ],
         ),
         const SizedBox(height: Spacing.sm),

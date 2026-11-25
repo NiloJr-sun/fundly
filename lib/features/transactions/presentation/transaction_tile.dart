@@ -7,6 +7,7 @@ import '../../accounts/domain/account_type.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../categories/presentation/categories_providers.dart';
 import '../domain/transaction.dart';
+import '../domain/transaction_kind.dart';
 import '../domain/transaction_type.dart';
 import 'transaction_detail_screen.dart';
 import 'transaction_display.dart';
@@ -72,7 +73,11 @@ class TransactionTile extends ConsumerWidget {
       ...details.nonNulls,
     ].join(' · ');
 
-    final icon = Icon(transactionTypeIcon(transaction.type));
+    final kind = TransactionKind.of(
+      transaction,
+      destinationType: accounts[transaction.destinationAccountId]?.type,
+    );
+    final icon = Icon(transactionKindIcon(kind));
     final amount = transactionAmountText(transaction, accountId: accountId);
     final colors = Theme.of(context).colorScheme;
     return ListTile(
@@ -90,7 +95,7 @@ class TransactionTile extends ConsumerWidget {
               ),
             )
           : icon,
-      title: Text(transactionTitle(transaction)),
+      title: Text(transactionTitle(transaction, kind: kind)),
       subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: Text(
         amount,

@@ -17,29 +17,35 @@ import '../../categories/domain/category.dart';
 import '../../categories/presentation/categories_providers.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction.dart';
+import '../domain/transaction_kind.dart';
 import '../domain/transaction_rules.dart';
 import '../domain/transaction_type.dart';
 import '../domain/transaction_validation_exception.dart';
 import 'transaction_display.dart';
 
-/// Adds a transaction of [type], or edits [transaction] when given. Closes
+/// Adds a transaction of [kind], or edits [transaction] when given. Closes
 /// itself after a successful save.
 ///
-/// When editing, the type cannot change (G8), and an archived account the
-/// transaction already uses stays selectable (G7).
+/// When editing, the kind cannot change (G8), and an archived account the
+/// transaction already uses stays selectable (G7). The account pickers offer
+/// what [kind] allows: a Transfer leaves Loan accounts to Loan payment.
 ///
 /// Field errors come from [validateTransaction], the same rules the
 /// repository enforces, so the form and the data layer cannot disagree.
 class TransactionFormScreen extends ConsumerStatefulWidget {
-  const TransactionFormScreen({super.key, required this.type, this.clock})
+  const TransactionFormScreen({super.key, required this.kind, this.clock})
     : transaction = null;
 
-  /// Edits [transaction]; its type is fixed.
-  TransactionFormScreen.edit({super.key, required Transaction this.transaction})
-    : type = transaction.type,
-      clock = null;
+  /// Edits [transaction] of [kind]; its kind is fixed. [kind] must be the
+  /// transaction's own, from [TransactionKind.of].
+  TransactionFormScreen.edit({
+    super.key,
+    required Transaction this.transaction,
+    required this.kind,
+  }) : assert(kind.type == transaction.type),
+       clock = null;
 
-  final TransactionType type;
+  final TransactionKind kind;
   final Transaction? transaction;
 
   /// Supplies "today" for the default date. Defaults to the system clock.
@@ -66,7 +72,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   /// Errors from the last save attempt, shown under their fields.
   Map<TransactionField, String> _errors = const {};
 
-  TransactionType get _type => widget.type;
+  TransactionKind get _kind => widget.kind;
+
+  TransactionType get _type => widget.kind.type;
 
   bool get _isEditing => widget.transaction != null;
 
@@ -170,7 +178,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
           content: Text(
             _isEditing
                 ? 'Changes saved'
-                : '${transactionTypeLabel(_type)} saved',
+                : '${transactionKindLabel(_kind)} saved',
           ),
         ),
       );
@@ -223,7 +231,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${_isEditing ? 'Edit' : 'New'} ${transactionTypeLabel(_type)}',
+          '${_isEditing ? 'Edit' : 'New'} ${transactionKindLabel(_kind)}',
         ),
       ),
       body: switch ((accounts, categories)) {
@@ -241,10 +249,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 
   Widget _buildForm(List<Account> accounts, List<Category> categories) {
     final selectable = _selectable(accounts);
-    final sources = _usable(selectable, allowedSourceAccountTypes(_type));
+    final sources = _usable(selectable, sourceAccountTypesFor(_kind));
     final sourceType = _typeOf(selectable, _sourceAccountId);
-    final destinationTypes = allowedDestinationAccountTypes(
-      _type,
+    final destinationTypes = destinationAccountTypesFor(
+      _kind,
       source: sourceType,
     );
     final destinations = _usable(selectable, destinationTypes);
@@ -278,8 +286,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 _sourceAccountId = id;
                 // A cash advance narrows the destinations; drop a choice that
                 // no longer fits.
-                final allowed = allowedDestinationAccountTypes(
-                  _type,
+                final allowed = destinationAccountTypesFor(
+                  _kind,
                   source: _typeOf(selectable, id),
                 );
                 if (!allowed.contains(
@@ -392,10 +400,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final customTypes = ref.watch(customAccountTypesProvider).value ?? const [];
     String need(Set<AccountType> types) => accountTypeNames(types, customTypes);
     if (_type.hasSourceAccount && sources.isEmpty) {
-      return 'Add a ${need(allowedSourceAccountTypes(_type))} account first.';
+      return 'Add a ${need(sourceAccountTypesFor(_kind))} account first.';
     }
     if (_type.hasDestinationAccount && destinations.isEmpty) {
-      return 'Add a ${need(allowedDestinationAccountTypes(_type))} account '
+      return 'Add a ${need(destinationAccountTypesFor(_kind))} account '
           'first.';
     }
     return null;

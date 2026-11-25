@@ -10,6 +10,7 @@ import 'package:fundly/features/categories/domain/category.dart';
 import 'package:fundly/features/categories/presentation/categories_providers.dart';
 import 'package:fundly/features/transactions/data/transaction_repository.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
+import 'package:fundly/features/transactions/domain/transaction_kind.dart';
 import 'package:fundly/features/transactions/domain/transaction_rules.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
 import 'package:fundly/features/transactions/presentation/transaction_form_screen.dart';
@@ -26,11 +27,11 @@ void main() {
   List<Category> ofKind(CategoryKind kind) =>
       categories.values.where((c) => c.kind == kind).toList();
 
-  /// Opens the form for [type] (or [editing] an existing transaction) from a
-  /// placeholder page so saving can pop.
+  /// Opens the form for [kind] (or [editing] an existing transaction of that
+  /// kind) from a placeholder page so saving can pop.
   Future<void> openForm(
     WidgetTester tester,
-    TransactionType type, {
+    TransactionKind kind, {
     List<Account>? withAccounts,
     Transaction? editing,
     List<CustomAccountType> customTypes = const [],
@@ -54,9 +55,12 @@ void main() {
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => editing != null
-                        ? TransactionFormScreen.edit(transaction: editing)
+                        ? TransactionFormScreen.edit(
+                            transaction: editing,
+                            kind: kind,
+                          )
                         : TransactionFormScreen(
-                            type: type,
+                            kind: kind,
                             clock: () => DateTime(2026, 11, 16, 10),
                           ),
                   ),
@@ -96,7 +100,7 @@ void main() {
       const hint =
           'Optional. Card purchases only add to what you owe; '
           'Plans counts the payment.';
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
       expect(find.text(hint), findsNothing);
       expect(find.text('Category (optional)'), findsNothing);
@@ -114,7 +118,7 @@ void main() {
     });
 
     testWidgets('a cash purchase still needs a category', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
       await tester.enterText(field('Amount'), '100');
       await tester.enterText(field('Paid to'), '7/11');
@@ -125,7 +129,7 @@ void main() {
     });
 
     testWidgets('saves a complete spending transaction', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
       expect(find.text('New Spending'), findsOneWidget);
       expect(find.text('Nov 16, 2026'), findsOneWidget, reason: 'today');
 
@@ -153,7 +157,7 @@ void main() {
     testWidgets('shows every missing field at once and saves nothing', (
       tester,
     ) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await save(tester);
 
@@ -165,7 +169,7 @@ void main() {
     });
 
     testWidgets('Rule 8: rejects a zero amount', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.enterText(field('Amount'), '0');
       await save(tester);
@@ -174,7 +178,7 @@ void main() {
     });
 
     testWidgets('offers only Savings/Cash and Credit accounts', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.tap(
         find.widgetWithText(DropdownButtonFormField<String>, 'Paid from'),
@@ -188,7 +192,7 @@ void main() {
     });
 
     testWidgets('offers only spending categories', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.tap(
         find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
@@ -200,7 +204,7 @@ void main() {
     });
 
     testWidgets('hides archived categories', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.tap(
         find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
@@ -211,7 +215,7 @@ void main() {
     });
 
     testWidgets('a picked date is saved', (tester) async {
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.tap(find.text('Nov 16, 2026'));
       await tester.pumpAndSettle();
@@ -232,7 +236,7 @@ void main() {
     testWidgets('explains when no usable account exists', (tester) async {
       await openForm(
         tester,
-        TransactionType.spending,
+        TransactionKind.spending,
         withAccounts: [accounts[carLoanId]!],
       );
 
@@ -244,7 +248,7 @@ void main() {
 
     testWidgets('shows errors the repository reports', (tester) async {
       repository.failWith = {TransactionValidationError.sourceAccountArchived};
-      await openForm(tester, TransactionType.spending);
+      await openForm(tester, TransactionKind.spending);
 
       await tester.enterText(field('Amount'), '10');
       await choose(tester, 'Paid from', 'BDO Savings · Savings / Cash');
@@ -259,7 +263,7 @@ void main() {
 
   group('Inflow', () {
     testWidgets('saves without a category', (tester) async {
-      await openForm(tester, TransactionType.inflow);
+      await openForm(tester, TransactionKind.inflow);
       expect(find.text('New Inflow'), findsOneWidget);
 
       await tester.enterText(field('Amount'), '30000');
@@ -277,7 +281,7 @@ void main() {
     });
 
     testWidgets('saves with an inflow category', (tester) async {
-      await openForm(tester, TransactionType.inflow);
+      await openForm(tester, TransactionKind.inflow);
 
       await tester.enterText(field('Amount'), '100');
       await choose(tester, 'Deposited to', 'BDO Savings · Savings / Cash');
@@ -289,7 +293,7 @@ void main() {
     });
 
     testWidgets('asks who paid you', (tester) async {
-      await openForm(tester, TransactionType.inflow);
+      await openForm(tester, TransactionKind.inflow);
 
       await save(tester);
 
@@ -318,7 +322,7 @@ void main() {
 
   group('Transfer', () {
     testWidgets('moves money between asset accounts', (tester) async {
-      await openForm(tester, TransactionType.transfer);
+      await openForm(tester, TransactionKind.transfer);
       expect(find.text('New Transfer'), findsOneWidget);
       expect(
         find.widgetWithText(DropdownButtonFormField<String>, 'Category'),
@@ -340,39 +344,27 @@ void main() {
       expect(find.text('Transfer saved'), findsOneWidget);
     });
 
-    testWidgets('G4: a loan payment is a transfer to the loan', (tester) async {
-      await openForm(tester, TransactionType.transfer);
-
-      await tester.enterText(field('Amount'), '5000');
-      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
-      await choose(tester, 'To', 'Car Loan · Loan');
-      await tester.enterText(field('Description (optional)'), 'November');
-      await save(tester);
-
-      final draft = repository.created.single;
-      expect(draft.destinationAccountId, carLoanId);
-      expect(draft.payee, 'November');
-    });
-
-    testWidgets('G5: offers no credit accounts as destination', (tester) async {
-      await openForm(tester, TransactionType.transfer);
+    testWidgets('G5: offers no credit or loan accounts as destination', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionKind.transfer);
 
       expect(await optionsOf(tester, 'From'), [
         'BDO Savings · Savings / Cash',
         'Cash Wallet · Savings / Cash',
         'RCBC Credit · Credit',
       ]);
+      // Loans are paid with Loan payment.
       expect(await optionsOf(tester, 'To'), [
         'BDO Savings · Savings / Cash',
         'Cash Wallet · Savings / Cash',
-        'Car Loan · Loan',
       ]);
     });
 
     testWidgets('a cash advance goes from a credit account to Savings/Cash', (
       tester,
     ) async {
-      await openForm(tester, TransactionType.transfer);
+      await openForm(tester, TransactionKind.transfer);
 
       await tester.enterText(field('Amount'), '2,600');
       await choose(tester, 'From', 'RCBC Credit · Credit');
@@ -391,26 +383,10 @@ void main() {
       expect(draft.destinationAccountId, bdoId);
     });
 
-    testWidgets('choosing a credit source clears a loan destination', (
-      tester,
-    ) async {
-      await openForm(tester, TransactionType.transfer);
-
-      await tester.enterText(field('Amount'), '100');
-      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
-      await choose(tester, 'To', 'Car Loan · Loan');
-      await choose(tester, 'From', 'RCBC Credit · Credit');
-      expect(find.text('Car Loan · Loan'), findsNothing);
-      await save(tester);
-
-      expect(find.text('Choose an account.'), findsOneWidget);
-      expect(repository.created, isEmpty);
-    });
-
     testWidgets('choosing a credit source keeps a Savings/Cash destination', (
       tester,
     ) async {
-      await openForm(tester, TransactionType.transfer);
+      await openForm(tester, TransactionKind.transfer);
 
       await tester.enterText(field('Amount'), '100');
       await choose(tester, 'From', 'BDO Savings · Savings / Cash');
@@ -424,7 +400,7 @@ void main() {
     testWidgets('Rule 7: rejects the same account on both sides', (
       tester,
     ) async {
-      await openForm(tester, TransactionType.transfer);
+      await openForm(tester, TransactionKind.transfer);
 
       await tester.enterText(field('Amount'), '100');
       await choose(tester, 'From', 'BDO Savings · Savings / Cash');
@@ -439,7 +415,7 @@ void main() {
     });
 
     testWidgets('requires both accounts', (tester) async {
-      await openForm(tester, TransactionType.transfer);
+      await openForm(tester, TransactionKind.transfer);
 
       await tester.enterText(field('Amount'), '100');
       await save(tester);
@@ -448,9 +424,74 @@ void main() {
     });
   });
 
+  group('Loan payment', () {
+    testWidgets('G4: saves a transfer from Savings/Cash to the loan', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionKind.loanPayment);
+      expect(find.text('New Loan payment'), findsOneWidget);
+
+      await tester.enterText(field('Amount'), '5000');
+      await choose(tester, 'From', 'BDO Savings · Savings / Cash');
+      await choose(tester, 'To', 'Car Loan · Loan');
+      await tester.enterText(field('Description (optional)'), 'November');
+      await save(tester);
+
+      final draft = repository.created.single;
+      expect(draft.type, TransactionType.transfer);
+      expect(draft.amount, php(500000));
+      expect(draft.sourceAccountId, bdoId);
+      expect(draft.destinationAccountId, carLoanId);
+      expect(draft.categoryId, isNull);
+      expect(draft.payee, 'November');
+      expect(find.text('Loan payment saved'), findsOneWidget);
+    });
+
+    testWidgets('offers only Savings/Cash sources and loan destinations', (
+      tester,
+    ) async {
+      await openForm(tester, TransactionKind.loanPayment);
+
+      expect(await optionsOf(tester, 'From'), [
+        'BDO Savings · Savings / Cash',
+        'Cash Wallet · Savings / Cash',
+      ]);
+      expect(await optionsOf(tester, 'To'), ['Car Loan · Loan']);
+    });
+
+    testWidgets('explains when there is no loan account', (tester) async {
+      await openForm(
+        tester,
+        TransactionKind.loanPayment,
+        withAccounts: [accounts[bdoId]!],
+      );
+
+      expect(find.text('Add a Loan account first.'), findsOneWidget);
+    });
+
+    testWidgets('edits an existing transfer into a loan', (tester) async {
+      final payment = saved(
+        transfer(from: bdoId, to: carLoanId, amount: 500000),
+        id: '12',
+      );
+      await openForm(tester, TransactionKind.loanPayment, editing: payment);
+
+      expect(find.text('Edit Loan payment'), findsOneWidget);
+      expect(find.text('Car Loan · Loan'), findsOneWidget);
+
+      await tester.enterText(field('Amount'), '6000');
+      await save(tester);
+
+      final update = repository.updated.single;
+      expect(update.draft.type, TransactionType.transfer);
+      expect(update.draft.destinationAccountId, carLoanId);
+      expect(update.draft.amount, php(600000));
+    });
+  });
+
   group('Credit card payment', () {
     testWidgets('pays a card from a savings account', (tester) async {
-      await openForm(tester, TransactionType.creditCardPayment);
+      await openForm(tester, TransactionKind.creditCardPayment);
       expect(find.text('New Credit card payment'), findsOneWidget);
 
       await tester.enterText(field('Amount'), '3,000');
@@ -468,7 +509,7 @@ void main() {
     });
 
     testWidgets('offers only credit accounts as destination', (tester) async {
-      await openForm(tester, TransactionType.creditCardPayment);
+      await openForm(tester, TransactionKind.creditCardPayment);
 
       expect(await optionsOf(tester, 'To'), ['RCBC Credit · Credit']);
       expect(await optionsOf(tester, 'From'), [
@@ -480,7 +521,7 @@ void main() {
     testWidgets('explains when there is no credit account', (tester) async {
       await openForm(
         tester,
-        TransactionType.creditCardPayment,
+        TransactionKind.creditCardPayment,
         withAccounts: [accounts[bdoId]!],
       );
 
@@ -490,7 +531,7 @@ void main() {
     testWidgets('names custom types that would work too', (tester) async {
       await openForm(
         tester,
-        TransactionType.creditCardPayment,
+        TransactionKind.creditCardPayment,
         withAccounts: [accounts[bdoId]!],
         customTypes: [
           CustomAccountType(
@@ -525,7 +566,7 @@ void main() {
     );
 
     testWidgets('fills in the existing values', (tester) async {
-      await openForm(tester, original.type, editing: original);
+      await openForm(tester, TransactionKind.spending, editing: original);
 
       expect(find.text('Edit Spending'), findsOneWidget);
       expect(find.text('500.00'), findsOneWidget);
@@ -537,7 +578,7 @@ void main() {
     });
 
     testWidgets('saves changes with update, keeping the type', (tester) async {
-      await openForm(tester, original.type, editing: original);
+      await openForm(tester, TransactionKind.spending, editing: original);
 
       await tester.enterText(field('Amount'), '750');
       await choose(tester, 'Paid from', 'RCBC Credit · Credit');
@@ -558,7 +599,7 @@ void main() {
       tester,
     ) async {
       final fromOld = saved(spending(from: oldWalletId), id: '8');
-      await openForm(tester, fromOld.type, editing: fromOld);
+      await openForm(tester, TransactionKind.spending, editing: fromOld);
 
       expect(
         find.text('Old Wallet · Savings / Cash (archived)'),
@@ -575,7 +616,7 @@ void main() {
       tester,
     ) async {
       final gift = saved(spending(category: giftsId), id: '9');
-      await openForm(tester, gift.type, editing: gift);
+      await openForm(tester, TransactionKind.spending, editing: gift);
 
       expect(find.text('Gifts (archived)'), findsOneWidget);
 
@@ -586,7 +627,7 @@ void main() {
     });
 
     testWidgets('validates edits like new transactions', (tester) async {
-      await openForm(tester, original.type, editing: original);
+      await openForm(tester, TransactionKind.spending, editing: original);
 
       await tester.enterText(field('Amount'), '0');
       await tester.enterText(field('Paid to'), '');
