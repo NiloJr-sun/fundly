@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/features/accounts/presentation/account_detail_screen.dart';
+import 'package:fundly/features/spaces/presentation/space_providers.dart';
 import 'package:fundly/features/spending/presentation/spending_screen.dart';
 import 'package:fundly/features/transactions/presentation/all_transactions_screen.dart';
 import 'package:fundly/features/transactions/presentation/transaction_detail_screen.dart';
@@ -301,6 +302,82 @@ void main() {
       expect(repository.deleted, [lunch.id]);
       expect(find.byType(TransactionDetailScreen), findsNothing);
       expect(find.text('Transaction deleted'), findsOneWidget);
+    });
+  });
+  group('Swipe to delete', () {
+    late FakeTransactionRepository repository;
+
+    setUp(() => repository = FakeTransactionRepository());
+
+    Future<void> pumpList(WidgetTester tester, {bool canEdit = true}) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...fakeAccounts(
+              active,
+              archived: archived,
+              transactions: transactions,
+              categories: categories.values.toList(),
+              transactionRepository: repository,
+            ),
+            if (!canEdit) canEditProvider.overrideWithValue(false),
+          ],
+          child: const MaterialApp(home: AllTransactionsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> swipeLeft(WidgetTester tester, String title) async {
+      await tester.drag(find.text(title), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('asks first; Cancel keeps the row', (tester) async {
+      await pumpList(tester);
+      await swipeLeft(tester, 'Food');
+
+      expect(find.text('Delete this transaction?'), findsOneWidget);
+      expect(find.textContaining('Food · ₱150.00'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, isEmpty);
+      expect(find.text('Food'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Food')).dx,
+        lessThan(200),
+        reason: 'the row slides back into place',
+      );
+    });
+
+    testWidgets('confirming deletes the transaction', (tester) async {
+      await pumpList(tester);
+      await swipeLeft(tester, 'Food');
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, [lunch.id]);
+      expect(find.text('Transaction deleted'), findsOneWidget);
+    });
+
+    testWidgets('swiping right does nothing', (tester) async {
+      await pumpList(tester);
+      await tester.drag(find.text('Food'), const Offset(600, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this transaction?'), findsNothing);
+    });
+
+    testWidgets('when records cannot be changed, it explains and asks '
+        'nothing', (tester) async {
+      await pumpList(tester, canEdit: false);
+      await swipeLeft(tester, 'Food');
+
+      expect(find.text('Delete this transaction?'), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(repository.deleted, isEmpty);
     });
   });
 }

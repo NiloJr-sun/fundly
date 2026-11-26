@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/spacing.dart';
 import '../../../core/formatting/date_formatter.dart';
 import '../../accounts/domain/account_type.dart';
 import '../../accounts/presentation/accounts_providers.dart';
@@ -9,10 +10,12 @@ import '../../categories/presentation/categories_providers.dart';
 import '../domain/transaction.dart';
 import '../domain/transaction_kind.dart';
 import '../domain/transaction_type.dart';
+import 'transaction_delete.dart';
 import 'transaction_detail_screen.dart';
 import 'transaction_display.dart';
 
-/// One transaction row. Tap for details.
+/// One transaction row. Tap for details; swipe left to delete, after
+/// confirming (the same dialog as the detail screen's Delete).
 ///
 /// When shown inside an account, pass [accountId] so the amount's sign shows
 /// the effect on that account.
@@ -96,7 +99,7 @@ class TransactionTile extends ConsumerWidget {
     final icon = Icon(transactionKindIcon(kind));
     final amount = transactionAmountText(transaction, accountId: accountId);
     final colors = Theme.of(context).colorScheme;
-    return ListTile(
+    final tile = ListTile(
       leading: boxedIcon
           ? Container(
               width: 40,
@@ -133,6 +136,27 @@ class TransactionTile extends ConsumerWidget {
               TransactionDetailScreen(transactionId: transaction.id),
         ),
       ),
+    );
+    return Dismissible(
+      key: ValueKey('dismiss-transaction-${transaction.id}'),
+      direction: DismissDirection.endToStart,
+      background: ColoredBox(
+        color: colors.error,
+        child: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(end: Spacing.lg),
+            child: Icon(Icons.delete_outline, color: colors.onError),
+          ),
+        ),
+      ),
+      // The row always slides back: once deleted, the list drops it as its
+      // transactions update, so the row never stays dismissed in the tree.
+      confirmDismiss: (_) async {
+        await confirmAndDeleteTransaction(context, ref, transaction);
+        return false;
+      },
+      child: tile,
     );
   }
 }
