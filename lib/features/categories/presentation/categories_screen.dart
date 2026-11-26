@@ -3,22 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
+import '../../accounts/domain/account.dart';
 import '../../accounts/presentation/account_display.dart';
 import '../../accounts/presentation/accounts_providers.dart';
 import '../../sync/presentation/edit_guard.dart';
 import '../domain/category.dart';
+import '../domain/plan_section.dart';
 import 'categories_providers.dart';
 import 'category_display.dart';
 import 'category_form_screen.dart';
 
 const double _floatingButtonClearance = 88;
 
-/// Lists categories in sections: Spending, Liability, Inflow and Archived.
-/// Tap a category to rename, archive or delete it.
+/// Lists categories in sections: Spending, Credit card payments, Loans,
+/// Liability, Inflow and Archived. Tap a category to rename, archive or
+/// delete it.
 ///
-/// Liability holds spending categories in the Liability Plans group and the
-/// automatic debt rows of Credit and Loan accounts. A debt row's form only
-/// sets its default Target; its name and archive status follow its account.
+/// Credit card payments and Loans hold the automatic debt rows of Credit and
+/// Loan accounts (custom types by their base type); Liability holds spending
+/// categories in the Liability Plans group. A debt row's form only sets its
+/// default Target; its name and archive status follow its account.
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
 
@@ -40,6 +44,7 @@ class CategoriesScreen extends ConsumerWidget {
                   !category.isPlanDeleted)
                 category,
           ],
+          accountsById: ref.watch(accountsByIdProvider),
         ),
         AsyncError() => const CenteredMessage(
           'Your categories could not be loaded.',
@@ -61,13 +66,20 @@ class CategoriesScreen extends ConsumerWidget {
 }
 
 class _CategoryList extends StatelessWidget {
-  const _CategoryList({required this.categories, required this.debtRows});
+  const _CategoryList({
+    required this.categories,
+    required this.debtRows,
+    required this.accountsById,
+  });
 
   /// The user's own categories (no debt rows).
   final List<Category> categories;
 
   /// Active debt rows linked to Credit and Loan accounts.
   final List<Category> debtRows;
+
+  /// Every account, archived included, to split debt rows by type.
+  final Map<String, Account> accountsById;
 
   @override
   Widget build(BuildContext context) {
@@ -84,16 +96,32 @@ class _CategoryList extends StatelessWidget {
     );
     final liability = active.where(isLiability);
     final inflow = active.where((c) => c.kind == CategoryKind.inflow);
+    List<Category> debtRowsIn(PlanSection section) => [
+      for (final row in debtRows)
+        if (planSectionOf(row, accountsById) == section) row,
+    ];
+    final cardRows = debtRowsIn(PlanSection.creditCardPayments);
+    final loanRows = debtRowsIn(PlanSection.loans);
+    // Debt rows whose account is unknown stay with the Liability group.
+    final otherDebtRows = debtRowsIn(PlanSection.liability);
     final children = <Widget>[
       if (spending.isNotEmpty) ...[
         _SectionHeader(title: categoryKindLabel(CategoryKind.spending)),
         for (final category in spending) _CategoryTile(category: category),
       ],
-      if (liability.isNotEmpty || debtRows.isNotEmpty) ...[
-        _SectionHeader(title: planGroupLabel(PlanGroup.liability)),
+      if (cardRows.isNotEmpty) ...[
+        _SectionHeader(title: planSectionLabel(PlanSection.creditCardPayments)),
+        for (final row in cardRows) _DebtRowTile(row: row),
+      ],
+      if (loanRows.isNotEmpty) ...[
+        _SectionHeader(title: planSectionLabel(PlanSection.loans)),
+        for (final row in loanRows) _DebtRowTile(row: row),
+      ],
+      if (liability.isNotEmpty || otherDebtRows.isNotEmpty) ...[
+        _SectionHeader(title: planSectionLabel(PlanSection.liability)),
         for (final category in liability)
           _CategoryTile(category: category, inGroupSection: true),
-        for (final row in debtRows) _DebtRowTile(row: row),
+        for (final row in otherDebtRows) _DebtRowTile(row: row),
       ],
       if (inflow.isNotEmpty) ...[
         _SectionHeader(title: categoryKindLabel(CategoryKind.inflow)),

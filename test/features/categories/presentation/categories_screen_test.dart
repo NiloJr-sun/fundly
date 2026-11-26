@@ -162,20 +162,49 @@ void main() {
       return (tile.subtitle as Text?)?.data;
     }
 
-    testWidgets('sits between Spending and Inflow with Liability-group '
-        'categories and debt rows', (tester) async {
-      await pumpWithAccounts(tester, [food, salary, insurance, cardRow]);
+    final loan = fixtures.accounts[fixtures.carLoanId]!;
+    final loanRow = Category(
+      id: '9',
+      name: loan.name,
+      kind: CategoryKind.spending,
+      planGroup: PlanGroup.liability,
+      linkedAccountId: loan.id,
+    );
 
-      expect(top(tester, 'Food'), lessThan(top(tester, 'Liability')));
-      expect(top(tester, 'Liability'), lessThan(top(tester, 'Insurance')));
-      expect(top(tester, 'Insurance'), lessThan(top(tester, card.name)));
-      expect(top(tester, card.name), lessThan(top(tester, 'Inflow')));
+    testWidgets('debt rows split into Credit card payments and Loans, then '
+        'Liability-group categories, before Inflow', (tester) async {
+      await pumpWithAccounts(tester, [
+        food,
+        salary,
+        insurance,
+        cardRow,
+        loanRow,
+      ]);
+
+      double heading(String title) => top(tester, title);
+      expect(top(tester, 'Food'), lessThan(heading('Credit card payments')));
+      expect(heading('Credit card payments'), lessThan(top(tester, card.name)));
+      expect(top(tester, card.name), lessThan(heading('Loans')));
+      expect(heading('Loans'), lessThan(top(tester, loan.name)));
+      expect(top(tester, loan.name), lessThan(heading('Liability')));
+      expect(heading('Liability'), lessThan(top(tester, 'Insurance')));
+      expect(top(tester, 'Insurance'), lessThan(heading('Inflow')));
       expect(
         subtitleOf(tester, 'Insurance'),
         isNull,
         reason: 'the section heading already names the group',
       );
       expect(subtitleOf(tester, card.name), 'From account · Credit');
+    });
+
+    testWidgets('hides Liability without Liability-group categories', (
+      tester,
+    ) async {
+      await pumpWithAccounts(tester, [food, cardRow]);
+
+      expect(find.text('Credit card payments'), findsOneWidget);
+      expect(find.text('Loans'), findsNothing);
+      expect(find.text('Liability'), findsNothing);
     });
 
     testWidgets('a debt row opens its Target form', (tester) async {
@@ -211,7 +240,8 @@ void main() {
         ),
       ]);
 
-      expect(find.text('Liability'), findsNothing);
+      expect(find.text('Credit card payments'), findsNothing);
+      expect(find.text('Loans'), findsNothing);
       expect(find.text(card.name), findsNothing);
       expect(find.text('Old loan'), findsNothing);
     });

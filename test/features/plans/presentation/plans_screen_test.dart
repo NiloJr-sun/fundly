@@ -235,6 +235,56 @@ void main() {
       expect(top(find.text('Liability')), lessThan(top(row('Card payoff'))));
     });
 
+    testWidgets('debt rows split into Credit card payments and Loans, '
+        'before Liability-group categories', (tester) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpScreen(
+        tester,
+        withCategories: [
+          ...allCategories,
+          const Category(
+            id: '40',
+            name: 'Emergency fund',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.savings,
+          ),
+          const Category(
+            id: '41',
+            name: 'Card payoff',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.liability,
+          ),
+          const Category(
+            id: '42',
+            name: 'RCBC Credit',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.liability,
+            linkedAccountId: rcbcCardId,
+          ),
+          const Category(
+            id: '43',
+            name: 'Car Loan',
+            kind: CategoryKind.spending,
+            planGroup: PlanGroup.liability,
+            linkedAccountId: carLoanId,
+          ),
+        ],
+      );
+
+      double top(Finder finder) => tester.getTopLeft(finder).dy;
+      final cards = find.text('Credit card payments');
+      final loans = find.text('Loans');
+      final liability = find.text('Liability');
+      expect(top(row('Emergency fund')), lessThan(top(cards)));
+      expect(top(cards), lessThan(top(row('RCBC Credit'))));
+      expect(top(row('RCBC Credit')), lessThan(top(loans)));
+      expect(top(loans), lessThan(top(row('Car Loan'))));
+      expect(top(row('Car Loan')), lessThan(top(liability)));
+      expect(top(liability), lessThan(top(row('Card payoff'))));
+    });
+
     testWidgets('groups start expanded and collapse independently', (
       tester,
     ) async {

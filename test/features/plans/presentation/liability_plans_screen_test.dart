@@ -44,7 +44,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Liability'), findsOneWidget);
+      expect(find.text('Credit card payments'), findsOneWidget);
       expect(find.widgetWithText(PlanRow, 'RCBC Credit'), findsOneWidget);
       // Tapping the row edits Assigned on the keypad.
       await tester.tap(find.text('RCBC Credit'));

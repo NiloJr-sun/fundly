@@ -14,7 +14,8 @@ import '../../../core/time/clock_provider.dart';
 import '../../../core/widgets/centered_message.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/presentation/account_form_messages.dart';
-import '../../categories/domain/category.dart';
+import '../../accounts/presentation/accounts_providers.dart';
+import '../../categories/domain/plan_section.dart';
 import '../../categories/presentation/categories_screen.dart';
 import '../../categories/presentation/category_display.dart';
 import '../../spaces/presentation/screen_title.dart';
@@ -414,21 +415,16 @@ class _PlanList extends ConsumerWidget {
   /// Room below the last row, so it can scroll above the docked panel.
   final double bottomPadding;
 
-  List<CategoryPlanSummary> _rowsIn(PlanGroup group) => [
-    for (final row in rows)
-      if (row.category.planGroup == group) row,
-  ];
-
   /// The group's name with the sums of its rows' Assigned and Available.
-  Widget _groupHeader(PlanGroup group) {
+  Widget _groupHeader(PlanSection section, List<CategoryPlanSummary> rows) {
     var assigned = const Money.zero(Account.defaultCurrency);
     var available = const Money.zero(Account.defaultCurrency);
-    for (final row in _rowsIn(group)) {
+    for (final row in rows) {
       assigned += row.assigned;
       available += row.available;
     }
     return PlanGroupHeader(
-      label: planGroupLabel(group),
+      label: planSectionLabel(section),
       assigned: assigned,
       available: available,
     );
@@ -436,6 +432,13 @@ class _PlanList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accountsById = ref.watch(accountsByIdProvider);
+    final rowsBySection = <PlanSection, List<CategoryPlanSummary>>{};
+    for (final row in rows) {
+      (rowsBySection[planSectionOf(row.category, accountsById)] ??= []).add(
+        row,
+      );
+    }
     return ListView(
       padding: EdgeInsets.only(bottom: bottomPadding),
       children: [
@@ -444,14 +447,14 @@ class _PlanList extends ConsumerWidget {
           const CenteredMessage(
             'No active plans.\nAdd a category or unarchive a plan.',
           ),
-        // One section per group that has rows, in [PlanGroup] order.
-        for (final group in PlanGroup.values)
-          if (rows.any((row) => row.category.planGroup == group))
+        // One section per group that has rows, in [PlanSection] order.
+        for (final section in PlanSection.values)
+          if (rowsBySection[section] case final sectionRows?)
             // Nearly edge to edge with rounded corners: a tinted band for the
             // group, then its rows on the plain surface, with hairlines
             // between them.
             Padding(
-              key: ValueKey(group),
+              key: ValueKey(section),
               padding: const EdgeInsets.symmetric(
                 horizontal: Spacing.sm,
                 vertical: Spacing.xs,
@@ -459,7 +462,7 @@ class _PlanList extends ConsumerWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(Spacing.md),
                 child: ExpansionTile(
-                  key: PageStorageKey('plans-group-${group.name}'),
+                  key: PageStorageKey('plans-group-${section.name}'),
                   initiallyExpanded: true,
                   controlAffinity: ListTileControlAffinity.leading,
                   shape: const Border(),
@@ -476,9 +479,9 @@ class _PlanList extends ConsumerWidget {
                     right: Spacing.xs,
                   ),
                   expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-                  title: _groupHeader(group),
+                  title: _groupHeader(section, sectionRows),
                   children: [
-                    for (final summary in _rowsIn(group)) ...[
+                    for (final summary in sectionRows) ...[
                       const Divider(height: 1),
                       PlanRow(
                         key: summary.category.id == editingId

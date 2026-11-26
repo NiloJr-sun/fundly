@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/spacing.dart';
 import '../../../core/widgets/centered_message.dart';
+import '../../accounts/presentation/accounts_providers.dart';
+import '../../categories/domain/plan_section.dart';
 import '../../categories/presentation/category_display.dart';
 import '../../sync/presentation/edit_guard.dart';
 import '../data/plan_repository.dart';
@@ -21,6 +23,7 @@ class ArchivedPlansScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(selectedPlanMonthProvider);
     final summaries = ref.watch(archivedPlanSummariesProvider(month));
+    final accountsById = ref.watch(accountsByIdProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Archived plans')),
       body: Column(
@@ -35,7 +38,11 @@ class ArchivedPlansScreen extends ConsumerWidget {
                   for (final row in rows)
                     ListTile(
                       title: Text(row.category.name),
-                      subtitle: Text(planGroupLabel(row.category.planGroup)),
+                      subtitle: Text(
+                        planSectionLabel(
+                          planSectionOf(row.category, accountsById),
+                        ),
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(

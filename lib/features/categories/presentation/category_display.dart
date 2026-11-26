@@ -1,6 +1,7 @@
 import '../domain/category.dart';
 import '../domain/category_rules.dart';
 import '../domain/category_validation_exception.dart';
+import '../domain/plan_section.dart';
 
 String categoryKindLabel(CategoryKind kind) => switch (kind) {
   CategoryKind.spending => 'Spending',
@@ -12,6 +13,15 @@ String planGroupLabel(PlanGroup group) => switch (group) {
   PlanGroup.spending => 'Spending',
   PlanGroup.savings => 'Savings',
   PlanGroup.liability => 'Liability',
+};
+
+/// The heading of a [PlanSection] on the Plans tab and Categories screen.
+String planSectionLabel(PlanSection section) => switch (section) {
+  PlanSection.spending => 'Spending',
+  PlanSection.savings => 'Savings',
+  PlanSection.creditCardPayments => 'Credit card payments',
+  PlanSection.loans => 'Loans',
+  PlanSection.liability => 'Liability',
 };
 
 String categoryNameErrorText(CategoryNameError error) => switch (error) {
