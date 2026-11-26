@@ -67,6 +67,22 @@ void main() {
     await tapTab(tester, 'Spending');
     expectOnlyVisible(SpendingScreen);
   });
+  testWidgets('signed out, a long press on Profile acts as a tap', (
+    tester,
+  ) async {
+    await pumpShell(tester);
+    await tester.longPress(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Profile'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsNothing);
+    expectOnlyVisible(ProfileScreen);
+  });
+
   testWidgets(
     'compact layout keeps actions reachable and collapsed plans across tabs',
     (tester) async {

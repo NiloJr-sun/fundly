@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fundly/app/home_shell.dart';
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/accounts/presentation/accounts_screen.dart';
 import 'package:fundly/features/auth/data/auth_repository.dart';
@@ -459,5 +460,60 @@ void main() {
         );
       });
     }
+  });
+
+  group('long press on the Profile tab', () {
+    Finder profileTab() => find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Profile'),
+    );
+
+    testWidgets('lists every space without the manage actions', (tester) async {
+      await pump(tester, const HomeShell());
+      await tester.longPress(profileTab());
+      await tester.pumpAndSettle();
+
+      Finder inSheet(String text) => find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text(text),
+      );
+      expect(inSheet('Switch space'), findsOneWidget);
+      expect(inSheet('Personal'), findsOneWidget);
+      expect(inSheet('Business'), findsOneWidget);
+      expect(inSheet('Household'), findsOneWidget);
+      expect(inSheet('Active'), findsOneWidget);
+      expect(find.byTooltip('Actions for Business'), findsNothing);
+      expect(find.text('Create a new space'), findsNothing);
+      // A long press does not change the tab.
+      expect(find.byType(SpendingScreen), findsOneWidget);
+    });
+
+    testWidgets('tapping a space closes the sheet and switches to it', (
+      tester,
+    ) async {
+      final container = await pump(tester, const HomeShell());
+      await tester.longPress(profileTab());
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('Business'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch space'), findsNothing);
+      expect(container.read(activeSpaceIdProvider), businessId);
+      expect(remembered.remembered(user.userId), businessId);
+    });
+
+    testWidgets('a tap still opens the Profile tab', (tester) async {
+      await pump(tester, const HomeShell());
+      await tester.tap(profileTab());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Switch space'), findsNothing);
+      expect(find.byType(ProfileScreen), findsOneWidget);
+    });
   });
 }

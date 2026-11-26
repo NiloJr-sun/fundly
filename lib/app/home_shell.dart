@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/accounts/presentation/accounts_screen.dart';
 import '../features/plans/presentation/plans_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/spaces/data/space_directory.dart';
+import '../features/spaces/presentation/space_list.dart';
 import '../features/spaces/presentation/space_removal_ui.dart';
 import '../features/spending/presentation/spending_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/spacing.dart';
 
 /// Top-level navigation: Spending, Plans, Accounts and Profile tabs.
+/// Signed in, a long press on Profile opens the space switcher.
 ///
 /// Uses an [IndexedStack] so each tab keeps its state (such as scroll
 /// position) when the user switches away and back.
@@ -111,15 +115,40 @@ class _HomeShellState extends State<HomeShell> {
                   selectedIcon: Icon(Icons.account_balance_wallet),
                   label: 'Accounts',
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Profile',
-                ),
+                _ProfileDestination(),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The Profile tab. While the spaces list has spaces (signed in), a long
+/// press opens the space switcher sheet; otherwise it does nothing. The
+/// tooltip is off so it does not compete for the long press; the label is
+/// always shown.
+class _ProfileDestination extends ConsumerWidget {
+  const _ProfileDestination();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasSpaces = ref.watch(
+      spacesProvider.select((spaces) => spaces.value?.isNotEmpty ?? false),
+    );
+    return GestureDetector(
+      onLongPress: hasSpaces
+          ? () {
+              HapticFeedback.mediumImpact();
+              showSpaceSwitcherSheet(context);
+            }
+          : null,
+      child: const NavigationDestination(
+        icon: Icon(Icons.person_outline),
+        selectedIcon: Icon(Icons.person),
+        label: 'Profile',
+        tooltip: '',
       ),
     );
   }

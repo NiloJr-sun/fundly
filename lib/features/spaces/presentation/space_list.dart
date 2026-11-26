@@ -111,8 +111,81 @@ class _SpaceSectionState extends ConsumerState<SpaceSection> {
 }
 
 /// Every space, then the create and join actions.
-class _SpaceList extends ConsumerWidget {
+class _SpaceList extends StatelessWidget {
   const _SpaceList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: Spacing.xs),
+        const _SpaceRows(withActions: true),
+        const Divider(height: Spacing.md),
+        _SpaceActionRow(
+          icon: Icons.add,
+          title: 'Create a new space',
+          subtitle: 'Needs a connection',
+          // The dialog creates the space and switches to it.
+          onTap: () => createSpace(context),
+        ),
+        _SpaceActionRow(
+          icon: Icons.group_add_outlined,
+          title: 'Join a space',
+          subtitle: 'Paste an invite link',
+          onTap: () => joinSpace(context),
+        ),
+      ],
+    );
+  }
+}
+
+/// Opens a sheet listing every space, from a long press on the Profile tab.
+/// Tap a space to switch to it; managing spaces stays on the Profile tab.
+Future<void> showSpaceSwitcherSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            0,
+            Spacing.md,
+            Spacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: Spacing.sm),
+                child: Text(
+                  'Switch space',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              // Close the sheet first: switching rebuilds the app from its
+              // home tabs, which would drop the sheet's route.
+              _SpaceRows(
+                withActions: false,
+                beforeSwitch: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+/// A row per space, then a row per space removed from this user but still
+/// on this device. Tap a row to switch to it. [withActions] adds each row's
+/// ⋮ menu (and the remove button on removed spaces); [beforeSwitch] runs
+/// before switching to another space.
+class _SpaceRows extends ConsumerWidget {
+  const _SpaceRows({required this.withActions, this.beforeSwitch});
+
+  final bool withActions;
+  final VoidCallback? beforeSwitch;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -125,6 +198,7 @@ class _SpaceList extends ConsumerWidget {
     final theme = Theme.of(context);
 
     Future<void> choose(String spaceId) async {
+      beforeSwitch?.call();
       if (spaceId != activeId) {
         await ref.read(activeSpaceIdProvider.notifier).select(spaceId);
       }
@@ -133,7 +207,6 @@ class _SpaceList extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: Spacing.xs),
         if (spaces.isEmpty && removed.isEmpty)
           // Static, not a spinner: the list may wait a long time offline.
           ListTile(
@@ -158,7 +231,7 @@ class _SpaceList extends ConsumerWidget {
                 ? '${roleLabel(space.role)} · Personal'
                 : roleLabel(space.role),
             active: space.id == activeId,
-            trailing: SpaceActionsButton(space: space),
+            trailing: withActions ? SpaceActionsButton(space: space) : null,
             onTap: () => choose(space.id),
           ),
         for (final space in removed)
@@ -169,27 +242,15 @@ class _SpaceList extends ConsumerWidget {
             name: space.name,
             details: 'Removed · read-only on this device',
             active: space.spaceId == activeId,
-            trailing: IconButton(
-              tooltip: 'Remove ${space.name} from this device',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => removeSpaceFromDevice(context, ref, space),
-            ),
+            trailing: withActions
+                ? IconButton(
+                    tooltip: 'Remove ${space.name} from this device',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => removeSpaceFromDevice(context, ref, space),
+                  )
+                : null,
             onTap: () => choose(space.spaceId),
           ),
-        const Divider(height: Spacing.md),
-        _SpaceActionRow(
-          icon: Icons.add,
-          title: 'Create a new space',
-          subtitle: 'Needs a connection',
-          // The dialog creates the space and switches to it.
-          onTap: () => createSpace(context),
-        ),
-        _SpaceActionRow(
-          icon: Icons.group_add_outlined,
-          title: 'Join a space',
-          subtitle: 'Paste an invite link',
-          onTap: () => joinSpace(context),
-        ),
       ],
     );
   }
@@ -204,8 +265,8 @@ class _SpaceTile extends StatelessWidget {
     required this.name,
     required this.details,
     required this.active,
-    required this.trailing,
     required this.onTap,
+    this.trailing,
     this.iconColor,
   });
 
@@ -214,7 +275,7 @@ class _SpaceTile extends StatelessWidget {
   final String name;
   final String details;
   final bool active;
-  final Widget trailing;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   @override
