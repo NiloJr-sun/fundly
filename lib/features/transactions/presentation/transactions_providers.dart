@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../accounts/presentation/accounts_providers.dart';
 import '../data/transaction_repository.dart';
 import '../domain/transaction.dart';
 import '../domain/transaction_filter.dart';
@@ -48,5 +49,15 @@ final transactionFilterProvider = NotifierProvider.autoDispose
 final filteredTransactionsProvider = Provider.autoDispose
     .family<AsyncValue<List<Transaction>>, TransactionFilter>((ref, initial) {
       final filter = ref.watch(transactionFilterProvider(initial));
-      return ref.watch(allTransactionsProvider).whenData(filter.apply);
+      // Archived accounts included: their history can be filtered too.
+      final accountTypes = {
+        for (final account in ref.watch(accountsByIdProvider).values)
+          account.id: account.type,
+      };
+      return ref
+          .watch(allTransactionsProvider)
+          .whenData(
+            (transactions) =>
+                filter.apply(transactions, accountTypes: accountTypes),
+          );
     });

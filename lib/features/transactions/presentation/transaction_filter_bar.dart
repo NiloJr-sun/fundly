@@ -11,7 +11,8 @@ import '../../categories/presentation/categories_providers.dart';
 import '../domain/transaction_filter.dart';
 import 'transactions_providers.dart';
 
-/// Date, account and category filter chips for the all-transactions list.
+/// Date, type, account and category filter chips for the all-transactions
+/// list.
 class TransactionFilterBar extends ConsumerWidget {
   const TransactionFilterBar({
     super.key,
@@ -46,6 +47,17 @@ class TransactionFilterBar extends ConsumerWidget {
             onClear: () => notifier.set(filter.withDateRange(null)),
           ),
           _FilterChip(
+            label: switch (filter.types.length) {
+              0 => 'All types',
+              1 => transactionTypeFilterLabel(filter.types.single),
+              final count => '$count types',
+            },
+            icon: Icons.swap_vert,
+            active: filter.types.isNotEmpty,
+            onPressed: () => _pickTypes(context),
+            onClear: () => notifier.set(filter.withTypes(const {})),
+          ),
+          _FilterChip(
             label: accounts[filter.accountId]?.name ?? 'All accounts',
             icon: Icons.account_balance_wallet_outlined,
             active: filter.accountId != null,
@@ -53,11 +65,15 @@ class TransactionFilterBar extends ConsumerWidget {
             onClear: () => notifier.set(filter.withAccount(null)),
           ),
           _FilterChip(
-            label: categories[filter.categoryId]?.name ?? 'All categories',
+            label: filter.uncategorized
+                ? 'No category'
+                : categories[filter.categoryId]?.name ?? 'All categories',
             icon: Icons.label_outline,
-            active: filter.categoryId != null,
+            active: filter.categoryId != null || filter.uncategorized,
             onPressed: () => _pickCategory(context, ref),
-            onClear: () => notifier.set(filter.withCategory(null)),
+            onClear: () => notifier.set(
+              filter.withCategory(null).withUncategorized(false),
+            ),
           ),
           if (filter.paymentAccountId != null)
             InputChip(
@@ -132,6 +148,11 @@ class TransactionFilterBar extends ConsumerWidget {
     // Archived categories are included so their history can be found.
     final categories = ref.read(allCategoriesProvider).value ?? const [];
     final picked = await _pickFromSheet<String>(context, 'Category', [
+      (
+        value: _noCategory,
+        label: 'No category',
+        detail: 'Spending and Inflow without a category',
+      ),
       for (final category in categories)
         if (category.linkedAccountId == null)
           (
@@ -144,11 +165,91 @@ class TransactionFilterBar extends ConsumerWidget {
     final notifier = ref.read(
       transactionFilterProvider(initialFilter).notifier,
     );
+    final current = ref.read(transactionFilterProvider(initialFilter));
     notifier.set(
-      ref.read(transactionFilterProvider(initialFilter)).withCategory(picked),
+      picked == _noCategory
+          ? current.withUncategorized(true)
+          : current.withCategory(picked),
     );
   }
+
+  /// A sheet of checkboxes, one per type; each tick applies at once.
+  Future<void> _pickTypes(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: Consumer(
+        builder: (context, ref, _) {
+          final provider = transactionFilterProvider(initialFilter);
+          final filter = ref.watch(provider);
+          return ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                child: Text(
+                  'Type',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (final type in TransactionTypeFilter.values)
+                CheckboxListTile(
+                  title: Text(transactionTypeFilterLabel(type)),
+                  subtitle: switch (type) {
+                    TransactionTypeFilter.spending => const Text(
+                      'Card purchases included',
+                    ),
+                    TransactionTypeFilter.cardPurchase => const Text(
+                      'Spending charged to a credit card',
+                    ),
+                    TransactionTypeFilter.transfer => const Text(
+                      'Cash advances included',
+                    ),
+                    _ => null,
+                  },
+                  value: filter.types.contains(type),
+                  onChanged: (checked) => ref
+                      .read(provider.notifier)
+                      .set(
+                        filter.withTypes({
+                          for (final other in filter.types)
+                            if (other != type) other,
+                          if (checked ?? false) type,
+                        }),
+                      ),
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Done'),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
 }
+
+/// The category picker's value for No category; category ids are never
+/// empty.
+const _noCategory = '';
+
+/// The label of a [TransactionTypeFilter] choice.
+String transactionTypeFilterLabel(TransactionTypeFilter type) => switch (type) {
+  TransactionTypeFilter.spending => 'Spending',
+  TransactionTypeFilter.cardPurchase => 'Card purchases',
+  TransactionTypeFilter.inflow => 'Inflow',
+  TransactionTypeFilter.transfer => 'Transfer',
+  TransactionTypeFilter.loanPayment => 'Loan payment',
+  TransactionTypeFilter.cardPayment => 'Credit card payment',
+};
 
 /// Lets the user pick one option. Returns `null` if dismissed.
 Future<T?> _pickFromSheet<T>(

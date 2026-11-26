@@ -162,4 +162,83 @@ void main() {
     expect(find.text('All accounts'), findsOneWidget);
     expect(find.text('All categories'), findsOneWidget);
   });
+
+  group('Type', () {
+    Future<void> toggle(WidgetTester tester, String type) async {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(type),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('ticks apply at once; the chip counts them', (tester) async {
+      await pump(tester);
+      await tester.tap(find.widgetWithText(InputChip, 'All types'));
+      await tester.pumpAndSettle();
+
+      for (final type in [
+        'Spending',
+        'Card purchases',
+        'Inflow',
+        'Transfer',
+        'Loan payment',
+        'Credit card payment',
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(type),
+          ),
+          findsOneWidget,
+        );
+      }
+
+      await toggle(tester, 'Inflow');
+      expect(shownIds(tester), ['2']);
+      await toggle(tester, 'Transfer');
+      expect(shownIds(tester), ['3', '2']);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(InputChip, '2 types'), findsOneWidget);
+    });
+
+    testWidgets('one type names the chip; Clear shows every type again', (
+      tester,
+    ) async {
+      await pump(tester);
+      await tester.tap(find.widgetWithText(InputChip, 'All types'));
+      await tester.pumpAndSettle();
+      await toggle(tester, 'Spending');
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(InputChip, 'Spending'), findsOneWidget);
+      expect(shownIds(tester), ['4', '1']);
+
+      await tester.tap(
+        find.descendant(
+          of: find.widgetWithText(InputChip, 'Spending'),
+          matching: find.byTooltip('Clear'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(shownIds(tester), ['4', '3', '2', '1']);
+      expect(find.widgetWithText(InputChip, 'All types'), findsOneWidget);
+    });
+  });
+
+  testWidgets('No category in the category picker', (tester) async {
+    await pump(tester);
+
+    await pickFromSheet(tester, 'All categories', 'No category');
+
+    expect(find.widgetWithText(InputChip, 'No category'), findsOneWidget);
+    // Every transaction here with a category is Spending or Inflow; the
+    // transfer has none but is not Spending or Inflow.
+    expect(shownIds(tester), isEmpty);
+  });
 }
