@@ -201,10 +201,24 @@ class PowerSyncStore implements SyncedStore {
         );
       if (_closed) return;
       await sync.connect(connector: connector, options: syncConnectOptions);
-      if (firstDownload) {
+      final isPersonal = spaceId == _identity.userId;
+      if (firstDownload || isPersonal) {
         for (final subscription in _subscriptions) {
           await subscription.waitForFirstSync();
         }
+        if (_closed) return;
+        if (isPersonal) {
+          // A new user's first write creates Personal and its owner membership.
+          // Waiting for the space before queueing that write deadlocks sign-in.
+          await initializePersonalAfterDownload(
+            database,
+            userId: _identity.userId,
+            firstDownload: firstDownload,
+          );
+          return;
+        }
+        // Other spaces already exist, but membership can arrive later. Wait
+        // before initializing so viewers never send a write.
         await listed.future;
         if (!_closed) {
           await initializeDatasetIfEmpty(

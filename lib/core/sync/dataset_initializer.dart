@@ -3,6 +3,26 @@ import 'package:drift/drift.dart';
 import 'sync_queue.dart';
 import 'synced_database.dart';
 
+/// Personal is created by the server on the user's first write. After both
+/// streams have downloaded, bootstrap it without waiting for its space row.
+/// Also recover a store that previously finished an empty download but never
+/// sent that first write. Do not initialize an already-listed Personal store
+/// again on an ordinary reopen.
+Future<bool> initializePersonalAfterDownload(
+  SyncedDatabase database, {
+  required String userId,
+  required bool firstDownload,
+}) async {
+  if (!firstDownload) {
+    final spaces = database.syncedSpaces;
+    final listed = await (database.select(
+      spaces,
+    )..where((space) => space.id.equals(userId))).getSingleOrNull();
+    if (listed != null) return false;
+  }
+  return initializeDatasetIfEmpty(database, spaceId: userId, userId: userId);
+}
+
 /// Asks the server once for the default categories (cloud sync S5.3,
 /// Decision 4). Called after this device's first complete download: if the
 /// dataset has no categories, a `dataset.initialize` batch is queued. The

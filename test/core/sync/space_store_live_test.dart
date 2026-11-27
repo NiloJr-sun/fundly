@@ -53,6 +53,87 @@ void main() {
       : null;
 
   test(
+    'first sign-in creates Personal without any prior server write',
+    () async {
+      final config = jsonDecode(
+        File(configPath).readAsStringSync(),
+      ) as Map<String, Object?>;
+      final url = config['SUPABASE_URL']! as String;
+      if (!url.startsWith('http://127.0.0.1:')) {
+        fail('This check creates a user: local stack only');
+      }
+      final client = SupabaseClient(
+        url,
+        config['SUPABASE_PUBLISHABLE_KEY']! as String,
+        authOptions: const AuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+        ),
+      );
+      final email = 'fundly-first-${const Uuid().v4()}@example.test';
+      final password = const Uuid().v4();
+      final signedUp = await client.auth.signUp(
+        email: email,
+        password: password,
+      );
+      final userId = signedUp.user!.id;
+      final directory = await Directory.systemTemp.createTemp('fundly-first-');
+      SyncedStore? store;
+      try {
+        if (signedUp.session == null) {
+          await client.auth.signInWithPassword(
+            email: email,
+            password: password,
+          );
+        }
+        expect(await client.from('spaces').select('id'), isEmpty);
+        final personal = store = PowerSyncStore.open(
+          SignedIn(userId: userId, email: email),
+          userId,
+          client: client,
+          powerSyncUrl: config['POWERSYNC_URL']! as String,
+          directory: () async => directory.path,
+        );
+        await personal
+            .watchState()
+            .firstWhere((state) => state.hasSynced)
+            .timeout(const Duration(seconds: 60));
+        await _until(() async {
+          final categories = await personal.database
+              .customSelect('SELECT id FROM categories')
+              .get();
+          return categories.length == 9 &&
+              await personal.watchPendingUploads().first == 0;
+        }, 'Personal defaults download');
+        expect(await client.from('spaces').select('id'), [
+          {'id': userId},
+        ]);
+      } finally {
+        await store?.close();
+        await directory.delete(recursive: true);
+        await client.dispose();
+        // The new local user owns only the default categories and write receipt.
+        final cleanup = await Process.run('docker', [
+          'exec',
+          'supabase_db_fundly-schema-dev',
+          'psql',
+          '-U',
+          'postgres',
+          '-v',
+          'ON_ERROR_STOP=1',
+          '-c',
+          "BEGIN; DELETE FROM public.fundly_write_receipts WHERE owner_id='$userId'; "
+              "DELETE FROM public.categories WHERE owner_id='$userId'; "
+              "DELETE FROM public.fundly_deleted_records WHERE owner_id='$userId'; "
+              "DELETE FROM auth.users WHERE id='$userId'; COMMIT;",
+        ]);
+        expect(cleanup.exitCode, 0, reason: '${cleanup.stderr}');
+      }
+    },
+    skip: configPath.isEmpty ? 'Live check: set FUNDLY_CHECK_CONFIG' : null,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
+  test(
     'two spaces in two stores: each downloads and uploads only its own',
     () async {
       final config = jsonDecode(

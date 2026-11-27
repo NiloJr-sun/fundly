@@ -642,6 +642,52 @@ void main() {
       expect(await initializeDatasetIfEmpty(database), isFalse);
     });
 
+    for (final firstDownload in [true, false]) {
+      test(
+        'missing Personal bootstraps after ${firstDownload ? 'first' : 'previously completed empty'} download',
+        () async {
+          expect(
+            await initializePersonalAfterDownload(
+              database,
+              userId: 'new-user',
+              firstDownload: firstDownload,
+            ),
+            isTrue,
+          );
+          final sent = <Map<String, dynamic>>[];
+          await uploadNextBatch(
+            sync,
+            (_, operations) async => sent.add(operations),
+          );
+          final item = (sent.single['items'] as List).single as Map;
+          expect(item['operation'], 'dataset.initialize');
+        },
+      );
+    }
+
+    test(
+      'reopening listed Personal does not reseed an empty dataset',
+      () async {
+        await database.customInsert(
+          'INSERT INTO spaces (id, name, personal_of, created_by, created_at, '
+          "updated_at, revision) VALUES ('user', 'Personal', 'user', 'user', "
+          "'2026-11-24', '2026-11-24', 1)",
+        );
+        expect(
+          await initializePersonalAfterDownload(
+            database,
+            userId: 'user',
+            firstDownload: false,
+          ),
+          isFalse,
+        );
+        expect(
+          await database.customSelect('SELECT * FROM ps_crud').get(),
+          isEmpty,
+        );
+      },
+    );
+
     test('a viewer never asks for the defaults (C3)', () async {
       Future<void> member(String user, String role) => database.customInsert(
         'INSERT INTO space_members (id, space_id, user_id, role, created_at, '
