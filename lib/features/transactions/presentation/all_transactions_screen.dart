@@ -37,7 +37,7 @@ class AllTransactionsScreen extends ConsumerWidget {
               AsyncData(value: final list) => ListView.builder(
                 itemCount: list.length,
                 itemBuilder: (_, index) =>
-                    TransactionTile(transaction: list[index]),
+                    TransactionTile(transaction: list[index], rowIndex: index),
               ),
               AsyncError() => const CenteredMessage(
                 'Transactions could not be loaded.',

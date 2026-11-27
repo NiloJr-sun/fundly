@@ -28,17 +28,20 @@ import 'transaction_display.dart';
 ///
 /// With [boxedIcon], the type icon sits in a tinted rounded square (the
 /// Spending tab's recent list).
+/// Pass [rowIndex] in display order so neighbouring rows alternate colours.
 class TransactionTile extends ConsumerWidget {
   const TransactionTile({
     super.key,
     required this.transaction,
     this.accountId,
     this.boxedIcon = false,
+    this.rowIndex = 0,
   });
 
   final Transaction transaction;
   final String? accountId;
   final bool boxedIcon;
+  final int rowIndex;
 
   /// The colour for an amount shown as [text], or null for the default.
   static Color? amountColor(BuildContext context, String text) =>
@@ -98,14 +101,23 @@ class TransactionTile extends ConsumerWidget {
 
     final icon = Icon(transactionKindIcon(kind));
     final amount = transactionAmountText(transaction, accountId: accountId);
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final alternate = rowIndex.isOdd;
+    final backgroundColor = alternate
+        ? (theme.brightness == Brightness.dark
+              ? colors.surfaceContainerHigh
+              : colors.surfaceContainerLow)
+        : theme.cardTheme.color ?? colors.surface;
     final tile = ListTile(
       leading: boxedIcon
           ? Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: colors.surfaceContainerHigh,
+                color: alternate
+                    ? colors.surfaceContainerHighest
+                    : colors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconTheme.merge(
@@ -156,7 +168,8 @@ class TransactionTile extends ConsumerWidget {
         await confirmAndDeleteTransaction(context, ref, transaction);
         return false;
       },
-      child: tile,
+      // Each row paints its own background and ink, including while sliding.
+      child: Material(color: backgroundColor, child: tile),
     );
   }
 }

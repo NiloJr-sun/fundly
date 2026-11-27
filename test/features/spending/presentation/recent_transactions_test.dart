@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fundly/app/theme/app_colors.dart';
 import 'package:fundly/app/theme/app_palette.dart';
+import 'package:fundly/app/theme/app_theme.dart';
 import 'package:fundly/core/database/record_id.dart';
 import 'package:fundly/core/time/calendar_date.dart';
 import 'package:fundly/core/time/date_range.dart';
@@ -28,7 +29,11 @@ void main() {
       ),
   ];
 
-  Future<void> pump(WidgetTester tester, List<Transaction> transactions) async {
+  Future<void> pump(
+    WidgetTester tester,
+    List<Transaction> transactions, {
+    ThemeData? theme,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -39,8 +44,9 @@ void main() {
             categories: categories.values.toList(),
           ),
         ],
-        child: const MaterialApp(
-          home: Scaffold(
+        child: MaterialApp(
+          theme: theme,
+          home: const Scaffold(
             body: SingleChildScrollView(child: RecentTransactions()),
           ),
         ),
@@ -67,6 +73,25 @@ void main() {
 
     expect(shownPayees(tester), ['Shop 3', 'Shop 2', 'Shop 1']);
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets('row backgrounds alternate in ${brightness.name} mode', (
+      tester,
+    ) async {
+      final theme = AppTheme.build(AppPalette.fallback, brightness);
+      await pump(tester, newestFirst(4), theme: theme);
+      final backgrounds = tester
+          .widgetList<Dismissible>(find.byType(Dismissible))
+          .map((row) => (row.child as Material).color)
+          .toList();
+      final base = theme.cardTheme.color;
+      final stripe = brightness == Brightness.dark
+          ? theme.colorScheme.surfaceContainerHigh
+          : theme.colorScheme.surfaceContainerLow;
+      expect(base, isNot(stripe));
+      expect(backgrounds, [base, stripe, base, stripe]);
+    });
+  }
 
   testWidgets('See all opens the full list', (tester) async {
     await pump(tester, newestFirst(12));

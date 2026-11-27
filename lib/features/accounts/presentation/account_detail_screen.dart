@@ -155,8 +155,12 @@ class _AccountTransactions extends ConsumerWidget {
       ),
       AsyncData(value: final list) => Column(
         children: [
-          for (final transaction in list)
-            TransactionTile(transaction: transaction, accountId: accountId),
+          for (final (index, transaction) in list.indexed)
+            TransactionTile(
+              transaction: transaction,
+              accountId: accountId,
+              rowIndex: index,
+            ),
         ],
       ),
       AsyncError() => const Text('Transactions could not be loaded.'),

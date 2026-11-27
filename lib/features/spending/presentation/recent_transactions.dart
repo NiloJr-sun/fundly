@@ -77,8 +77,13 @@ class RecentTransactions extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
               child: Column(
                 children: [
-                  for (final transaction in list.take(recentTransactionCount))
-                    TransactionTile(transaction: transaction, boxedIcon: true),
+                  for (final (index, transaction)
+                      in list.take(recentTransactionCount).indexed)
+                    TransactionTile(
+                      transaction: transaction,
+                      boxedIcon: true,
+                      rowIndex: index,
+                    ),
                 ],
               ),
             ),

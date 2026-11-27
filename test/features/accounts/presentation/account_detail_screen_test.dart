@@ -12,10 +12,12 @@ import 'package:fundly/features/accounts/presentation/account_detail_screen.dart
 import 'package:fundly/features/accounts/presentation/account_form_screen.dart';
 import 'package:fundly/features/transactions/domain/transaction.dart';
 import 'package:fundly/features/transactions/domain/transaction_type.dart';
+import 'package:fundly/features/transactions/presentation/transaction_tile.dart';
 
 import '../../../helpers/fake_account_repository.dart';
 import '../../../helpers/provider_overrides.dart';
-import '../../transactions/domain/transaction_fixtures.dart' show saved;
+import '../../transactions/domain/transaction_fixtures.dart'
+    show saved, spending;
 
 Account account({
   String id = '1',
@@ -90,6 +92,31 @@ void main() {
     expect(find.text('Nov 16, 2026'), findsOneWidget);
     expect(find.text('No transactions yet.'), findsOneWidget);
     expect(find.text('Archived'), findsNothing);
+  });
+
+  testWidgets('account transaction history stripes rows in display order', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await openDetail(
+      tester,
+      fakeAccounts(
+        [account()],
+        transactions: [
+          for (var i = 3; i >= 1; i--)
+            saved(spending(date: CalendarDate(2026, 11, i)), id: '$i'),
+        ],
+      ),
+    );
+    expect(
+      tester
+          .widgetList<TransactionTile>(find.byType(TransactionTile))
+          .map((tile) => tile.rowIndex),
+      [0, 1, 2],
+    );
   });
 
   testWidgets('shows a custom type by name', (tester) async {

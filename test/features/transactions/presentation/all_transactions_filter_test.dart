@@ -59,6 +59,11 @@ void main() {
       .map((tile) => tile.transaction.id.toString())
       .toList();
 
+  List<int> shownRowIndices(WidgetTester tester) => tester
+      .widgetList<TransactionTile>(find.byType(TransactionTile))
+      .map((tile) => tile.rowIndex)
+      .toList();
+
   Future<void> pickFromSheet(
     WidgetTester tester,
     String chip,
@@ -79,6 +84,7 @@ void main() {
     await pump(tester);
 
     expect(shownIds(tester), ['4', '3', '2', '1']);
+    expect(shownRowIndices(tester), [0, 1, 2, 3]);
     expect(find.text('Clear all'), findsNothing);
   });
 
@@ -102,6 +108,7 @@ void main() {
     await pickFromSheet(tester, 'All categories', 'Salary');
 
     expect(shownIds(tester), ['2']);
+    expect(shownRowIndices(tester), [0]);
     expect(find.widgetWithText(InputChip, 'Salary'), findsOneWidget);
   });
 
